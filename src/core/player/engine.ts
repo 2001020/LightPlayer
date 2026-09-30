@@ -180,8 +180,18 @@ export class PlayerEngine {
     this.onChange();
   }
 
-  private ensureGraph() {
-    if (this.ctx || this.graphFailed || this.el !== this.audio) return;
+  /**
+   * Routes the <audio> element through Web Audio (gain + analyser). Must be
+   * called from a user gesture: WebKit keeps an AudioContext created without
+   * one suspended, which would silence playback. Until then audio plays
+   * directly from the element.
+   */
+  enableGraph() {
+    if (this.ctx) {
+      if (this.ctx.state === "suspended") void this.ctx.resume().catch(() => {});
+      return;
+    }
+    if (this.graphFailed) return;
     try {
       const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const ctx = new Ctx();
@@ -196,6 +206,8 @@ export class PlayerEngine {
       this.ctx = ctx;
       this.gain = gain;
       this.analyser = analyser;
+      ctx.onstatechange = () => this.applyVolume();
+      if (ctx.state === "suspended") void ctx.resume().catch(() => {});
     } catch {
       this.graphFailed = true;
     }
@@ -204,7 +216,6 @@ export class PlayerEngine {
 
   async play(): Promise<void> {
     if (!this.media) return;
-    this.ensureGraph();
     if (this.ctx?.state === "suspended") await this.ctx.resume().catch(() => {});
     try {
       await this.el.play();
@@ -276,7 +287,7 @@ export class PlayerEngine {
   private applyVolume() {
     const v = this.muted ? 0 : this.volume;
     // Only the app's own output is changed; the system volume is never touched.
-    if (this.gain && this.el === this.audio) {
+    if (this.gain && this.ctx?.state === "running" && this.el === this.audio) {
       this.audio.volume = 1;
       this.gain.gain.setTargetAtTime(v * v, this.ctx!.currentTime, 0.015);
     } else {
@@ -300,7 +311,7 @@ export class PlayerEngine {
     const step = () => {
       const k = Math.min(1, (performance.now() - start) / ms);
       const v = from * (1 - k);
-      if (this.gain && this.el === this.audio) this.gain.gain.value = v * v;
+      if (this.gain && this.ctx?.state === "running" && this.el === this.audio) this.gain.gain.value = v * v;
       else this.el.volume = v * v;
       if (k < 1) this.fadeTimer = window.setTimeout(step, 50);
       else {

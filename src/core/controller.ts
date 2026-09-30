@@ -655,6 +655,11 @@ export async function init() {
   };
   requestAnimationFrame(tick);
 
+  // The Web Audio graph (app volume + waveform analyser) may only start inside a gesture.
+  const gesture = () => engine.enableGraph();
+  window.addEventListener("pointerdown", gesture, true);
+  window.addEventListener("keydown", gesture, true);
+
   window.addEventListener("beforeunload", () => rememberPosition(true));
 
   if (isTauri) {
