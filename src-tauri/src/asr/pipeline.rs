@@ -111,11 +111,23 @@ fn initial_prompt(lang: &str) -> Option<&'static str> {
     }
 }
 
+/// Abort hook for whisper.cpp; `data` points at the job's cancel flag.
+///
+/// whisper-rs 0.16's `set_abort_callback_safe` hands C a trampoline typed for
+/// the wrong pointer (it double-boxes the closure), so it reads garbage and
+/// aborts encoding immediately. We register this plain callback instead.
+unsafe extern "C" fn abort_requested(data: *mut std::ffi::c_void) -> bool {
+    if data.is_null() {
+        return false;
+    }
+    (*(data as *const AtomicBool)).load(Ordering::Relaxed)
+}
+
 fn build_params<'a>(
     lang: &'a str,
     vad_path: Option<&'a str>,
     progress: Arc<dyn Fn(AsrProgress) + Send + Sync>,
-    cancel: Arc<AtomicBool>,
+    cancel: &'a Arc<AtomicBool>,
 ) -> FullParams<'a, 'a> {
     let mut params = FullParams::new(SamplingStrategy::BeamSearch { beam_size: 5, patience: -1.0 });
     let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(8) as i32;
@@ -146,7 +158,12 @@ fn build_params<'a>(
     params.set_progress_callback_safe(move |p: i32| {
         progress(AsrProgress { stage: "transcribing".into(), percent: p as f32 });
     });
-    params.set_abort_callback_safe(move || cancel.load(Ordering::Relaxed));
+    // SAFETY: `cancel` outlives the returned params (same lifetime 'a), and the
+    // callback only performs an atomic load.
+    unsafe {
+        params.set_abort_callback(Some(abort_requested));
+        params.set_abort_callback_user_data(Arc::as_ptr(cancel) as *mut std::ffi::c_void);
+    }
     params
 }
 
@@ -198,7 +215,7 @@ pub fn transcribe(
                 continue;
             }
         };
-        let params = build_params(lang, vad_path_str.as_deref(), progress.clone(), cancel.clone());
+        let params = build_params(lang, vad_path_str.as_deref(), progress.clone(), &cancel);
         progress(AsrProgress { stage: "transcribing".into(), percent: 0.0 });
         let res = state.full(params, &pcm);
         if cancel.load(Ordering::Relaxed) {
