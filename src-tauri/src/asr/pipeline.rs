@@ -233,3 +233,37 @@ pub fn transcribe(
     );
     Ok(AsrResult { lrc, line_count: lines.len(), language: detected, model: spec.id.to_string() })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// End-to-end recognition check. Needs a downloaded model and a speech clip:
+    /// `LP_ASR_MODEL_DIR=<dir with ggml-tiny.bin> LP_ASR_AUDIO=<file> cargo test asr_smoke -- --ignored`
+    #[test]
+    #[ignore]
+    fn asr_smoke() {
+        let dir = std::env::var("LP_ASR_MODEL_DIR").expect("LP_ASR_MODEL_DIR");
+        let audio = std::env::var("LP_ASR_AUDIO").expect("LP_ASR_AUDIO");
+        let opts = AsrOptions {
+            model: std::env::var("LP_ASR_MODEL").unwrap_or_else(|_| "tiny".into()),
+            language: "en".into(),
+            vocal_focus: false,
+            simplified: false,
+            use_vad: true,
+            word_timestamps: true,
+            title: Some("Smoke".into()),
+            artist: None,
+        };
+        let last = Arc::new(std::sync::Mutex::new(0f32));
+        let l = last.clone();
+        let progress: Arc<dyn Fn(AsrProgress) + Send + Sync> = Arc::new(move |p| *l.lock().unwrap() = p.percent);
+        let res = transcribe(Path::new(&audio), &opts, Path::new(&dir), Arc::new(AtomicBool::new(false)), progress)
+            .expect("transcription failed");
+        println!("{}", res.lrc);
+        let lower = res.lrc.to_lowercase();
+        assert!(res.line_count >= 1);
+        assert!(lower.contains("[00:"), "timestamps present");
+        assert!(lower.contains("music") || lower.contains("player") || lower.contains("lyrics"), "recognised words");
+    }
+}

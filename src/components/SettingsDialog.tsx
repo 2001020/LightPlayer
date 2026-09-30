@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, isTauri, localFileUrl, registerBrowserFiles } from "../lib/ipc";
+import { api, isTauri, localFileUrl, pickBrowserFiles } from "../lib/ipc";
 import { useUI, type UIState } from "../stores/player";
 import { ACCENT_PRESETS, defaultSettings, useSettings } from "../stores/settings";
 import { Icon, type IconName } from "./Icon";
@@ -54,11 +54,8 @@ function Appearance() {
 
   const pickBackground = async () => {
     if (!isTauri) {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/*";
-      input.onchange = () => input.files?.length && s.setBackground({ path: registerBrowserFiles(input.files)[0] });
-      input.click();
+      const [p] = await pickBrowserFiles("image/*", false);
+      if (p) s.setBackground({ path: p });
       return;
     }
     const { open } = await import("@tauri-apps/plugin-dialog");

@@ -84,7 +84,9 @@ pub fn decide(kind: MediaKind, probe: &Probe, ext: &str, caps: &Caps) -> Strateg
     let vok = video_codec_ok(vcodec, v.pix_fmt.as_deref(), caps);
     let no_audio = probe.audio().is_none();
 
-    if is_mp4_family(fmt) && vok && (no_audio || mp4_audio_ok(audio_codec)) && ext != "3gp" {
+    // WebKit only plays HEVC in MP4 when tagged `hvc1` (not `hev1`); remux fixes the tag.
+    let tag_ok = vcodec != "hevc" || v.codec_tag_string.as_deref() == Some("hvc1");
+    if is_mp4_family(fmt) && vok && tag_ok && (no_audio || mp4_audio_ok(audio_codec)) && ext != "3gp" {
         return Strategy::Direct;
     }
     if has(fmt, "webm")
@@ -154,6 +156,16 @@ mod tests {
         assert_eq!(decide(MediaKind::Video, &hi10, "mkv", &caps), Strategy::HlsTranscode);
         let wmv = probe("asf", &format!("{WMV},{}", a("wmav2")));
         assert_eq!(decide(MediaKind::Video, &wmv, "wmv", &caps), Strategy::HlsTranscode);
+        let hev1 = probe(
+            "mov,mp4,m4a,3gp,3g2,mj2",
+            &format!(r#"{{"codec_type":"video","codec_name":"hevc","codec_tag_string":"hev1"}},{}"#, a("aac")),
+        );
+        assert_eq!(decide(MediaKind::Video, &hev1, "mp4", &caps), Strategy::HlsRemux);
+        let hvc1 = probe(
+            "mov,mp4,m4a,3gp,3g2,mj2",
+            &format!(r#"{{"codec_type":"video","codec_name":"hevc","codec_tag_string":"hvc1"}},{}"#, a("aac")),
+        );
+        assert_eq!(decide(MediaKind::Video, &hvc1, "mp4", &caps), Strategy::Direct);
         let opus_mp4 = probe("mov,mp4,m4a,3gp,3g2,mj2", &format!("{H264},{}", a("opus")));
         assert_eq!(decide(MediaKind::Video, &opus_mp4, "mp4", &caps), Strategy::HlsRemux);
     }

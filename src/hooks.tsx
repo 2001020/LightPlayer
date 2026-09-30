@@ -104,7 +104,10 @@ export function useKeyboard() {
       if (ui.overlay && e.key !== " ") return;
       const k = e.key;
       let handled = true;
-      if (k === " ") C.toggle();
+      if (k === " ") {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+        C.toggle();
+      }
       else if (k === "ArrowLeft" && mod) void C.prev();
       else if (k === "ArrowRight" && mod) void C.next();
       else if (k === "ArrowLeft") C.seekBy(e.shiftKey ? -s.jumpStep : -s.seekStep);
@@ -128,8 +131,18 @@ export function useKeyboard() {
       else handled = false;
       if (handled) e.preventDefault();
     };
+    // Clicking a button must not leave it focused, otherwise Space would both
+    // toggle playback and re-activate the button.
+    const noFocus = (e: MouseEvent) => {
+      const b = (e.target as HTMLElement | null)?.closest("button");
+      if (b && !b.closest(".dialog")) e.preventDefault();
+    };
     window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
+    window.addEventListener("mousedown", noFocus);
+    return () => {
+      window.removeEventListener("keydown", h);
+      window.removeEventListener("mousedown", noFocus);
+    };
   }, []);
 }
 

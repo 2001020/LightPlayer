@@ -12,6 +12,7 @@ import {
   isTauri,
   kindOf,
   on,
+  pickBrowserFiles,
   registerBrowserFiles,
   VIDEO_EXTS,
   type AsrDone,
@@ -66,13 +67,8 @@ export async function openFile(path: string) {
 
 export async function openWithDialog() {
   if (!isTauri) {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = true;
-    input.onchange = () => {
-      if (input.files?.length) void openFiles(registerBrowserFiles(input.files));
-    };
-    input.click();
+    const paths = await pickBrowserFiles();
+    if (paths.length) await openFiles(paths);
     return;
   }
   const res = await openDialog({
@@ -113,8 +109,7 @@ export async function playIndex(index: number, autoplay = true) {
     }
     usePlayer.setState({ media, loading: false, duration: dur, position: startAt });
     useSettings.getState().addRecent(media.path);
-    if (media.kind === "audio") useUI.setState({ page: useUI.getState().page });
-    else if (useUI.getState().page === "lyrics") useUI.setState({ page: "player" });
+    if (media.kind === "video" && useUI.getState().page === "lyrics") useUI.setState({ page: "player" });
     await engine.load(media, startAt, autoplay);
     void loadLyrics(media.path);
     setupSubtitles();
@@ -343,13 +338,8 @@ async function importLyricsFromPath(path: string) {
 
 export async function importLyricsWithDialog() {
   if (!isTauri) {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".lrc,.srt,.vtt,.txt";
-    input.onchange = () => {
-      if (input.files?.length) void importLyricsFromPath(registerBrowserFiles(input.files)[0]);
-    };
-    input.click();
+    const [p] = await pickBrowserFiles(".lrc,.srt,.vtt,.txt", false);
+    if (p) await importLyricsFromPath(p);
     return;
   }
   const res = await openDialog({ multiple: false, filters: [{ name: "歌词文件", extensions: ["lrc", "srt", "vtt", "txt"] }] });

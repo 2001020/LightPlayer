@@ -16,6 +16,7 @@ export default defineConfig({
   build: {
     target: "safari15",
     sourcemap: false,
+    chunkSizeWarningLimit: 700,
   },
   test: {
     environment: "node",

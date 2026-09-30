@@ -178,6 +178,23 @@ export function kindOf(path: string): MediaKind | null {
 const browserFiles = new Map<string, File>();
 const browserUrls = new Map<string, string>();
 
+/** Opens a native file picker in browser dev mode and resolves registered paths. */
+export function pickBrowserFiles(accept = "", multiple = true): Promise<string[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = multiple;
+    input.accept = accept;
+    input.style.display = "none";
+    document.body.appendChild(input);
+    input.addEventListener("change", () => {
+      resolve(input.files?.length ? registerBrowserFiles(input.files) : []);
+      input.remove();
+    });
+    input.click();
+  });
+}
+
 /** Registers files picked through an <input type=file> (browser dev mode only). */
 export function registerBrowserFiles(files: FileList | File[]): string[] {
   const paths: string[] = [];

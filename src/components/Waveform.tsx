@@ -99,7 +99,8 @@ export function Waveform({ side, style }: { side: "left" | "right"; style: "bars
         for (let i = 0; i < bins; i++) {
           // Low frequencies at the bottom.
           const y = top + span - (i + 0.5) * gap;
-          const len = 4 + smooth[i] * maxLen;
+          const len = 2 + smooth[i] * maxLen;
+          if (len < 3) continue;
           ctx.beginPath();
           ctx.moveTo(inner, y);
           ctx.lineTo(inner + dir * len, y);

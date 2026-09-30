@@ -138,6 +138,14 @@ export function LyricsEditor() {
     return () => window.removeEventListener("keydown", h, true);
   }, [tab, showPaste, stamp, unstamp, close, rows.length]);
 
+  // Entering tap mode: continue from the first line without a timestamp.
+  useEffect(() => {
+    if (tab !== "tap") return;
+    const first = rows.findIndex((r) => r.time === null);
+    setCursor(first >= 0 ? first : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
   useEffect(() => {
     const el = listRef.current?.querySelector<HTMLElement>(`[data-row="${cursor}"]`);
     el?.scrollIntoView({ block: "center", behavior: "smooth" });

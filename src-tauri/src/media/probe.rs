@@ -45,6 +45,8 @@ pub struct Stream {
     #[serde(default)]
     pub codec_long_name: Option<String>,
     #[serde(default)]
+    pub codec_tag_string: Option<String>,
+    #[serde(default)]
     pub profile: Option<String>,
     #[serde(default)]
     pub width: Option<u32>,

@@ -2,7 +2,7 @@
 // virtual timeline for restartable HLS sessions and the Web Audio graph used
 // for app-level volume and the waveform analyser.
 
-import Hls from "hls.js";
+import type Hls from "hls.js";
 import { api, type OpenedMedia } from "../../lib/ipc";
 
 type Handler = () => void;
@@ -113,24 +113,28 @@ export class PlayerEngine {
     }
   }
 
-  private setSource(url: string) {
+  private async setSource(url: string) {
     if (this.hls) {
       this.hls.destroy();
       this.hls = null;
     }
     const el = this.el;
     const native = el.canPlayType("application/vnd.apple.mpegurl");
-    if (this.isHls && !native && Hls.isSupported()) {
-      const hls = new Hls({ maxBufferLength: 60, enableWorker: true });
-      hls.on(Hls.Events.ERROR, (_e, data) => {
-        if (data.fatal && !this.restarting) this.onError(`流媒体错误：${data.details}`);
-      });
-      hls.loadSource(url);
-      hls.attachMedia(el as HTMLVideoElement);
-      this.hls = hls;
-    } else {
-      el.src = url;
+    if (this.isHls && !native) {
+      // WebViews without native HLS (e.g. WebView2 / WebKitGTK) use hls.js.
+      const { default: HlsJs } = await import("hls.js");
+      if (HlsJs.isSupported()) {
+        const hls = new HlsJs({ maxBufferLength: 60, enableWorker: true });
+        hls.on(HlsJs.Events.ERROR, (_e, data) => {
+          if (data.fatal && !this.restarting) this.onError(`流媒体错误：${data.details}`);
+        });
+        hls.loadSource(url);
+        hls.attachMedia(el as HTMLVideoElement);
+        this.hls = hls;
+        return;
+      }
     }
+    el.src = url;
   }
 
   async load(media: OpenedMedia, startAt = 0, autoplay = true): Promise<void> {
@@ -147,7 +151,8 @@ export class PlayerEngine {
       url = s.url;
       this.baseOffset = s.baseOffset;
     }
-    this.setSource(url);
+    await this.setSource(url);
+    if (token !== this.loadToken) return;
     const el = this.el;
     el.playbackRate = this.rate;
     this.applyVolume();
@@ -241,7 +246,7 @@ export class PlayerEngine {
       const s = await api.requestStream(this.media.path, t, this.media.strategy === "hlsTranscode");
       if (token !== this.loadToken) return;
       this.baseOffset = s.baseOffset;
-      this.setSource(s.url);
+      await this.setSource(s.url);
       this.el.playbackRate = this.rate;
       if (wasPlaying) await this.play();
     } catch (e) {

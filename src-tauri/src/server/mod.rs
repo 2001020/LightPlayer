@@ -214,3 +214,75 @@ async fn subtitle_handler(
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::media::probe::probe;
+    use crate::media::transcode::HlsMode;
+
+    fn ffmpeg(args: &[&str]) -> bool {
+        std::process::Command::new(&tools().ffmpeg)
+            .args(["-hide_banner", "-loglevel", "error", "-y"])
+            .args(args)
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    }
+
+    #[tokio::test]
+    async fn serves_ranges_hls_and_subtitles() {
+        let dir = tempfile::tempdir().unwrap();
+        let hls = Arc::new(HlsManager::new(dir.path()));
+        let info = start(hls.clone()).await.unwrap();
+        let client = reqwest::Client::new();
+
+        let file = dir.path().join("数据 file.bin");
+        std::fs::write(&file, (0u8..=255).collect::<Vec<_>>()).unwrap();
+        let url = info.file_url(&file);
+        let r = client.get(&url).header("Range", "bytes=10-19").send().await.unwrap();
+        assert_eq!(r.status(), 206);
+        assert_eq!(r.headers()["content-range"], "bytes 10-19/256");
+        assert_eq!(r.headers()["access-control-allow-origin"], "*");
+        assert_eq!(r.bytes().await.unwrap().to_vec(), (10u8..20).collect::<Vec<_>>());
+        let r = client.get(&url).send().await.unwrap();
+        assert_eq!(r.status(), 200);
+        assert_eq!(r.bytes().await.unwrap().len(), 256);
+        let bad = url.replace(&info.token, "wrong");
+        assert_eq!(client.get(&bad).send().await.unwrap().status(), 403);
+
+        // Subtitles and HLS need a working ffmpeg with libx264.
+        let srt = dir.path().join("a.srt");
+        std::fs::write(&srt, "1\n00:00:01,000 --> 00:00:02,000\n你好\n").unwrap();
+        if !ffmpeg(&["-version"]) {
+            return;
+        }
+        let vtt = client.get(info.subtitle_url(&srt, None)).send().await.unwrap();
+        assert_eq!(vtt.status(), 200);
+        let text = vtt.text().await.unwrap();
+        assert!(text.starts_with("WEBVTT") && text.contains("你好"), "{text}");
+
+        let mkv = dir.path().join("v.mkv");
+        if !ffmpeg(&[
+            "-f", "lavfi", "-i", "testsrc=size=160x120:rate=25:duration=6",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", mkv.to_str().unwrap(),
+        ]) {
+            return;
+        }
+        let p = probe(&mkv).await.unwrap();
+        let s = hls.start(&mkv, &p, 0.0, HlsMode::Copy).await.unwrap();
+        let pl = client.get(info.hls_url(&s.id)).send().await.unwrap();
+        assert_eq!(pl.status(), 200);
+        assert_eq!(pl.headers()["content-type"], "application/vnd.apple.mpegurl");
+        let body = pl.text().await.unwrap();
+        assert!(body.contains("#EXT-X-START:TIME-OFFSET=0"));
+        let seg = body.lines().find(|l| l.ends_with(".m4s")).expect("segment listed");
+        let base = info.hls_url(&s.id).replace("index.m3u8", "");
+        let init = client.get(format!("{base}init.mp4")).send().await.unwrap();
+        assert_eq!(init.status(), 200);
+        let seg = client.get(format!("{base}{seg}")).send().await.unwrap();
+        assert_eq!(seg.status(), 200);
+        assert!(seg.bytes().await.unwrap().len() > 100);
+        hls.stop_all();
+    }
+}
