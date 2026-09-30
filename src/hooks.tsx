@@ -32,6 +32,7 @@ export function useTheme() {
     const p = accentPalette(dynamic && dynamicColor ? dynamicColor : accent, dark);
     root.style.setProperty("--accent", p.accent);
     root.style.setProperty("--accent-hover", p.hover);
+    root.style.setProperty("--accent-text", p.text);
     root.style.setProperty("--accent-strong", p.strong);
     root.style.setProperty("--accent-soft", p.soft);
     root.style.setProperty("--on-accent", p.onAccent);

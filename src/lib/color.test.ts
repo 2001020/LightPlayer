@@ -15,11 +15,18 @@ describe("color", () => {
     expect(rgbToHex(back)).toBe(rgbToHex(rgb));
   });
 
-  it("keeps accents readable", () => {
+  it("keeps the chosen fill and makes text readable", () => {
     const bgDark = { r: 18, g: 18, b: 22 };
+    const bgLight = { r: 250, g: 250, b: 252 };
+    const blue = accentPalette("#66ccff", false);
+    expect(blue.accent).toBe("#66ccff");
+    expect(blue.onAccent).toBe("#ffffff");
+    expect(contrast(hexToRgb(blue.text)!, bgLight)).toBeGreaterThanOrEqual(3);
+    expect(accentPalette("#66ccff", true).accent).toBe("#66ccff");
     const p = accentPalette("#101010", true);
-    expect(contrast(hexToRgb(p.accent)!, bgDark)).toBeGreaterThanOrEqual(3);
+    expect(contrast(hexToRgb(p.text)!, bgDark)).toBeGreaterThanOrEqual(3);
     const light = accentPalette("#ffff66", false);
-    expect(contrast(hexToRgb(light.accent)!, { r: 250, g: 250, b: 252 })).toBeGreaterThanOrEqual(3);
+    expect(contrast(hexToRgb(light.text)!, bgLight)).toBeGreaterThanOrEqual(3);
+    expect(light.onAccent).toBe("#111111");
   });
 });

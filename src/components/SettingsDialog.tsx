@@ -108,6 +108,14 @@ function Appearance() {
       <Row label="播放音乐时使用封面作为背景" hint="未设置自定义背景时生效">
         <Switch on={s.coverBackground} onChange={(coverBackground) => s.set({ coverBackground })} />
       </Row>
+
+      <h3>声波动画</h3>
+      <Row label="显示声波动画" hint="歌词页左右两侧、播放控制栏上方的竖直声波（窗口宽度 ≥ 1100 时显示）">
+        <Switch on={s.waveform} onChange={(waveform) => s.set({ waveform })} />
+      </Row>
+      <Row label="动画样式">
+        <Seg value={s.waveformStyle} options={[["bars", "竖条"], ["wave", "山峰"]]} onChange={(waveformStyle) => s.set({ waveformStyle })} />
+      </Row>
     </>
   );
 }
@@ -152,13 +160,6 @@ function LyricsSettings() {
       </Row>
       <Row label="逐字高亮（卡拉 OK）" hint="歌词包含逐字时间时生效">
         <Switch on={s.karaoke} onChange={(karaoke) => s.set({ karaoke })} />
-      </Row>
-      <h3>音频波形</h3>
-      <Row label="歌词页两侧显示音频波形" hint="窗口宽度足够时显示，低调不打扰">
-        <Switch on={s.waveform} onChange={(waveform) => s.set({ waveform })} />
-      </Row>
-      <Row label="波形样式">
-        <Seg value={s.waveformStyle} options={[["bars", "细条"], ["wave", "曲线"]]} onChange={(waveformStyle) => s.set({ waveformStyle })} />
       </Row>
       <h3>打标</h3>
       <Row label="反应补偿" hint={`打点时自动提前 ${s.tapCompensation.toFixed(2)} 秒，抵消按键反应时间`}>

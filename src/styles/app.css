@@ -10,15 +10,16 @@
   --transport-h: 92px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  --accent: #7c5cff;
-  --accent-hover: #6a48ff;
-  --accent-strong: #5a38f0;
-  --accent-soft: rgba(124, 92, 255, 0.14);
+  --accent: #66ccff;
+  --accent-hover: #4fc2fb;
+  --accent-text: #1b93c9;
+  --accent-strong: #137aa8;
+  --accent-soft: rgba(102, 204, 255, 0.16);
   --on-accent: #fff;
 
   --bg: #f4f4f7;
-  --bg-grad: radial-gradient(1200px 700px at 10% -10%, rgba(124, 92, 255, 0.10), transparent 60%),
-    radial-gradient(900px 600px at 110% 110%, rgba(31, 182, 255, 0.10), transparent 60%);
+  --bg-grad: radial-gradient(1200px 700px at 10% -10%, rgba(102, 204, 255, 0.14), transparent 60%),
+    radial-gradient(900px 600px at 110% 110%, rgba(160, 140, 255, 0.08), transparent 60%);
   --panel: rgba(255, 255, 255, 0.72);
   --panel-solid: #ffffff;
   --panel-2: rgba(0, 0, 0, 0.035);
@@ -37,7 +38,7 @@
 
 :root[data-theme="dark"] {
   --bg: #111115;
-  --bg-grad: radial-gradient(1200px 700px at 10% -10%, rgba(124, 92, 255, 0.16), transparent 60%),
+  --bg-grad: radial-gradient(1200px 700px at 10% -10%, rgba(102, 204, 255, 0.12), transparent 60%),
     radial-gradient(900px 600px at 110% 110%, rgba(31, 182, 255, 0.10), transparent 60%);
   --panel: rgba(28, 28, 34, 0.72);
   --panel-solid: #1c1c22;
@@ -174,7 +175,7 @@ select:focus {
   width: 10px;
   height: 10px;
   border-radius: 3px;
-  background: linear-gradient(135deg, var(--accent), #1fb6ff);
+  background: linear-gradient(135deg, var(--accent), #3d8bff);
 }
 .titlebar .spacer {
   flex: 1;
@@ -285,7 +286,7 @@ button:focus:not(:focus-visible) {
   transform: scale(0.92);
 }
 .icon-btn.active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .icon-btn.active::after {
   content: "";
@@ -302,7 +303,7 @@ button:focus:not(:focus-visible) {
   right: 1px;
   font-size: 9px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .icon-btn:disabled {
   opacity: 0.35;
@@ -334,7 +335,7 @@ button:focus:not(:focus-visible) {
 .chip.accent {
   background: var(--accent-soft);
   border-color: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .panel {
@@ -563,7 +564,7 @@ input[type="range"] {
   background: var(--hover);
 }
 .popover .item.selected {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 .popover .sep {
@@ -614,7 +615,7 @@ input[type="range"] {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   transition: transform 0.35s var(--ease), box-shadow 0.35s;
-  background: linear-gradient(135deg, var(--accent), #1fb6ff);
+  background: linear-gradient(135deg, var(--accent), #3d8bff);
 }
 .cover:hover {
   transform: translateY(-3px) scale(1.01);
@@ -667,7 +668,7 @@ input[type="range"] {
   word-break: break-word;
 }
 .track-info .title:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .track-info .artist {
   font-size: 17px;
@@ -717,7 +718,7 @@ input[type="range"] {
   width: 72px;
   height: 72px;
   border-radius: 20px;
-  background: linear-gradient(135deg, var(--accent), #1fb6ff);
+  background: linear-gradient(135deg, var(--accent), #3d8bff);
   display: grid;
   place-items: center;
   color: #fff;
@@ -961,7 +962,7 @@ input[type="range"] {
   text-overflow: ellipsis;
 }
 .pl-item.active .name {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 .pl-item .ext {
@@ -1005,7 +1006,7 @@ input[type="range"] {
   height: 100%;
   display: grid;
   grid-template-rows: auto auto 1fr;
-  padding: 0 16px 8px;
+  padding: 0 16px 0;
   animation: fadeUp 0.35s var(--ease);
 }
 @keyframes fadeUp {
@@ -1034,7 +1035,7 @@ input[type="range"] {
   height: 44px;
   border-radius: 8px;
   object-fit: cover;
-  background: linear-gradient(135deg, var(--accent), #1fb6ff);
+  background: linear-gradient(135deg, var(--accent), #3d8bff);
   flex: none;
 }
 .lyrics-head .who .t {
@@ -1096,6 +1097,7 @@ input[type="range"] {
 }
 .lyric-scroll {
   height: 100%;
+  padding-bottom: 8px;
   overflow-y: auto;
   scrollbar-width: none;
   padding: 0 12px;
@@ -1302,7 +1304,7 @@ input[type="range"] {
   grid-column: 1 / -1;
   font-weight: 700;
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-top: 8px;
   letter-spacing: 0.5px;
 }
@@ -1338,7 +1340,7 @@ input[type="range"] {
 }
 .settings nav button.on {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 .settings .pane {
@@ -1593,7 +1595,7 @@ kbd {
   color: var(--text-faint);
 }
 .tap-row.stamped .ts {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .tap-row.cursor {
   background: var(--accent-soft);
@@ -1695,7 +1697,7 @@ kbd {
   color: var(--danger);
 }
 .toast.success {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .drop-hint {
   position: fixed;
@@ -1708,7 +1710,7 @@ kbd {
   place-items: center;
   font-size: 20px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   pointer-events: none;
   backdrop-filter: blur(4px);
 }

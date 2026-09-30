@@ -56,7 +56,7 @@ interface SettingsStore extends Settings {
   setLyricOffset: (path: string, offset: number) => void;
 }
 
-export const ACCENT_PRESETS = ["#7c5cff", "#1fb6ff", "#13ce66", "#ff7849", "#ff4d8d", "#f7b500", "#00b8a9", "#8e8e93"];
+export const ACCENT_PRESETS = ["#66ccff", "#7c5cff", "#13ce66", "#ff7849", "#ff4d8d", "#f7b500", "#00b8a9", "#8e8e93"];
 
 export const defaultSettings: Settings = {
   theme: "system",
@@ -120,7 +120,13 @@ export const useSettings = create<SettingsStore>()(
     }),
     {
       name: "lightplayer-settings",
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        const p = (persisted ?? {}) as Partial<Settings>;
+        // v2: default accent changed from purple to light blue.
+        if (version < 2 && (!p.accent || p.accent === "#7c5cff")) p.accent = "#66ccff";
+        return p as SettingsStore;
+      },
       storage: createJSONStorage(() => {
         try {
           return localStorage;

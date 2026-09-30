@@ -29,7 +29,7 @@ export function Waveform({ side, style }: { side: "left" | "right"; style: "bars
     let raf = 0;
     let last = 0;
     let silentSince = performance.now();
-    const bins = 40;
+    const bins = 28;
     const smooth = new Float32Array(bins);
     const freq = new Uint8Array(128);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -82,56 +82,65 @@ export function Waveform({ side, style }: { side: "left" | "right"; style: "bars
         smooth[i] += (target[i] - smooth[i]) * (reduced ? 1 : k);
       }
 
-      const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#7c5cff";
-      const maxLen = Math.min(w * 0.8, 180);
-      const inner = side === "left" ? w - 12 : 12;
-      const dir = side === "left" ? -1 : 1;
-      const top = h * 0.12;
-      const span = h * 0.76;
-      ctx.globalAlpha = 0.22;
-      ctx.strokeStyle = accent;
-      ctx.fillStyle = accent;
+      const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#66ccff";
+      // Vertical bars rising from the bottom edge (right above the control bar).
+      // Bass sits next to the lyrics column, treble towards the window edge.
+      const pad = 14;
+      const usable = Math.max(40, w - pad * 2);
+      const base = h - 2;
+      const maxH = Math.min(h * 0.42, 220);
+      const xAt = (i: number) => {
+        const k = (i + 0.5) / bins;
+        return side === "left" ? pad + usable * (1 - k) : pad + usable * k;
+      };
+      const grad = ctx.createLinearGradient(0, base - maxH, 0, base);
+      grad.addColorStop(0, "rgba(0,0,0,0)");
+      grad.addColorStop(1, accent);
+      ctx.globalAlpha = 0.32;
       ctx.lineCap = "round";
 
       if (style === "bars") {
-        const gap = span / bins;
-        ctx.lineWidth = Math.max(2, gap * 0.38);
+        const step = usable / bins;
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = Math.max(2, Math.min(6, step * 0.5));
         for (let i = 0; i < bins; i++) {
-          // Low frequencies at the bottom.
-          const y = top + span - (i + 0.5) * gap;
-          const len = 2 + smooth[i] * maxLen;
-          if (len < 3) continue;
+          const bh = smooth[i] * maxH;
+          if (bh < 2) continue;
+          const x = xAt(i);
           ctx.beginPath();
-          ctx.moveTo(inner, y);
-          ctx.lineTo(inner + dir * len, y);
+          ctx.moveTo(x, base);
+          ctx.lineTo(x, base - bh);
           ctx.stroke();
         }
       } else {
-        ctx.lineWidth = 1.6;
         ctx.beginPath();
-        for (let i = 0; i <= bins; i++) {
-          const v = smooth[Math.min(bins - 1, i)];
-          const y = top + span - (i / bins) * span;
-          const x = inner + dir * (6 + v * maxLen);
+        ctx.moveTo(xAt(0), base);
+        for (let i = 0; i < bins; i++) ctx.lineTo(xAt(i), base - smooth[i] * maxH);
+        ctx.lineTo(xAt(bins - 1), base);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.globalAlpha = 0.22;
+        ctx.fill();
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let i = 0; i < bins; i++) {
+          const x = xAt(i);
+          const y = base - smooth[i] * maxH;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
-        ctx.globalAlpha = 0.07;
-        ctx.lineTo(inner, top);
-        ctx.lineTo(inner, top + span);
-        ctx.closePath();
-        ctx.fill();
       }
-      // Fade the ends.
+      // Soften the outer end so the animation fades into the window edge.
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "destination-out";
-      const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0, "rgba(0,0,0,1)");
-      g.addColorStop(0.18, "rgba(0,0,0,0)");
-      g.addColorStop(0.82, "rgba(0,0,0,0)");
-      g.addColorStop(1, "rgba(0,0,0,1)");
-      ctx.fillStyle = g;
+      const fade = ctx.createLinearGradient(0, 0, w, 0);
+      const outer = side === "left" ? 0 : 1;
+      fade.addColorStop(outer, "rgba(0,0,0,0.85)");
+      fade.addColorStop(side === "left" ? 0.35 : 0.65, "rgba(0,0,0,0)");
+      ctx.fillStyle = fade;
       ctx.fillRect(0, 0, w, h);
       ctx.globalCompositeOperation = "source-over";
     };
