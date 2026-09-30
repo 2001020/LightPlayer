@@ -111,6 +111,45 @@ fn initial_prompt(lang: &str) -> Option<&'static str> {
     }
 }
 
+fn build_params<'a>(
+    lang: &'a str,
+    vad_path: Option<&'a str>,
+    progress: Arc<dyn Fn(AsrProgress) + Send + Sync>,
+    cancel: Arc<AtomicBool>,
+) -> FullParams<'a, 'a> {
+    let mut params = FullParams::new(SamplingStrategy::BeamSearch { beam_size: 5, patience: -1.0 });
+    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(8) as i32;
+    params.set_n_threads(threads);
+    params.set_language(Some(if lang.is_empty() { "auto" } else { lang }));
+    if let Some(p) = initial_prompt(lang) {
+        params.set_initial_prompt(p);
+    }
+    params.set_translate(false);
+    params.set_no_context(true);
+    params.set_token_timestamps(true);
+    params.set_suppress_nst(true);
+    params.set_no_speech_thold(0.6);
+    params.set_print_special(false);
+    params.set_print_progress(false);
+    params.set_print_realtime(false);
+    params.set_print_timestamps(false);
+    if let Some(p) = vad_path {
+        // whisper-rs requires the model path to be set before enabling VAD.
+        params.set_vad_model_path(Some(p));
+        params.enable_vad(true);
+        let mut vp = WhisperVadParams::new();
+        vp.set_threshold(0.4);
+        vp.set_min_silence_duration(300);
+        vp.set_speech_pad(200);
+        params.set_vad_params(vp);
+    }
+    params.set_progress_callback_safe(move |p: i32| {
+        progress(AsrProgress { stage: "transcribing".into(), percent: p as f32 });
+    });
+    params.set_abort_callback_safe(move || cancel.load(Ordering::Relaxed));
+    params
+}
+
 pub fn transcribe(
     media: &Path,
     opts: &AsrOptions,
@@ -130,60 +169,55 @@ pub fn transcribe(
         return Err(AppError::msg("音频过短，无法识别"));
     }
 
-    progress(AsrProgress { stage: "loading".into(), percent: 0.0 });
-    let ctx = WhisperContext::new_with_params(
-        model_path.to_string_lossy().as_ref(),
-        WhisperContextParameters::default(),
-    )
-    .map_err(|e| AppError::msg(format!("加载模型失败：{e}")))?;
-    let mut state = ctx.create_state().map_err(|e| AppError::msg(format!("初始化模型失败：{e}")))?;
-
-    let mut params = FullParams::new(SamplingStrategy::BeamSearch { beam_size: 5, patience: -1.0 });
-    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(8) as i32;
-    params.set_n_threads(threads);
     let lang = opts.language.as_str();
-    params.set_language(Some(if lang.is_empty() { "auto" } else { lang }));
-    if let Some(p) = initial_prompt(lang) {
-        params.set_initial_prompt(p);
-    }
-    params.set_translate(false);
-    params.set_no_context(true);
-    params.set_token_timestamps(true);
-    params.set_suppress_nst(true);
-    params.set_no_speech_thold(0.6);
-    params.set_print_special(false);
-    params.set_print_progress(false);
-    params.set_print_realtime(false);
-    params.set_print_timestamps(false);
-
     let vad_path = models::spec(VAD_ID).map(|s| models::model_path(models_dir, s));
     let vad_path_str = vad_path
         .filter(|p| opts.use_vad && p.is_file())
         .map(|p| p.to_string_lossy().into_owned());
-    if let Some(p) = vad_path_str.as_deref() {
-        // whisper-rs requires the model path to be set before enabling VAD.
-        params.set_vad_model_path(Some(p));
-        params.enable_vad(true);
-        let mut vp = WhisperVadParams::new();
-        vp.set_threshold(0.4);
-        vp.set_min_silence_duration(300);
-        vp.set_speech_pad(200);
-        params.set_vad_params(vp);
-    }
 
-    let prog = progress.clone();
-    params.set_progress_callback_safe(move |p: i32| {
-        prog(AsrProgress { stage: "transcribing".into(), percent: p as f32 });
-    });
-    let c = cancel.clone();
-    params.set_abort_callback_safe(move || c.load(Ordering::Relaxed));
-
-    progress(AsrProgress { stage: "transcribing".into(), percent: 0.0 });
-    let res = state.full(params, &pcm);
-    if cancel.load(Ordering::Relaxed) {
-        return Err(AppError::Cancelled);
+    // Metal first; fall back to the CPU when the GPU path fails (older or
+    // virtualised GPUs lack some kernels whisper.cpp needs).
+    let attempts: &[bool] = if cfg!(target_os = "macos") { &[true, false] } else { &[false] };
+    let mut finished = None;
+    let mut last_err = String::new();
+    for &use_gpu in attempts {
+        progress(AsrProgress { stage: "loading".into(), percent: 0.0 });
+        let mut cp = WhisperContextParameters::default();
+        cp.use_gpu(use_gpu);
+        let ctx = match WhisperContext::new_with_params(model_path.to_string_lossy().as_ref(), cp) {
+            Ok(c) => c,
+            Err(e) => {
+                last_err = format!("加载模型失败：{e}");
+                continue;
+            }
+        };
+        let mut state = match ctx.create_state() {
+            Ok(s) => s,
+            Err(e) => {
+                last_err = format!("初始化模型失败：{e}");
+                continue;
+            }
+        };
+        let params = build_params(lang, vad_path_str.as_deref(), progress.clone(), cancel.clone());
+        progress(AsrProgress { stage: "transcribing".into(), percent: 0.0 });
+        let res = state.full(params, &pcm);
+        if cancel.load(Ordering::Relaxed) {
+            return Err(AppError::Cancelled);
+        }
+        match res {
+            Ok(()) => {
+                finished = Some((ctx, state));
+                break;
+            }
+            Err(e) => {
+                log::warn!("whisper failed (gpu={use_gpu}): {e}");
+                last_err = format!("识别失败：{e}");
+            }
+        }
     }
-    res.map_err(|e| AppError::msg(format!("识别失败：{e}")))?;
+    let Some((ctx, state)) = finished else {
+        return Err(AppError::msg(last_err));
+    };
 
     progress(AsrProgress { stage: "finishing".into(), percent: 100.0 });
     let eot = ctx.token_eot();
