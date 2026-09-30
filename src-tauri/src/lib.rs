@@ -90,6 +90,7 @@ pub fn run() {
             commands::find_lyrics,
             commands::read_text_file,
             commands::write_text_file,
+            commands::write_base64_file,
             commands::save_lyrics,
             commands::asr_models,
             commands::asr_download,

@@ -288,6 +288,18 @@ pub fn write_text_file(path: String, content: String) -> AppResult<()> {
     Ok(())
 }
 
+/// Writes base64 data (optionally a `data:` URL), e.g. video screenshots.
+#[tauri::command]
+pub fn write_base64_file(path: String, data: String) -> AppResult<()> {
+    use base64::Engine;
+    let b64 = data.split_once("base64,").map(|(_, b)| b).unwrap_or(&data);
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(b64.trim())
+        .map_err(|e| AppError::msg(format!("数据无效：{e}")))?;
+    std::fs::write(path, bytes)?;
+    Ok(())
+}
+
 // ---------------------------------------------------------------- ASR ----
 
 #[tauri::command]

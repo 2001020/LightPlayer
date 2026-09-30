@@ -143,6 +143,12 @@ async fn hls_handler(
         for _ in 0..600 {
             if let Ok(text) = tokio::fs::read_to_string(&path).await {
                 if text.contains("#EXTINF") {
+                    // Event playlists would otherwise start near the live edge.
+                    let text = if text.contains("#EXT-X-START") {
+                        text
+                    } else {
+                        text.replacen("#EXTM3U", "#EXTM3U\n#EXT-X-START:TIME-OFFSET=0,PRECISE=YES", 1)
+                    };
                     let mut r = (StatusCode::OK, text).into_response();
                     let h = r.headers_mut();
                     h.insert(header::CONTENT_TYPE, HeaderValue::from_static("application/vnd.apple.mpegurl"));
