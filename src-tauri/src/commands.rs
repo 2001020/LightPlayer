@@ -379,7 +379,18 @@ pub fn asr_start(app: AppHandle, state: State<'_, AppState>, path: String, optio
         let progress: Arc<dyn Fn(pipeline::AsrProgress) + Send + Sync> = Arc::new(move |p| {
             let _ = emitter.emit("asr://progress", AsrProgressEvent { media_path: mp.clone(), progress: p });
         });
-        let res = pipeline::transcribe(&media, &options, &models_dir, cancel, progress);
+        // A panic inside whisper must not leave the job marked as running.
+        let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            pipeline::transcribe(&media, &options, &models_dir, cancel, progress)
+        }))
+        .unwrap_or_else(|e| {
+            let msg = e
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| e.downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "未知错误".into());
+            Err(AppError::msg(format!("识别引擎异常：{msg}")))
+        });
         let done = match res {
             Ok(r) => {
                 let lib = lyrics::LyricsLibrary::new(&data_dir);

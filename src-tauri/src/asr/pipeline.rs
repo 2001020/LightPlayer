@@ -161,8 +161,9 @@ pub fn transcribe(
         .filter(|p| opts.use_vad && p.is_file())
         .map(|p| p.to_string_lossy().into_owned());
     if let Some(p) = vad_path_str.as_deref() {
-        params.enable_vad(true);
+        // whisper-rs requires the model path to be set before enabling VAD.
         params.set_vad_model_path(Some(p));
+        params.enable_vad(true);
         let mut vp = WhisperVadParams::new();
         vp.set_threshold(0.4);
         vp.set_min_silence_duration(300);

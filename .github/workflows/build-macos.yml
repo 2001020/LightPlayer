@@ -93,7 +93,6 @@ jobs:
           name: LightPlayer-macOS-arm64-app
           path: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app.zip
       - name: Speech recognition smoke test (Metal)
-        continue-on-error: true
         env:
           LP_ASR_MODEL_DIR: ${{ runner.temp }}/models
           LP_ASR_AUDIO: ${{ runner.temp }}/speech.aiff
