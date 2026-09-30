@@ -1,0 +1,130 @@
+mod asr;
+mod commands;
+mod error;
+mod lyrics;
+mod media;
+mod nowplaying;
+mod server;
+mod tools;
+
+use media::probe::Probe;
+use media::transcode::HlsManager;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use tauri::{Emitter, Manager};
+
+pub struct AppState {
+    pub server: server::ServerInfo,
+    pub hls: Arc<HlsManager>,
+    pub library: lyrics::LyricsLibrary,
+    pub cache_dir: PathBuf,
+    pub data_dir: PathBuf,
+    pub models_dir: PathBuf,
+    pub probes: Mutex<HashMap<String, Probe>>,
+    pub pending_open: Mutex<Vec<String>>,
+    pub frontend_ready: AtomicBool,
+    pub asr_job: Mutex<Option<Arc<AtomicBool>>>,
+    pub downloads: Mutex<HashMap<String, Arc<AtomicBool>>>,
+    pub now_playing: nowplaying::NowPlaying,
+}
+
+/// Queues files to open, or forwards them right away once the UI is ready.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn open_paths(app: &tauri::AppHandle, paths: Vec<String>) {
+    if paths.is_empty() {
+        return;
+    }
+    if let Some(state) = app.try_state::<AppState>() {
+        if state.frontend_ready.load(Ordering::SeqCst) {
+            let _ = app.emit("app://open-files", paths);
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.set_focus();
+            }
+            return;
+        }
+        state.pending_open.lock().unwrap().extend(paths);
+    }
+}
+
+pub fn run() {
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            let cache_dir = app.path().app_cache_dir()?;
+            let data_dir = app.path().app_data_dir()?;
+            let models_dir = data_dir.join("models");
+            std::fs::create_dir_all(&cache_dir)?;
+            std::fs::create_dir_all(&models_dir)?;
+            let hls = Arc::new(HlsManager::new(&cache_dir));
+            let server = tauri::async_runtime::block_on(server::start(hls.clone()))?;
+            let pending: Vec<String> = std::env::args()
+                .skip(1)
+                .filter(|a| !a.starts_with('-') && std::path::Path::new(a).is_file())
+                .collect();
+            app.manage(AppState {
+                server,
+                hls,
+                library: lyrics::LyricsLibrary::new(&data_dir),
+                cache_dir,
+                data_dir,
+                models_dir,
+                probes: Mutex::new(HashMap::new()),
+                pending_open: Mutex::new(pending),
+                frontend_ready: AtomicBool::new(false),
+                asr_job: Mutex::new(None),
+                downloads: Mutex::new(HashMap::new()),
+                now_playing: nowplaying::NowPlaying::new(&handle),
+            });
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::open_media,
+            commands::request_stream,
+            commands::stop_streams,
+            commands::scan_playlist,
+            commands::get_video_info,
+            commands::find_lyrics,
+            commands::read_text_file,
+            commands::write_text_file,
+            commands::save_lyrics,
+            commands::asr_models,
+            commands::asr_download,
+            commands::asr_cancel_download,
+            commands::asr_delete_model,
+            commands::asr_start,
+            commands::asr_cancel,
+            commands::waveform_envelope,
+            commands::server_base,
+            commands::import_background,
+            commands::take_pending_open,
+            commands::now_playing_metadata,
+            commands::now_playing_state,
+            commands::ffmpeg_available,
+        ])
+        .build(tauri::generate_context!())
+        .expect("error while building LightPlayer");
+
+    app.run(|handle, event| match event {
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        tauri::RunEvent::Opened { urls } => {
+            let paths = urls
+                .into_iter()
+                .filter_map(|u| u.to_file_path().ok())
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect();
+            open_paths(handle, paths);
+        }
+        tauri::RunEvent::Exit => {
+            if let Some(state) = handle.try_state::<AppState>() {
+                state.hls.stop_all();
+            }
+        }
+        _ => {
+            let _ = handle;
+        }
+    });
+}

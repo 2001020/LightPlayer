@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LightPlayer",
+  "version": "0.1.0",
+  "identifier": "com.lightplayer.app",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "LightPlayer",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 720,
+        "minHeight": 520,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "category": "public.app-category.music",
+    "shortDescription": "Lightweight media player with lyrics recognition",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["mp3", "flac", "wav", "m4a", "aac", "ogg", "opus", "ape", "wma", "aiff", "aif", "alac", "wv", "dsf", "dff", "tta", "mka"],
+        "name": "Audio",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["mp4", "m4v", "mov", "mkv", "avi", "webm", "flv", "wmv", "ts", "m2ts", "mpg", "mpeg", "3gp", "rmvb", "rm", "vob", "ogv"],
+        "name": "Video",
+        "role": "Viewer"
+      }
+    ],
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "signingIdentity": "-"
+    }
+  }
+}
