@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import * as C from "../core/controller";
 import { describeCode, PREVIEWS } from "../core/weather/scene";
 import { refreshWeather } from "../core/weather/service";
-import { api, isTauri, localFileUrl, pickBrowserFiles, type CityHit } from "../lib/ipc";
+import { api, isTauri, localFileUrl, pickBrowserFiles, type CityHit, type FileAssociations } from "../lib/ipc";
 import { useWeather } from "../stores/weather";
-import { useUI, type UIState } from "../stores/player";
+import { toast, useUI, type UIState } from "../stores/player";
 import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZE_MIN } from "../stores/settings";
 import { ColorChoices } from "./ColorChoices";
 import { Icon, type IconName } from "./Icon";
@@ -234,6 +234,43 @@ function Appearance() {
   );
 }
 
+/** "Open with LightPlayer by default" for audio and video (macOS). */
+function DefaultPlayer() {
+  const [st, setSt] = useState<FileAssociations | null>(null);
+  const [busy, setBusy] = useState(false);
+  const refresh = () => void api.fileAssociations().then((r) => setSt(r ?? null), () => setSt(null));
+  useEffect(refresh, []);
+  if (!st?.supported) return null;
+  const count = (k: FileAssociations["audio"]) => `${k.ours.length}/${k.ours.length + k.others.length}`;
+  const done = !st.audio.others.length && !st.video.others.length;
+  const apply = async () => {
+    setBusy(true);
+    try {
+      const failed = await api.setFileAssociations(true, true);
+      if (failed.length) toast(`部分格式未能设置：${failed.join("，")}`, "error", 6000);
+      else toast("已设为默认播放器，双击音频或视频文件会直接用 LightPlayer 播放", "success");
+    } catch (e) {
+      toast(`设置失败：${String(e)}`, "error");
+    } finally {
+      setBusy(false);
+      refresh();
+    }
+  };
+  return (
+    <>
+      <h3>文件关联</h3>
+      <Row
+        label="设为默认播放器"
+        hint={`双击 mp3、flac、mp4、mkv 等音频和视频文件时直接用 LightPlayer 播放。目前默认用 LightPlayer 打开的格式：音频 ${count(st.audio)}，视频 ${count(st.video)}`}
+      >
+        <button className="btn" disabled={busy} onClick={() => void apply()}>
+          {busy ? "正在设置…" : done ? "重新设置" : "一键设置"}
+        </button>
+      </Row>
+    </>
+  );
+}
+
 function Playback() {
   const s = useSettings();
   return (
@@ -257,6 +294,7 @@ function Playback() {
           打开
         </button>
       </Row>
+      <DefaultPlayer />
       <h3>后台与菜单栏</h3>
       <Row label="关闭窗口后继续在后台播放" hint="点窗口左上角的红色按钮只会隐藏窗口；用顶部菜单栏图标或程序坞可以重新打开，从菜单栏图标选择“退出”才会完全退出">
         <Switch on={s.runInBackground} onChange={(runInBackground) => s.set({ runInBackground })} />

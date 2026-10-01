@@ -47,6 +47,19 @@ export interface OpenedMedia {
   subtitles: SubtitleTrack[];
 }
 
+export interface AssocKind {
+  /** Extensions opened by LightPlayer by default. */
+  ours: string[];
+  others: string[];
+}
+
+export interface FileAssociations {
+  /** Only the macOS build can change the default apps. */
+  supported: boolean;
+  audio: AssocKind;
+  video: AssocKind;
+}
+
 export interface MediaEntry {
   path: string;
   fileName: string;
@@ -416,6 +429,8 @@ function mockRecognition(mediaPath: string) {
   }, 400);
 }
 
+let mockAssoc = false;
+
 async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const path = (args.path ?? args.mediaPath) as string | undefined;
   if (cmd.startsWith("library_") || cmd.startsWith("playlist_")) return mockLibrary(cmd, args) as T;
@@ -477,6 +492,18 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       mockAsrCancel = true;
       return undefined as T;
     case "take_pending_open":
+      return [] as T;
+    case "file_associations": {
+      // Browser preview: pretend to be the Mac app, half set up.
+      const all = { audio: ["mp3", "flac", "wav", "m4a"], video: ["mp4", "mkv", "mov"] };
+      return {
+        supported: true,
+        audio: { ours: mockAssoc ? all.audio : [], others: mockAssoc ? [] : all.audio },
+        video: { ours: mockAssoc ? all.video : ["mp4"], others: mockAssoc ? [] : ["mkv", "mov"] },
+      } as T;
+    }
+    case "set_file_associations":
+      mockAssoc = true;
       return [] as T;
     case "server_base":
       return "" as T;
@@ -555,6 +582,9 @@ export const api = {
   serverBase: () => call<string>("server_base"),
   importBackground: (path: string) => call<string>("import_background", { path }),
   takePendingOpen: () => call<string[]>("take_pending_open"),
+  fileAssociations: () => call<FileAssociations>("file_associations"),
+  /** Returns the extensions that could not be changed. */
+  setFileAssociations: (audio: boolean, video: boolean) => call<string[]>("set_file_associations", { audio, video }),
   nowPlayingMetadata: (m: { title: string; artist?: string | null; album?: string | null; duration?: number | null; cover?: string | null }) =>
     call<void>("now_playing_metadata", m),
   nowPlayingState: (playing: boolean, position?: number) => call<void>("now_playing_state", { playing, position }),

@@ -5,6 +5,7 @@ mod library;
 mod lyrics;
 mod media;
 mod nowplaying;
+mod file_assoc;
 mod server;
 mod tools;
 mod desktop_lyrics;
@@ -39,20 +40,30 @@ pub struct AppState {
     pub tray: tray::TrayState,
 }
 
+/// Files macOS asks to open before `setup` has run: launching the app by
+/// double-clicking a file delivers it ahead of `applicationDidFinishLaunching`.
+static EARLY_OPEN: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
 /// Queues files to open, or forwards them right away once the UI is ready.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 fn open_paths(app: &tauri::AppHandle, paths: Vec<String>) {
     if paths.is_empty() {
         return;
     }
-    if let Some(state) = app.try_state::<AppState>() {
-        if state.frontend_ready.load(Ordering::SeqCst) {
-            let _ = app.emit("app://open-files", paths);
-            tray::show_main(app);
-            return;
-        }
-        state.pending_open.lock().unwrap().extend(paths);
+    let Some(state) = app.try_state::<AppState>() else {
+        EARLY_OPEN.lock().unwrap().extend(paths);
+        return;
+    };
+    // Checked under the queue lock, which `take_pending_open` also holds while
+    // marking the UI ready, so nothing slips between the two.
+    let mut pending = state.pending_open.lock().unwrap();
+    if state.frontend_ready.load(Ordering::SeqCst) {
+        drop(pending);
+        let _ = app.emit("app://open-files", paths);
+        tray::show_main(app);
+        return;
     }
+    pending.extend(paths);
 }
 
 pub fn run() {
@@ -68,10 +79,11 @@ pub fn run() {
             std::fs::create_dir_all(&models_dir)?;
             let hls = Arc::new(HlsManager::new(&cache_dir));
             let server = tauri::async_runtime::block_on(server::start(hls.clone(), library::thumb::thumbs_dir(&cache_dir)))?;
-            let pending: Vec<String> = std::env::args()
+            let mut pending: Vec<String> = std::env::args()
                 .skip(1)
                 .filter(|a| !a.starts_with('-') && std::path::Path::new(a).is_file())
                 .collect();
+            pending.append(&mut EARLY_OPEN.lock().unwrap());
             app.manage(AppState {
                 server,
                 hls,
@@ -138,6 +150,8 @@ pub fn run() {
             commands::server_base,
             commands::import_background,
             commands::take_pending_open,
+            commands::file_associations,
+            commands::set_file_associations,
             commands::now_playing_metadata,
             commands::now_playing_state,
             commands::set_background_prefs,

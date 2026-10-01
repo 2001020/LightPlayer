@@ -466,10 +466,23 @@ pub fn import_background(state: State<'_, AppState>, path: String) -> AppResult<
     Ok(dest.to_string_lossy().into_owned())
 }
 
+/// Which declared audio/video types open with this app by default.
+#[tauri::command]
+pub fn file_associations(app: tauri::AppHandle) -> crate::file_assoc::Status {
+    crate::file_assoc::status(&app.config().identifier)
+}
+
+/// Makes this app the default for the chosen kinds; returns what failed.
+#[tauri::command]
+pub fn set_file_associations(app: tauri::AppHandle, audio: bool, video: bool) -> Vec<String> {
+    crate::file_assoc::associate(&app.config().identifier, audio, video)
+}
+
 #[tauri::command]
 pub fn take_pending_open(state: State<'_, AppState>) -> Vec<String> {
+    let mut pending = state.pending_open.lock().unwrap();
     state.frontend_ready.store(true, Ordering::SeqCst);
-    std::mem::take(&mut *state.pending_open.lock().unwrap())
+    std::mem::take(&mut *pending)
 }
 
 #[tauri::command]
