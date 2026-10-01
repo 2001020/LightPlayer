@@ -108,14 +108,6 @@ function Appearance() {
       <Row label="播放音乐时使用封面作为背景" hint="未设置自定义背景时生效">
         <Switch on={s.coverBackground} onChange={(coverBackground) => s.set({ coverBackground })} />
       </Row>
-
-      <h3>声波动画</h3>
-      <Row label="显示声波动画" hint="在歌词页底部、横跨整个播放控制栏的低矮竖条声波">
-        <Switch on={s.waveform} onChange={(waveform) => s.set({ waveform })} />
-      </Row>
-      <Row label="动画样式">
-        <Seg value={s.waveformStyle} options={[["bars", "竖条"], ["wave", "山峰"]]} onChange={(waveformStyle) => s.set({ waveformStyle })} />
-      </Row>
     </>
   );
 }
@@ -143,6 +135,14 @@ function Playback() {
           打开
         </button>
       </Row>
+      <h3>后台与菜单栏</h3>
+      <Row label="关闭窗口后继续在后台播放" hint="点窗口左上角的红色按钮只会隐藏窗口；用顶部菜单栏图标或程序坞可以重新打开，从菜单栏图标选择“退出”才会完全退出">
+        <Switch on={s.runInBackground} onChange={(runInBackground) => s.set({ runInBackground })} />
+      </Row>
+      <Row label="在菜单栏图标旁显示歌名">
+        <Switch on={s.trayShowTitle} onChange={(trayShowTitle) => s.set({ trayShowTitle })} />
+      </Row>
+
       <h3>其他</h3>
       <Row label="断点续播" hint="时长超过 10 分钟的视频/有声书会记住上次播放位置">
         <Switch on={s.resume} onChange={(resume) => s.set({ resume })} />
@@ -282,6 +282,12 @@ export function SettingsDialog() {
             {tab === "lyrics" && <LyricsSettings />}
             {tab === "asr" && (
               <>
+                <div className="row-actions">
+                  <span className="muted">识别歌词和字幕的任务会排队依次进行。</span>
+                  <button className="btn small" onClick={() => useUI.setState({ overlay: "asrTasks" })}>
+                    <Icon name="list" size={14} /> 查看识别任务
+                  </button>
+                </div>
                 <h3>识别模型</h3>
                 <ModelManager />
                 <h3>识别选项</h3>

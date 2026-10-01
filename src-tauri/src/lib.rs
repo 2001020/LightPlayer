@@ -7,6 +7,7 @@ mod media;
 mod nowplaying;
 mod server;
 mod tools;
+mod tray;
 
 use media::probe::Probe;
 use media::transcode::HlsManager;
@@ -30,6 +31,7 @@ pub struct AppState {
     pub asr_job: Mutex<Option<Arc<AtomicBool>>>,
     pub downloads: Mutex<HashMap<String, Arc<AtomicBool>>>,
     pub now_playing: nowplaying::NowPlaying,
+    pub tray: tray::TrayState,
 }
 
 /// Queues files to open, or forwards them right away once the UI is ready.
@@ -41,9 +43,7 @@ fn open_paths(app: &tauri::AppHandle, paths: Vec<String>) {
     if let Some(state) = app.try_state::<AppState>() {
         if state.frontend_ready.load(Ordering::SeqCst) {
             let _ = app.emit("app://open-files", paths);
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.set_focus();
-            }
+            tray::show_main(app);
             return;
         }
         state.pending_open.lock().unwrap().extend(paths);
@@ -81,8 +81,29 @@ pub fn run() {
                 asr_job: Mutex::new(None),
                 downloads: Mutex::new(HashMap::new()),
                 now_playing: nowplaying::NowPlaying::new(&handle),
+                tray: tray::TrayState::new(),
             });
+            // The menu bar icon is optional (e.g. Linux desktops without a tray).
+            match tray::create(&handle) {
+                Ok(t) => *app.state::<AppState>().tray.tray.lock().unwrap() = Some(t),
+                Err(e) => eprintln!("menu bar icon unavailable: {e}"),
+            }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let app = window.app_handle();
+                let background = app.try_state::<AppState>().map(|s| s.tray.background.load(Ordering::SeqCst)).unwrap_or(false);
+                let has_tray = app.try_state::<AppState>().map(|s| s.tray.tray.lock().unwrap().is_some()).unwrap_or(false);
+                if window.label() == "main" && background && has_tray {
+                    // Keep playing in the background; the menu bar icon or the Dock brings it back.
+                    api.prevent_close();
+                    if window.is_fullscreen().unwrap_or(false) {
+                        let _ = window.set_fullscreen(false);
+                    }
+                    let _ = window.hide();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::open_media,
@@ -95,18 +116,19 @@ pub fn run() {
             commands::write_text_file,
             commands::write_base64_file,
             commands::save_lyrics,
+            commands::remove_library_lyrics,
             commands::asr_models,
             commands::asr_download,
             commands::asr_cancel_download,
             commands::asr_delete_model,
             commands::asr_start,
             commands::asr_cancel,
-            commands::waveform_envelope,
             commands::server_base,
             commands::import_background,
             commands::take_pending_open,
             commands::now_playing_metadata,
             commands::now_playing_state,
+            commands::set_background_prefs,
             commands::ffmpeg_available,
             commands::library_get,
             commands::library_add_folder,
@@ -134,6 +156,8 @@ pub fn run() {
                 .collect();
             open_paths(handle, paths);
         }
+        #[cfg(target_os = "macos")]
+        tauri::RunEvent::Reopen { .. } => tray::show_main(handle),
         tauri::RunEvent::Exit => {
             if let Some(state) = handle.try_state::<AppState>() {
                 state.hls.stop_all();

@@ -38,11 +38,13 @@ export interface Settings {
   lyricAlign: "center" | "left";
   showTranslation: boolean;
   karaoke: boolean;
-  waveform: boolean;
-  waveformStyle: "bars" | "wave";
   playlistOpen: boolean;
   libraryAutoRescan: boolean;
   libraryRecordPlays: boolean;
+  /** Closing the window keeps the app (and playback) running in the menu bar. */
+  runInBackground: boolean;
+  /** Show the song title next to the menu bar icon. */
+  trayShowTitle: boolean;
   tapCompensation: number;
   asr: AsrSettings;
   recent: string[];
@@ -82,11 +84,11 @@ export const defaultSettings: Settings = {
   lyricAlign: "center",
   showTranslation: true,
   karaoke: true,
-  waveform: true,
-  waveformStyle: "bars",
   playlistOpen: true,
   libraryAutoRescan: true,
   libraryRecordPlays: true,
+  runInBackground: true,
+  trayShowTitle: false,
   tapCompensation: 0.15,
   asr: {
     model: "large-v3-turbo-q5_0",
@@ -130,11 +132,14 @@ export const useSettings = create<SettingsStore>()(
     }),
     {
       name: "lightplayer-settings",
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
-        const p = (persisted ?? {}) as Partial<Settings>;
+        const p = (persisted ?? {}) as Partial<Settings> & { waveform?: unknown; waveformStyle?: unknown };
         // v2: default accent changed from purple to light blue.
         if (version < 2 && (!p.accent || p.accent === "#7c5cff")) p.accent = "#66ccff";
+        // v4: the sound-wave animation was removed.
+        delete p.waveform;
+        delete p.waveformStyle;
         return p as SettingsStore;
       },
       storage: createJSONStorage(() => {

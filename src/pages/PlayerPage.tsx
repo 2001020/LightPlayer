@@ -166,6 +166,14 @@ function VideoStage() {
   );
 }
 
+function BackButton() {
+  return (
+    <button className="btn ghost back-btn" onClick={() => useUI.setState({ page: "library" })} {...tip("返回媒体库", "⌘L")}>
+      <Icon name="chevronLeft" size={18} /> 返回
+    </button>
+  );
+}
+
 function PlaylistHandle() {
   return (
     <button
@@ -187,7 +195,8 @@ export function PlayerPage() {
   const showList = !!media && playlistOpen;
   return (
     <div className={`player-page ${showList ? "with-list" : ""}`}>
-      <div className="stage">
+      <div className={`stage ${media?.kind === "video" ? "is-video" : ""}`}>
+        <BackButton />
         {!media && !loading && <EmptyState />}
         {!media && loading && (
           <div className="empty">

@@ -5,6 +5,7 @@ import * as C from "../controller";
 import { shuffled } from "../playlist/queue";
 import { api, isTauri, type LibraryTrack } from "../../lib/ipc";
 import { confirmDialog } from "../../lib/confirm";
+import { stem } from "../../lib/format";
 import { libraryAction, useLibrary } from "../../stores/library";
 import { toast } from "../../stores/player";
 import { openMenu, sep, type MenuItem } from "../../components/ContextMenu";
@@ -58,7 +59,7 @@ export async function deletePlaylist(id: string) {
   if (useLibrary.getState().nav.view === "playlist") useLibrary.setState({ nav: { view: "songs" } });
 }
 
-async function reveal(path: string) {
+export async function reveal(path: string) {
   if (!isTauri) return;
   try {
     const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
@@ -66,6 +67,10 @@ async function reveal(path: string) {
   } catch (e) {
     toast(String(e), "error");
   }
+}
+
+function trackTaskInput(t: LibraryTrack) {
+  return C.taskInput({ path: t.path, name: stem(t.path), kind: t.kind, title: trackTitle(t), artist: t.artist });
 }
 
 export interface TrackMenuContext {
@@ -96,6 +101,21 @@ export function openTrackMenu(e: React.MouseEvent, t: LibraryTrack, ctx: TrackMe
     sep,
     { label: "添加到歌单", icon: "playlist", children: playlists },
     { label: fav ? "取消收藏" : "收藏", icon: fav ? "heartFill" : "heart", onClick: () => void C.toggleFavorite(t.path, !fav) },
+    sep,
+    {
+      label: t.kind === "video" ? "AI 生成字幕" : "AI 识别歌词",
+      icon: "sparkles",
+      onClick: () => void C.recognize([trackTaskInput(t)]),
+    },
+    ...(ctx.queue.length > 1
+      ? [
+          {
+            label: `AI 识别当前列表全部 ${ctx.queue.length} 项`,
+            icon: "sparkles" as const,
+            onClick: () => void C.recognize(ctx.queue.map(trackTaskInput)),
+          },
+        ]
+      : []),
     sep,
     { label: "在访达中显示", icon: "reveal", disabled: !isTauri, onClick: () => void reveal(t.path) },
   ];

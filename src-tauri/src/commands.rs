@@ -7,7 +7,7 @@ use crate::media::probe::{self, Probe, VideoInfo};
 use crate::media::router::{self, Caps, Strategy};
 use crate::media::scan::{self, MediaEntry};
 use crate::media::transcode::{self, HlsMode};
-use crate::tools::{command, tools};
+use crate::tools::tools;
 use crate::AppState;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -225,6 +225,13 @@ pub async fn find_lyrics(state: State<'_, AppState>, path: String) -> AppResult<
     Ok(state.library.find(&p, embedded))
 }
 
+/// Drops the app-library lyrics of a file (e.g. AI-recognised ones). Lyrics
+/// files next to the media are never touched.
+#[tauri::command]
+pub fn remove_library_lyrics(state: State<'_, AppState>, path: String) {
+    state.library.remove(Path::new(&path));
+}
+
 #[tauri::command]
 pub fn read_text_file(path: String) -> AppResult<String> {
     lyrics::read_text_file(Path::new(&path))
@@ -418,32 +425,6 @@ pub fn asr_cancel(state: State<'_, AppState>) {
 
 // ------------------------------------------------------------ misc -------
 
-/// Coarse loudness envelope (20 values per second, 0–255) used to drive the
-/// lyrics-page waveform when live audio analysis is unavailable.
-#[tauri::command]
-pub async fn waveform_envelope(path: String) -> AppResult<Vec<u8>> {
-    let out = command(&tools().ffmpeg)
-        .args(["-hide_banner", "-loglevel", "error", "-nostdin", "-i"])
-        .arg(&path)
-        .args(["-vn", "-map", "0:a:0", "-ac", "1", "-ar", "8000", "-f", "f32le", "-"])
-        .output()
-        .await?;
-    if !out.status.success() {
-        return Err(AppError::msg("无法分析音频"));
-    }
-    let samples: Vec<f32> = out
-        .stdout
-        .chunks_exact(4)
-        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
-        .collect();
-    let rms: Vec<f32> = samples
-        .chunks(400)
-        .map(|w| (w.iter().map(|s| s * s).sum::<f32>() / w.len() as f32).sqrt())
-        .collect();
-    let peak = rms.iter().cloned().fold(0.0001f32, f32::max);
-    Ok(rms.iter().map(|v| ((v / peak).sqrt() * 255.0) as u8).collect())
-}
-
 #[tauri::command]
 pub fn server_base(state: State<'_, AppState>) -> String {
     state.server.base()
@@ -494,11 +475,19 @@ pub fn now_playing_metadata(
         Some(format!("file://{}", p.to_string_lossy()))
     });
     state.now_playing.set_metadata(&title, artist.as_deref(), album.as_deref(), duration, cover_url.as_deref());
+    state.tray.set_now_playing(&title, artist.as_deref());
 }
 
 #[tauri::command]
 pub fn now_playing_state(state: State<'_, AppState>, playing: bool, position: Option<f64>) {
     state.now_playing.set_playback(playing, position);
+    state.tray.set_playing(playing);
+}
+
+/// "Run in background" (closing the window hides it) and the menu bar title.
+#[tauri::command]
+pub fn set_background_prefs(state: State<'_, AppState>, run_in_background: bool, show_title: bool) {
+    state.tray.set_prefs(run_in_background, show_title);
 }
 
 #[tauri::command]

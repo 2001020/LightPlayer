@@ -54,7 +54,13 @@ export function Background() {
   const image = custom ?? (coverBg ? cover : null);
   const isCover = !custom && !!image;
   const blur = isCover ? Math.max(40, bg.blur * 2) : bg.blur;
-  const dim = isCover ? Math.max(0.45, bg.dim) : bg.dim;
+  const dim = isCover ? Math.max(page === "lyrics" ? 0.55 : 0.45, bg.dim) : bg.dim;
+  // Lets the stylesheet raise text contrast while a picture sits behind the UI.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (image) root.dataset.bg = "image";
+    else delete root.dataset.bg;
+  }, [image]);
   return (
     <>
       <div className="bg-layer" />

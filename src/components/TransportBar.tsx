@@ -152,6 +152,16 @@ function SubtitleMenu() {
           <div className="item" onClick={() => (C.startRecognition(), close())}>
             AI 识别生成字幕…
           </div>
+          {tracks.some((t) => t.kind === "ai") && (
+            <>
+              <div className="item" onClick={() => (C.rerunRecognition(), close())}>
+                重新识别（可换模型）…
+              </div>
+              <div className="item" onClick={() => (void C.removeAiLyrics(), close())}>
+                移除 AI 字幕
+              </div>
+            </>
+          )}
         </>
       )}
     </Popover>

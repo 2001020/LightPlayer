@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import * as C from "./core/controller";
 import { AsrSetupDialog } from "./components/AsrSetupDialog";
+import { AsrTasks, AsrTasksButton } from "./components/AsrTasks";
 import { ContextMenuHost } from "./components/ContextMenu";
 import { LibraryFolders } from "./components/LibraryFolders";
 import { PromptHost } from "./components/Prompt";
@@ -74,6 +75,7 @@ export default function App() {
         >
           <Icon name="library" />
         </button>
+        <AsrTasksButton />
         <button className="icon-btn" onClick={C.openWithDialog} {...tip("打开文件", "⌘O")}>
           <Icon name="folder" />
         </button>
@@ -105,6 +107,7 @@ export default function App() {
       {overlay === "editor" && <LyricsEditor />}
       {overlay === "videoInfo" && <VideoInfoDialog />}
       {overlay === "asrSetup" && <AsrSetupDialog />}
+      {overlay === "asrTasks" && <AsrTasks />}
       {overlay === "libraryFolders" && <LibraryFolders />}
       <PromptHost />
       <ContextMenuHost />

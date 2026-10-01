@@ -1,6 +1,10 @@
-// Playback engine: owns the <audio>/<video> elements, HLS attachment, the
-// virtual timeline for restartable HLS sessions and the Web Audio graph used
-// for app-level volume and the waveform analyser.
+// Playback engine: owns the <audio>/<video> elements, HLS attachment and the
+// virtual timeline for restartable HLS sessions.
+//
+// Audio plays straight from the element (no Web Audio graph): WebKit's
+// MediaElementSource buffers a few hundred milliseconds, which made the old
+// position keep playing briefly after every seek. `el.volume` already only
+// affects this app, never the system volume.
 
 import type Hls from "hls.js";
 import { api, type OpenedMedia } from "../../lib/ipc";
@@ -23,10 +27,6 @@ export class PlayerEngine {
   onError: (msg: string) => void = () => {};
 
   private hls: Hls | null = null;
-  private ctx: AudioContext | null = null;
-  private gain: GainNode | null = null;
-  analyser: AnalyserNode | null = null;
-  private graphFailed = false;
   private loadToken = 0;
   private fadeTimer: number | null = null;
 
@@ -180,43 +180,8 @@ export class PlayerEngine {
     this.onChange();
   }
 
-  /**
-   * Routes the <audio> element through Web Audio (gain + analyser). Must be
-   * called from a user gesture: WebKit keeps an AudioContext created without
-   * one suspended, which would silence playback. Until then audio plays
-   * directly from the element.
-   */
-  enableGraph() {
-    if (this.ctx) {
-      if (this.ctx.state === "suspended") void this.ctx.resume().catch(() => {});
-      return;
-    }
-    if (this.graphFailed) return;
-    try {
-      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new Ctx();
-      const src = ctx.createMediaElementSource(this.audio);
-      const gain = ctx.createGain();
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.86;
-      src.connect(gain);
-      gain.connect(ctx.destination);
-      src.connect(analyser);
-      this.ctx = ctx;
-      this.gain = gain;
-      this.analyser = analyser;
-      ctx.onstatechange = () => this.applyVolume();
-      if (ctx.state === "suspended") void ctx.resume().catch(() => {});
-    } catch {
-      this.graphFailed = true;
-    }
-    this.applyVolume();
-  }
-
   async play(): Promise<void> {
     if (!this.media) return;
-    if (this.ctx?.state === "suspended") await this.ctx.resume().catch(() => {});
     try {
       await this.el.play();
     } catch (e) {
@@ -287,12 +252,8 @@ export class PlayerEngine {
   private applyVolume() {
     const v = this.muted ? 0 : this.volume;
     // Only the app's own output is changed; the system volume is never touched.
-    if (this.gain && this.ctx?.state === "running" && this.el === this.audio) {
-      this.audio.volume = 1;
-      this.gain.gain.setTargetAtTime(v * v, this.ctx!.currentTime, 0.015);
-    } else {
-      this.el.volume = v * v; // perceptual curve
-    }
+    this.audio.volume = v * v; // perceptual curve
+    this.video.volume = v * v;
     this.video.muted = false;
     this.audio.muted = false;
   }
@@ -311,8 +272,7 @@ export class PlayerEngine {
     const step = () => {
       const k = Math.min(1, (performance.now() - start) / ms);
       const v = from * (1 - k);
-      if (this.gain && this.ctx?.state === "running" && this.el === this.audio) this.gain.gain.value = v * v;
-      else this.el.volume = v * v;
+      this.el.volume = v * v;
       if (k < 1) this.fadeTimer = window.setTimeout(step, 50);
       else {
         this.fadeTimer = null;

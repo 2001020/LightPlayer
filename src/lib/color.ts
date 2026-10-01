@@ -68,7 +68,7 @@ export function contrast(a: Rgb, b: Rgb): number {
 }
 
 export interface AccentPalette {
-  /** Fill colour (buttons, progress, waveform): the chosen colour itself. */
+  /** Fill colour (buttons, progress): the chosen colour itself. */
   accent: string;
   hover: string;
   /** Readable variant for accent-coloured text (≥ 3:1 against the background). */

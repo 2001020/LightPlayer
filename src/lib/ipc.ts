@@ -348,6 +348,28 @@ function mockLibrary(cmd: string, args: Record<string, unknown>): unknown {
   }
 }
 
+let mockAsrCancel = false;
+
+/** Simulated recognition: a few seconds of progress, then a tiny LRC. */
+function mockRecognition(mediaPath: string) {
+  mockAsrCancel = false;
+  let pct = 0;
+  const timer = window.setInterval(() => {
+    if (mockAsrCancel) {
+      clearInterval(timer);
+      mockEmit("asr://done", { mediaPath, ok: false, cancelled: true });
+      return;
+    }
+    pct += 12.5;
+    mockEmit("asr://progress", { mediaPath, stage: pct < 15 ? "decoding" : "transcribing", percent: Math.min(pct, 100) });
+    if (pct >= 100) {
+      clearInterval(timer);
+      const lrc = "[00:00.50]这是浏览器预览中模拟的识别结果\n[00:03.00]第二行歌词\n";
+      mockEmit("asr://done", { mediaPath, ok: true, cancelled: false, result: { lrc, lineCount: 2, language: "zh", model: "mock" } });
+    }
+  }, 400);
+}
+
 async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const path = (args.path ?? args.mediaPath) as string | undefined;
   if (cmd.startsWith("library_") || cmd.startsWith("playlist_")) return mockLibrary(cmd, args) as T;
@@ -391,7 +413,23 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
     case "save_lyrics":
       return { location: "library", path: "browser", fallback: false } as T;
     case "asr_models":
-      return [] as T;
+      // Pretend the default models are present so the task UI can be tried.
+      return ["large-v3-turbo-q5_0", "silero-vad"].map((id) => ({
+        id,
+        file: `${id}.bin`,
+        sizeMb: 0,
+        label: id,
+        description: "",
+        recommended: false,
+        downloaded: true,
+        partialBytes: 0,
+      })) as T;
+    case "asr_start":
+      mockRecognition(path!);
+      return undefined as T;
+    case "asr_cancel":
+      mockAsrCancel = true;
+      return undefined as T;
     case "take_pending_open":
       return [] as T;
     case "server_base":
@@ -400,8 +438,6 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       return true as T;
     case "get_video_info":
       return { fileName: path, fileSize: browserFiles.get(path!)?.size ?? 0, container: "—", subtitleCount: 0 } as T;
-    case "waveform_envelope":
-      return [] as T;
     default:
       return undefined as T;
   }
@@ -424,13 +460,13 @@ export const api = {
   writeBase64File: (path: string, data: string) => call<void>("write_base64_file", { path, data }),
   saveLyrics: (mediaPath: string, content: string, target: "same_dir" | "library", origin?: LyricsOrigin) =>
     call<SavedLyrics>("save_lyrics", { mediaPath, content, target, origin }),
+  removeLibraryLyrics: (path: string) => call<void>("remove_library_lyrics", { path }),
   asrModels: () => call<ModelStatus[]>("asr_models"),
   asrDownload: (id: string, mirror: string) => call<void>("asr_download", { id, mirror }),
   asrCancelDownload: (id: string) => call<void>("asr_cancel_download", { id }),
   asrDeleteModel: (id: string) => call<void>("asr_delete_model", { id }),
   asrStart: (path: string, options: AsrOptions) => call<void>("asr_start", { path, options }),
   asrCancel: () => call<void>("asr_cancel"),
-  waveformEnvelope: (path: string) => call<number[]>("waveform_envelope", { path }),
   serverBase: () => call<string>("server_base"),
   importBackground: (path: string) => call<string>("import_background", { path }),
   takePendingOpen: () => call<string[]>("take_pending_open"),
@@ -438,6 +474,7 @@ export const api = {
     call<void>("now_playing_metadata", m),
   nowPlayingState: (playing: boolean, position?: number) => call<void>("now_playing_state", { playing, position }),
   ffmpegAvailable: () => call<boolean>("ffmpeg_available"),
+  setBackgroundPrefs: (runInBackground: boolean, showTitle: boolean) => call<void>("set_background_prefs", { runInBackground, showTitle }),
   libraryGet: () => call<LibraryData>("library_get"),
   libraryAddFolder: (path: string) => call<boolean>("library_add_folder", { path }),
   libraryRemoveFolder: (path: string) => call<void>("library_remove_folder", { path }),
@@ -452,8 +489,20 @@ export const api = {
   playlistSetItems: (id: string, items: string[]) => call<void>("playlist_set_items", { id, items }),
 };
 
+// Browser preview: events emitted by the mock backend.
+const mockBus = new Map<string, Set<(payload: unknown) => void>>();
+function mockEmit(event: string, payload: unknown) {
+  for (const h of mockBus.get(event) ?? []) h(payload);
+}
+
 export function on<T>(event: string, handler: (payload: T) => void): Promise<UnlistenFn> {
-  if (!isTauri) return Promise.resolve(() => {});
+  if (!isTauri) {
+    const set = mockBus.get(event) ?? new Set();
+    mockBus.set(event, set);
+    const h = handler as (payload: unknown) => void;
+    set.add(h);
+    return Promise.resolve(() => void set.delete(h));
+  }
   return listen<T>(event, (e) => handler(e.payload));
 }
 

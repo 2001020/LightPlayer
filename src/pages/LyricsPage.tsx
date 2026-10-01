@@ -4,18 +4,10 @@ import { Icon } from "../components/Icon";
 import { LyricsView } from "../components/LyricsView";
 import { Popover } from "../components/Popover";
 import { tip } from "../components/Tooltip";
-import { Waveform } from "../components/Waveform";
+import { ASR_STAGES } from "../components/AsrTasks";
+import { queuePosition, useAsrTasks } from "../stores/asrTasks";
 import { useLyrics, usePlayer, useUI } from "../stores/player";
 import { clampLyricSize, defaultSettings, LYRIC_SIZE_MAX, LYRIC_SIZE_MIN, useSettings } from "../stores/settings";
-
-const STAGES: Record<string, string> = {
-  preparing: "准备中…",
-  downloading: "正在下载识别模型…",
-  decoding: "正在解码音频…",
-  loading: "正在加载模型…",
-  transcribing: "正在识别歌词…",
-  finishing: "正在整理结果…",
-};
 
 function FontSizeMenu() {
   const size = useSettings((s) => s.lyricFontSize);
@@ -60,32 +52,80 @@ function FontSizeMenu() {
   );
 }
 
-export function AsrProgressCard() {
-  const asr = useLyrics((s) => s.asr);
-  if (!asr) return null;
-  const indeterminate = asr.stage !== "transcribing" && asr.stage !== "downloading";
+/** Progress (or queue place) of the recognition task for `path`. */
+export function AsrProgressCard({ path }: { path: string }) {
+  const task = useAsrTasks((s) => s.tasks.find((t) => t.path === path && (t.status === "running" || t.status === "queued")));
+  const place = useAsrTasks((s) => queuePosition(s.tasks, path));
+  const paused = useAsrTasks((s) => s.paused);
+  if (!task) return null;
+  const queued = task.status === "queued";
+  const indeterminate = queued || (task.stage !== "transcribing" && task.stage !== "downloading");
   return (
     <div className="asr-card panel">
       <div className="stage">
-        <Icon name="sparkles" size={16} /> {STAGES[asr.stage]}
-        {!indeterminate && <span className="muted"> {Math.round(asr.percent)}%</span>}
+        <Icon name="sparkles" size={16} />{" "}
+        {queued ? `已在识别队列中，排在第 ${place} 位${paused ? "（队列已暂停）" : ""}` : ASR_STAGES[task.stage]}
+        {!indeterminate && <span className="muted"> {Math.round(task.percent)}%</span>}
       </div>
-      <div className={`progress-bar ${indeterminate ? "indeterminate" : ""}`}>
-        <div style={{ width: `${asr.percent}%` }} />
-      </div>
+      {!queued && (
+        <div className={`progress-bar ${indeterminate ? "indeterminate" : ""}`}>
+          <div style={{ width: `${task.percent}%` }} />
+        </div>
+      )}
       <div className="note">识别在本机离线进行，不会上传任何音频。歌曲较长时可能需要一两分钟，可以继续听歌。</div>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button className="btn small" onClick={C.cancelRecognition}>
-          取消
+      <div className="asr-card-actions">
+        <button className="btn small ghost" onClick={() => useUI.setState({ overlay: "asrTasks" })}>
+          <Icon name="list" size={14} /> 查看全部任务
+        </button>
+        <button className="btn small" onClick={() => C.cancelTask(task.id)}>
+          {queued ? "移出队列" : "取消"}
         </button>
       </div>
     </div>
   );
 }
 
+/** Where the lyrics come from: rescan, upload, recognise again, remove AI lyrics. */
+function LyricsSourceMenu({ isAi, busy }: { isAi: boolean; busy: boolean }) {
+  return (
+    <Popover
+      down
+      trigger={(open, t) => (
+        <button className={`icon-btn ${open ? "active" : ""}`} onClick={t} {...tip("歌词来源")}>
+          <Icon name="more" />
+        </button>
+      )}
+    >
+      {(close) => (
+        <div className="menu-list">
+          <div className="label">歌词来源</div>
+          <div className="item" onClick={() => (close(), void C.rescanLyrics())}>
+            <Icon name="refresh" size={15} /> 重新查找本地歌词文件
+          </div>
+          <div className="item" onClick={() => (close(), void C.importLyricsWithDialog())}>
+            <Icon name="upload" size={15} /> 上传歌词文件…
+          </div>
+          <div className={`item ${busy ? "disabled" : ""}`} onClick={() => !busy && (close(), C.rerunRecognition())}>
+            <Icon name="sparkles" size={15} /> {isAi ? "重新识别（可换模型）…" : "AI 识别歌词（可选模型）…"}
+          </div>
+          {isAi && (
+            <>
+              <div className="sep" />
+              <div className="item danger" onClick={() => (close(), void C.removeAiLyrics())}>
+                <Icon name="trash" size={15} /> 移除 AI 歌词
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </Popover>
+  );
+}
+
 export function LyricsPage() {
   const media = usePlayer((s) => s.media);
-  const { status, lyrics, origin, model, asr } = useLyrics();
+  const { status, lyrics, origin, model } = useLyrics();
+  const taskHere = useAsrTasks((st) => (media ? st.tasks.some((t) => t.path === media.path && (t.status === "running" || t.status === "queued")) : false));
   const s = useSettings();
   const offset = media ? s.lyricOffsets[media.path] ?? 0 : 0;
 
@@ -100,7 +140,6 @@ export function LyricsPage() {
 
   if (!media) return null;
   const meta = media.meta ?? {};
-  const asrHere = asr && asr.mediaPath === media.path;
   const isAi = origin === "ai";
   const editLabel = status === "loaded" ? "编辑歌词" : "制作歌词";
   const nudge = (d: number) => s.setLyricOffset(media.path, offset + d);
@@ -140,19 +179,26 @@ export function LyricsPage() {
           <button className="icon-btn" onClick={() => useUI.setState({ overlay: "editor" })} {...tip(editLabel, "E")}>
             <Icon name="edit" />
           </button>
-          <button className="icon-btn" onClick={() => C.startRecognition()} disabled={!!asr} {...tip("AI 识别歌词")}>
+          <button className="icon-btn" onClick={() => C.startRecognition()} disabled={taskHere} {...tip("AI 识别歌词")}>
             <Icon name="sparkles" />
           </button>
+          <LyricsSourceMenu isAi={isAi || origin === "ai_reviewed"} busy={taskHere} />
         </div>
       </div>
 
       <div>
-        {status === "loaded" && isAi && !asrHere && (
+        {status === "loaded" && isAi && !taskHere && (
           <div className="banner">
             <Icon name="warning" size={16} />
             <span className="grow">本歌词由识别模型生成，可能有误{model ? `（${model}）` : ""}</span>
             <button className="btn small" onClick={() => useUI.setState({ overlay: "editor" })}>
               <Icon name="edit" size={14} /> 校对编辑
+            </button>
+            <button className="btn small" onClick={C.rerunRecognition}>
+              <Icon name="sparkles" size={14} /> 重新识别
+            </button>
+            <button className="btn small" onClick={() => void C.removeAiLyrics()}>
+              <Icon name="trash" size={14} /> 移除
             </button>
           </div>
         )}
@@ -160,9 +206,9 @@ export function LyricsPage() {
 
       <div className="lyrics-body">
         <div style={{ minHeight: 0, minWidth: 0 }}>
-          {asrHere ? (
+          {taskHere ? (
             <div className="lyric-empty">
-              <AsrProgressCard />
+              <AsrProgressCard path={media.path} />
             </div>
           ) : status === "loading" ? (
             <div className="lyric-empty">
@@ -191,21 +237,15 @@ export function LyricsPage() {
                   <button className="btn" onClick={() => useUI.setState({ overlay: "editor" })}>
                     <Icon name="edit" size={16} /> 手动制作
                   </button>
-                  <button className="btn primary" onClick={() => C.startRecognition()} disabled={!!asr}>
+                  <button className="btn primary" onClick={() => C.startRecognition()}>
                     <Icon name="sparkles" size={16} /> AI 识别歌词
                   </button>
                 </div>
-                {asr && !asrHere && <p className="note">另一首歌曲正在识别中…</p>}
               </div>
             </div>
           )}
         </div>
       </div>
-      {s.waveform && (
-        <div className="wave-strip" aria-hidden="true">
-          <Waveform style={s.waveformStyle} />
-        </div>
-      )}
     </div>
   );
 }

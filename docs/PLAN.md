@@ -15,8 +15,8 @@ LightPlayer 是一款 macOS 优先、未来可扩展到 Windows 的桌面多媒�
 
 ```
 ┌──────────────────── React 前端 (WKWebView / 未来 WebView2) ────────────────────┐
-│ 播放控制、列表、歌词页、歌词编辑器、设置/主题、波形 Canvas                 │
-│ <audio>/<video> ──► Web Audio: MediaElementSource → Gain(应用内音量) → Analyser │
+│ 播放控制、列表、歌词页、歌词编辑器、设置/主题、媒体库                         │
+│ <audio>/<video>（直接输出，元素 volume 控制应用内音量）                        │
 └───────────────▲─────────────────────────────── Tauri IPC (invoke / event) ─────┘
                 │ http://127.0.0.1:<随机端口>/?token=…（Range / 分块流）
 ┌───────────────┴──────────────── Rust 后端 ────────────────────────────────────┐
@@ -38,7 +38,7 @@ WebView 原生只能播 mp3/aac/m4a/alac/wav/aiff/flac/mp4/mov(h264/hevc) 等。
 | Remux 转封装 | 视频编码受支持但容器不支持（mkv/flv/ts/avi 内 h264/hevc） | `ffmpeg -c:v copy -c:a aac -f mp4 -movflags frag_keyframe+empty_moov+default_base_moof` 管道流式输出；后台同时整体转封装到缓存，完成后无缝切换为 Direct |
 | Transcode 转码 | 编码不受支持（wmv/rmvb/mpeg2/vc1/divx…） | `h264_videotoolbox` 硬件编码实时转码（Windows 未来：nvenc/qsv/amf/libx264 回退） |
 
-Remux/Transcode 使用**虚拟时间轴**：前端 `PlaybackSession{ baseOffset, duration }`，显示时间 = `baseOffset + element.currentTime`；拖动到已缓冲范围外时请求 `request_stream(path, start)` 以 `-ss start` 重启 ffmpeg 并更新 `baseOffset`。本地服务使用随机端口 + 每会话 token，只监听 127.0.0.1，并带 CORS 头以便 Web Audio 取样。
+Remux/Transcode 使用**虚拟时间轴**：前端 `PlaybackSession{ baseOffset, duration }`，显示时间 = `baseOffset + element.currentTime`；拖动到已缓冲范围外时请求 `request_stream(path, start)` 以 `-ss start` 重启 ffmpeg 并更新 `baseOffset`。本地服务使用随机端口 + 每会话 token，只监听 127.0.0.1，并带 CORS 头。
 
 ### 分发与权限
 - 采用 Developer ID 签名 + 公证（非 App Store 沙盒），否则“扫描同目录文件/同名歌词”需要逐目录授权；sidecar 二进制需一并签名（hardened runtime）。
@@ -61,7 +61,7 @@ LightPlayer/
 │  ├─ stores/{player,playlist,lyrics,settings}Store.ts   # zustand
 │  ├─ components/  TransportBar, ProgressBar, VolumeSlider, PlayModeButton,
 │  │               PlaylistPanel, NowPlaying, CoverArt, VideoSurface, VideoInfoDialog,
-│  │               LyricsView, LyricsEditor, AiLyricsBanner, WaveformSide, ThemeSettings
+│  │               LyricsView, LyricsEditor, AiLyricsBanner, ThemeSettings
 │  ├─ pages/ {PlayerPage, LyricsPage, SettingsPage}
 │  ├─ styles/tokens.css                   # 主题 CSS 变量
 │  ├─ i18n/{zh-CN,en}.json
@@ -103,7 +103,7 @@ LightPlayer/
 
 **5. 进度条与音量**：
 - 自定义进度条：拖动时只更新预览、松开再 seek（避免拖动卡顿）；悬停显示时间提示；显示已缓冲区间。←/→ 调整进度（默认 5s，设置可改），聚焦任意位置均生效（输入框除外）。
-- 音量：滑条（0–100%，可选 150% 增益），通过 Web Audio `GainNode`/元素 volume 实现，**只影响应用内音量，不触碰系统音量**；静音按钮、↑/↓ 调节、滚轮调节、音量记忆。
+- 音量：滑条（0–100%，可选 150% 增益），通过元素 volume 实现，**只影响应用内音量，不触碰系统音量**；静音按钮、↑/↓ 调节、滚轮调节、音量记忆。
 
 **6. 播放列表**：打开文件后 Rust 扫描其所在目录（非递归），按扩展名表判定类型：当前为音频则只列音频，视频则只列视频；自然排序（“2”排在“10”前）；支持搜索过滤、双击播放、当前项高亮。打开方式：菜单 ⌘O、拖拽到窗口、Finder 双击/打开方式、最近文件。
 
@@ -202,7 +202,7 @@ LightPlayer/
 | 需求 8 歌词页 / 上传 / 打标制作 | ✅ 已实现 | 打标、逐行编辑、预览、保存到歌曲目录 / 应用歌词库 / 导出 |
 | 需求 9 模型识别歌词 | ✅ 已实现 | whisper.cpp（Metal）+ Silero VAD + 人声频段增强 + 幻觉过滤 + 繁转简 + 逐字时间；macOS CI 中有真实语音冒烟测试 |
 | 需求 11 深浅色 / 主题色 / 背景图 | ✅ 已实现 | 另有“随封面变色” |
-| 歌词页声波 | ✅ 已实现 | 横跨播放控制栏的低矮竖条（按用户反馈调整），Web Audio 分析器，回退为后端预计算响度包络 |
+| 歌词页声波 | 已移除（1.0.1） | 为了让拖动进度即时生效，去掉了 Web Audio 链路 |
 | 全格式播放 | ✅ 已实现 | 直放 / 音频转换缓存 / HLS 转封装 / HLS 硬件转码 + 虚拟时间轴 |
 | 附加：倍速、A-B 循环、睡眠定时、断点续播 | ✅ 已实现 | |
 | 附加：外挂/内嵌字幕、AI 生成视频字幕 | ✅ 已实现 | 仅文本字幕（PGS/VobSub 图形字幕暂不支持） |

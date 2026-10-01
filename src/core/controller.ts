@@ -22,11 +22,26 @@ import {
   type LyricsOrigin,
   type MediaControlEvent,
   type MediaEntry,
+  type MediaKind,
 } from "../lib/ipc";
+import { confirmDialog } from "../lib/confirm";
 import { stem } from "../lib/format";
 import { useLyrics, useModels, usePlayer, usePlaylist, useSubtitles, useUI, toast } from "../stores/player";
 import { useSettings } from "../stores/settings";
 import { initLibrary, libraryAction, useLibrary } from "../stores/library";
+import {
+  addTasks,
+  finish as finishTasks,
+  moveUp,
+  nextQueued,
+  queuePosition,
+  retry as retryTasks,
+  runningTask,
+  updateTask,
+  useAsrTasks,
+  type AsrTask,
+  type AsrTaskInput,
+} from "../stores/asrTasks";
 
 let caps: Caps | null = null;
 const LYRIC_EXTS = ["lrc", "srt", "vtt", "txt"];
@@ -56,6 +71,9 @@ export async function openFiles(paths: string[]) {
 }
 
 export async function openFile(path: string) {
+  // Opening a single file (Finder, the open dialog, dropping onto the player)
+  // shows the player; the library page only stays for its own queues.
+  if (useUI.getState().page === "library") useUI.setState({ page: "player" });
   try {
     const kind = kindOf(path) ?? undefined;
     const items = await api.scanPlaylist(path, kind);
@@ -355,6 +373,53 @@ export async function loadLyrics(mediaPath: string) {
   }
 }
 
+const isAiOrigin = (o: LyricsOrigin | null) => o === "ai" || o === "ai_reviewed";
+
+/** Looks for lyrics again, e.g. after a .lrc was put next to the song. */
+export async function rescanLyrics() {
+  const media = usePlayer.getState().media;
+  if (!media) return;
+  const wasAi = isAiOrigin(useLyrics.getState().origin);
+  await loadLyrics(media.path);
+  const { status, origin } = useLyrics.getState();
+  if (status !== "loaded") toast("歌曲所在目录中没有找到歌词文件");
+  else if (wasAi && isAiOrigin(origin)) toast("目录中没有找到同名歌词文件，继续显示 AI 歌词");
+  else toast(origin === "sidecar" ? "已加载歌曲目录中的歌词文件" : "已重新加载歌词", "success");
+}
+
+/** Removes AI-recognised lyrics (or AI subtitles) of the current media. */
+export async function removeAiLyrics() {
+  const media = usePlayer.getState().media;
+  if (!media) return;
+  const what = media.kind === "video" ? "AI 字幕" : "AI 识别的歌词";
+  if (!(await confirmDialog(`移除 ${what}？之后可以重新识别或上传歌词文件。`))) return;
+  try {
+    await api.removeLibraryLyrics(media.path);
+  } catch (e) {
+    toast(`移除失败：${errText(e)}`, "error");
+    return;
+  }
+  if (media.kind === "video") {
+    const s = useSubtitles.getState();
+    const removedActive = s.tracks[s.active]?.kind === "ai";
+    const tracks = s.tracks.filter((t) => t.kind !== "ai");
+    useSubtitles.setState({ tracks, active: removedActive ? -1 : s.tracks.filter((t, i) => i < s.active && t.kind !== "ai").length });
+    if (removedActive) void selectSubtitle(-1);
+  } else {
+    await loadLyrics(media.path);
+  }
+  toast(`已移除 ${what}`, "success");
+}
+
+/** Recognises the current media again, letting the user pick a model first. */
+export function rerunRecognition() {
+  const media = usePlayer.getState().media;
+  if (!media) return;
+  useAsrTasks.setState({ pendingSetup: [taskInput({ ...media, title: media.meta?.title, artist: media.meta?.artist })], setupRerun: true });
+  void refreshModels();
+  useUI.setState({ overlay: "asrSetup" });
+}
+
 async function importLyricsFromPath(path: string) {
   const media = usePlayer.getState().media;
   if (!media) return;
@@ -512,75 +577,179 @@ export async function downloadModel(id: string): Promise<boolean> {
   }
 }
 
-/** Starts lyric/subtitle recognition, prompting for a model download first if needed. */
-export async function startRecognition(opts: { skipSetup?: boolean } = {}) {
+/** What a recognition task needs to know about a file. */
+export function taskInput(e: { path: string; name: string; kind: MediaKind; title?: string | null; artist?: string | null }): AsrTaskInput {
+  return { path: e.path, name: e.name, kind: e.kind, title: e.title ?? null, artist: e.artist ?? null };
+}
+
+/** Recognises the current media (lyrics for music, subtitles for video). */
+export function startRecognition() {
   const media = usePlayer.getState().media;
   if (!media) return;
-  if (!isTauri) {
-    toast("浏览器预览模式不支持本地识别", "error");
-    return;
-  }
-  if (useLyrics.getState().asr) {
-    toast("已有识别任务正在进行");
-    return;
-  }
+  void recognize([taskInput({ ...media, title: media.meta?.title, artist: media.meta?.artist })]);
+}
+
+/**
+ * Queues files for recognition. Prompts for a model first when none is
+ * downloaded yet; the setup dialog then calls `confirmPendingRecognition`.
+ */
+export async function recognize(inputs: AsrTaskInput[], opts: { skipSetup?: boolean } = {}) {
+  if (!inputs.length) return;
   await refreshModels();
-  const asr = settings().asr;
-  if (!opts.skipSetup && !modelReady(asr.model)) {
+  if (!opts.skipSetup && !modelReady(settings().asr.model)) {
+    useAsrTasks.setState({ pendingSetup: inputs, setupRerun: false });
     useUI.setState({ overlay: "asrSetup" });
     return;
   }
-  useLyrics.setState({ asr: { mediaPath: media.path, stage: "preparing", percent: 0 } });
-  if (asr.useVad && !modelReady("silero-vad")) {
-    useLyrics.setState({ asr: { mediaPath: media.path, stage: "downloading", percent: 0 } });
-    await downloadModel("silero-vad");
-  }
-  if (!modelReady(asr.model)) {
-    useLyrics.setState({ asr: { mediaPath: media.path, stage: "downloading", percent: 0 } });
-    const ok = await downloadModel(asr.model);
-    if (!ok) {
-      useLyrics.setState({ asr: null });
+  const st = useAsrTasks.getState();
+  const busy = st.tasks.some((t) => t.status === "running" || t.status === "queued");
+  const r = addTasks(st.tasks, inputs);
+  useAsrTasks.setState({ tasks: r.tasks, pendingSetup: null, setupRerun: false });
+  if (!r.added.length) toast(inputs.length > 1 ? "这些文件已在识别队列中" : "已在识别队列中");
+  else if (r.added.length > 1) toast(`已加入 ${r.added.length} 个识别任务${r.skipped ? `（${r.skipped} 个已在队列中）` : ""}`, "success");
+  else if (busy) toast(`已加入识别队列，排在第 ${queuePosition(r.tasks, r.added[0].path)} 位`, "success");
+  if (useAsrTasks.getState().paused && r.added.length) toast("识别队列已暂停，可在识别任务中继续");
+  void pumpRecognition();
+}
+
+export function confirmPendingRecognition() {
+  const pending = useAsrTasks.getState().pendingSetup;
+  if (pending) void recognize(pending, { skipSetup: true });
+}
+
+let pumping = false;
+
+/** Starts the next queued task when nothing is running and the queue isn't paused. */
+export async function pumpRecognition() {
+  if (pumping) return;
+  const st = useAsrTasks.getState();
+  if (st.paused) return;
+  const task = nextQueued(st.tasks);
+  if (!task) return;
+  pumping = true;
+  const stillRunning = () => useAsrTasks.getState().tasks.find((t) => t.id === task.id)?.status === "running";
+  let advance = false;
+  try {
+    updateTask(task.id, { status: "running", stage: "preparing", percent: 0, error: null });
+    const asr = settings().asr;
+    await refreshModels();
+    if (asr.useVad && !modelReady("silero-vad")) {
+      updateTask(task.id, { stage: "downloading", percent: 0 });
+      await downloadModel("silero-vad");
+    }
+    if (stillRunning() && !modelReady(asr.model)) {
+      updateTask(task.id, { stage: "downloading", percent: 0 });
+      if (!(await downloadModel(asr.model))) {
+        if (stillRunning()) {
+          // Every later task would need the same model: stop here.
+          finishTask(task.id, { status: "failed", error: "识别模型下载失败" });
+          useAsrTasks.setState({ paused: true });
+        } else advance = true;
+        return;
+      }
+    }
+    if (!stillRunning()) {
+      advance = true; // cancelled while preparing
       return;
     }
-  }
-  try {
-    await api.asrStart(media.path, {
+    updateTask(task.id, { stage: "decoding", percent: 0 });
+    await api.asrStart(task.path, {
       model: asr.model,
       language: asr.language,
       vocalFocus: asr.vocalFocus,
       simplified: asr.simplified,
       useVad: asr.useVad,
       wordTimestamps: asr.wordTimestamps,
-      title: media.meta?.title ?? media.name,
-      artist: media.meta?.artist ?? null,
+      title: task.title ?? task.name,
+      artist: task.artist ?? null,
     });
   } catch (e) {
-    useLyrics.setState({ asr: null });
-    toast(`无法开始识别：${errText(e)}`, "error");
+    finishTask(task.id, { status: "failed", error: errText(e) });
+    advance = true;
+  } finally {
+    pumping = false;
+    if (advance) void pumpRecognition();
   }
 }
 
-export function cancelRecognition() {
-  void api.asrCancel();
-  const a = useLyrics.getState().asr;
-  if (a?.stage === "downloading") {
-    for (const id of Object.keys(useModels.getState().downloads)) void api.asrCancelDownload(id);
-    useLyrics.setState({ asr: null });
+function finishTask(id: string, patch: Partial<AsrTask>) {
+  useAsrTasks.setState((s) => ({ tasks: finishTasks(s.tasks, id, patch) }));
+}
+
+/** Cancels a running task or removes a queued / finished one. */
+export function cancelTask(id: string) {
+  const t = useAsrTasks.getState().tasks.find((x) => x.id === id);
+  if (!t) return;
+  if (t.status !== "running") {
+    useAsrTasks.setState((s) => ({ tasks: s.tasks.filter((x) => x.id !== id) }));
+    return;
   }
+  if (t.stage === "preparing" || t.stage === "downloading") {
+    for (const m of Object.keys(useModels.getState().downloads)) void api.asrCancelDownload(m);
+    finishTask(id, { status: "cancelled" });
+    toast("识别已取消");
+    return;
+  }
+  // The backend reports the cancellation through asr://done.
+  void api.asrCancel();
+}
+
+/** Cancels whatever is being recognised (lyrics page card). */
+export function cancelRecognition() {
+  const t = runningTask();
+  if (t) cancelTask(t.id);
+}
+
+export function retryTask(id: string) {
+  useAsrTasks.setState((s) => ({ tasks: retryTasks(s.tasks, id) }));
+  void pumpRecognition();
+}
+
+export function moveTaskUp(id: string) {
+  useAsrTasks.setState((s) => ({ tasks: moveUp(s.tasks, id) }));
+}
+
+export function clearFinishedTasks() {
+  useAsrTasks.setState((s) => ({ tasks: s.tasks.filter((t) => t.status === "queued" || t.status === "running") }));
+}
+
+export function setRecognitionPaused(paused: boolean) {
+  useAsrTasks.setState({ paused });
+  if (!paused) void pumpRecognition();
+}
+
+/** Opens a finished task's file and, for music, its lyrics. */
+export async function openTaskResult(t: AsrTask) {
+  useUI.setState({ overlay: null });
+  if (usePlayer.getState().media?.path !== t.path) await openFile(t.path);
+  if (t.kind === "audio" && usePlayer.getState().media?.path === t.path) useUI.setState({ page: "lyrics" });
+  else useUI.setState({ page: "player" });
+}
+
+function onAsrProgress(p: AsrProgressEvent) {
+  const t = runningTask();
+  if (!t || t.path !== p.mediaPath) return;
+  if (t.stage !== p.stage || Math.abs(t.percent - p.percent) >= 1) updateTask(t.id, { stage: p.stage, percent: p.percent });
 }
 
 function onAsrDone(d: AsrDone) {
-  useLyrics.setState({ asr: null });
+  const t = runningTask();
+  if (t && t.path === d.mediaPath) {
+    if (d.cancelled) finishTask(t.id, { status: "cancelled" });
+    else if (!d.ok || !d.result) finishTask(t.id, { status: "failed", error: d.error ?? "未知错误" });
+    else finishTask(t.id, { status: "done", percent: 100, lineCount: d.result.lineCount, model: d.result.model });
+  }
+  void pumpRecognition();
   if (d.cancelled) {
     toast("识别已取消");
     return;
   }
+  const name = t?.title || stem(d.mediaPath);
   if (!d.ok || !d.result) {
-    toast(`识别失败：${d.error ?? "未知错误"}`, "error", 6000);
+    toast(`《${name}》识别失败：${d.error ?? "未知错误"}`, "error", 6000);
     return;
   }
   const media = usePlayer.getState().media;
-  const name = stem(d.mediaPath);
   if (!media || media.path !== d.mediaPath) {
     toast(`《${name}》识别完成，共 ${d.result.lineCount} 行`, "success");
     return;
@@ -592,6 +761,15 @@ function onAsrDone(d: AsrDone) {
     useUI.setState({ page: "lyrics" });
   }
   toast(`识别完成，共 ${d.result.lineCount} 行`, "success");
+}
+
+function onModelDownload(p: DownloadProgress) {
+  useModels.setState((s) => ({ downloads: { ...s.downloads, [p.id]: p } }));
+  const t = runningTask();
+  if (t && t.stage === "downloading" && p.total > 0) {
+    const percent = (p.downloaded / p.total) * 100;
+    if (Math.abs(t.percent - percent) >= 1) updateTask(t.id, { percent });
+  }
 }
 
 // ------------------------------------------------------------------ misc
@@ -702,12 +880,20 @@ export async function init() {
   requestAnimationFrame(tick);
   void initLibrary();
 
-  // The Web Audio graph (app volume + waveform analyser) may only start inside a gesture.
-  const gesture = () => engine.enableGraph();
-  window.addEventListener("pointerdown", gesture, true);
-  window.addEventListener("keydown", gesture, true);
-
   window.addEventListener("beforeunload", () => rememberPosition(true));
+
+  // Menu bar icon and "keep running when the window is closed".
+  const syncBackground = (s: { runInBackground: boolean; trayShowTitle: boolean }) =>
+    void api.setBackgroundPrefs(s.runInBackground, s.trayShowTitle).catch(() => {});
+  syncBackground(st);
+  useSettings.subscribe((s, prev) => {
+    if (s.runInBackground !== prev.runInBackground || s.trayShowTitle !== prev.trayShowTitle) syncBackground(s);
+  });
+
+  await on<AsrProgressEvent>("asr://progress", onAsrProgress);
+  await on<AsrDone>("asr://done", onAsrDone);
+  await on<DownloadProgress>("asr://download", onModelDownload);
+  void pumpRecognition();
 
   if (isTauri) {
     await on<string[]>("app://open-files", (paths) => void openFiles(paths));
@@ -734,24 +920,6 @@ export async function init() {
         case "seekTo":
           seek(e.value ?? 0);
           break;
-      }
-    });
-    await on<AsrProgressEvent>("asr://progress", (p) => {
-      const cur = useLyrics.getState().asr;
-      if (!cur || cur.mediaPath !== p.mediaPath) {
-        useLyrics.setState({ asr: { mediaPath: p.mediaPath, stage: p.stage, percent: p.percent } });
-        return;
-      }
-      if (cur.stage !== p.stage || Math.abs(cur.percent - p.percent) >= 1) {
-        useLyrics.setState({ asr: { ...cur, stage: p.stage, percent: p.percent } });
-      }
-    });
-    await on<AsrDone>("asr://done", onAsrDone);
-    await on<DownloadProgress>("asr://download", (p) => {
-      useModels.setState((s) => ({ downloads: { ...s.downloads, [p.id]: p } }));
-      const a = useLyrics.getState().asr;
-      if (a && a.stage === "downloading" && p.total > 0) {
-        useLyrics.setState({ asr: { ...a, percent: (p.downloaded / p.total) * 100 } });
       }
     });
     try {

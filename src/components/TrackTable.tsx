@@ -151,7 +151,15 @@ export function TrackTable({
           </div>
         ))}
       </div>
-      <div className="tt-body" ref={box} onScroll={(e) => setView((v) => ({ ...v, top: e.currentTarget.scrollTop }))}>
+      <div
+        className="tt-body"
+        ref={box}
+        onScroll={(e) => {
+          // Read now: React clears currentTarget before a deferred updater runs.
+          const top = e.currentTarget.scrollTop;
+          setView((v) => ({ ...v, top }));
+        }}
+      >
         <div style={{ height: rows.length * ROW, position: "relative" }}>
           {rows.slice(first, last).map((t, k) => {
             const i = first + k;

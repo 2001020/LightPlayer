@@ -55,6 +55,19 @@
   color-scheme: dark;
 }
 
+/* A picture behind the UI (custom background or album cover): secondary text
+   is made darker / lighter so it stays readable on busy or tinted images. */
+:root[data-bg="image"] {
+  --text-dim: #3d3d48;
+  --text-faint: #5c5c68;
+  --halo: 0 0 10px rgba(255, 255, 255, 0.75), 0 0 2px rgba(255, 255, 255, 0.6);
+}
+:root[data-theme="dark"][data-bg="image"] {
+  --text-dim: #d2d2da;
+  --text-faint: #a6a6b0;
+  --halo: 0 1px 8px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.4);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -161,6 +174,18 @@ select:focus {
   padding: 0 14px 0 86px;
   -webkit-app-region: drag;
   z-index: 5;
+}
+:root[data-bg="image"] .titlebar {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 55%, transparent), transparent);
+}
+:root[data-bg="image"] .titlebar .brand,
+:root[data-bg="image"] .titlebar .now-title,
+:root[data-bg="image"] .lyrics-head,
+:root[data-bg="image"] .lyric-line {
+  text-shadow: var(--halo);
+}
+:root[data-bg="image"] .lyric-line.active.karaoke .w {
+  text-shadow: none;
 }
 .titlebar .brand {
   font-weight: 600;
@@ -665,6 +690,31 @@ input[type="range"] {
   min-height: 0;
   position: relative;
 }
+.back-btn {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  z-index: 4;
+}
+:root[data-bg="image"] .back-btn {
+  text-shadow: var(--halo);
+}
+/* Over a video the button sits on a dark translucent chip. */
+.stage.is-video .back-btn {
+  top: 10px;
+  left: 10px;
+  color: #f2f2f5;
+  background: rgba(18, 18, 22, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-shadow: none;
+}
+.stage.is-video .back-btn:hover {
+  background: rgba(18, 18, 22, 0.7);
+}
+.app.immersive .back-btn {
+  display: none;
+}
 .playlist-handle {
   position: absolute;
   right: -10px;
@@ -945,7 +995,7 @@ input[type="range"] {
 .video-badge {
   position: absolute;
   top: 12px;
-  left: 12px;
+  right: 12px;
   font-size: 11.5px;
   color: #fff;
   background: rgba(0, 0, 0, 0.45);
@@ -1271,22 +1321,6 @@ input[type="range"] {
   grid-template-columns: minmax(0, 680px);
   justify-content: center;
 }
-/* Low sound-wave strip spanning the control bar, right above it. */
-.wave-strip {
-  position: absolute;
-  left: -6px;
-  right: -6px;
-  bottom: 0;
-  height: 60px;
-  z-index: 0;
-  pointer-events: none;
-}
-.wave-strip canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
 .lyric-scroll {
   height: 100%;
   padding-bottom: 8px;
@@ -1306,13 +1340,13 @@ input[type="range"] {
   padding: 10px 14px;
   margin: 2px 0;
   border-radius: 12px;
-  color: var(--text-faint);
   line-height: 1.45;
   transition: color 0.2s, transform 0.25s var(--ease), opacity 0.2s, filter 0.25s;
   transform-origin: center;
   cursor: pointer;
   font-weight: 600;
-  opacity: 0.75;
+  /* Translucent text colour rather than grey: stays legible on tinted covers. */
+  color: color-mix(in srgb, var(--text) 48%, transparent);
 }
 .lyric-line:hover {
   background: var(--hover);
@@ -1321,11 +1355,10 @@ input[type="range"] {
   transform-origin: left center;
 }
 .lyric-line.near {
-  opacity: 0.9;
+  color: color-mix(in srgb, var(--text) 62%, transparent);
 }
 .lyric-line.active {
   color: var(--text);
-  opacity: 1;
   transform: scale(1.08);
 }
 .lyric-line .tr {
@@ -1339,7 +1372,7 @@ input[type="range"] {
   transition: none;
 }
 .lyric-line.active.karaoke .w {
-  background-image: linear-gradient(90deg, var(--accent-strong) 0 calc(var(--p, 0) * 100%), var(--text-faint) calc(var(--p, 0) * 100%) 100%);
+  background-image: linear-gradient(90deg, var(--accent-strong) 0 calc(var(--p, 0) * 100%), color-mix(in srgb, var(--text) 48%, transparent) calc(var(--p, 0) * 100%) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -2019,6 +2052,15 @@ kbd {
   min-height: 0;
   padding: 4px 2px;
 }
+/* Over a picture the sidebar gets the same frosted surface as the content. */
+:root[data-bg="image"] .lib-side {
+  padding: 8px 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
 .lib-nav {
   display: flex;
   flex-direction: column;
@@ -2620,4 +2662,209 @@ kbd {
   .lib-actions .search input {
     width: 160px;
   }
+}
+
+/* ---------------------------------------------------------------- recognition tasks */
+.asr-card-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-size: 13px;
+}
+.asr-tasks .body section + section {
+  margin-top: 6px;
+}
+.asr-tasks .body h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  margin: 14px 2px 6px;
+  letter-spacing: 0.4px;
+}
+.asr-tasks .body h3:first-child {
+  margin-top: 0;
+}
+.asr-tasks .banner {
+  width: 100%;
+  margin: 0 0 4px;
+}
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+.task-row + .task-row {
+  margin-top: 2px;
+}
+.task-row:hover {
+  background: var(--hover);
+}
+.task-row.running {
+  background: var(--accent-soft);
+}
+.task-row .thumb-img {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 7px;
+}
+.task-row .grow {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.task-row .t {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-row .t .a {
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 8px;
+  font-size: 12.5px;
+}
+.task-row .s {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-dim);
+  min-width: 0;
+}
+.task-row .s span:first-of-type {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-row .s .time {
+  margin-left: auto;
+  padding-left: 10px;
+  color: var(--text-faint);
+  flex: none;
+}
+.task-row.done .s svg {
+  color: #13a35a;
+}
+.task-row.failed .s {
+  color: var(--danger);
+}
+.task-row .progress-bar {
+  height: 4px;
+}
+.task-row .acts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.asr-btn {
+  position: relative;
+}
+.asr-btn .badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.asr-btn.busy svg {
+  color: var(--accent-text);
+  animation: asr-pulse 1.6s ease-in-out infinite;
+}
+@keyframes asr-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+.app.immersive .asr-btn {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- crash screen */
+.crash {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+  -webkit-app-region: drag;
+}
+.crash-card {
+  width: min(460px, 100%);
+  padding: 24px;
+  border-radius: var(--radius-l);
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  -webkit-app-region: no-drag;
+}
+.crash-card h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.crash-card p {
+  margin: 0 0 12px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.crash-card pre {
+  margin: 0 0 16px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.crash-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------- lyrics source menu */
+.popover {
+  text-shadow: none;
+}
+.menu-list .item {
+  justify-content: flex-start;
+  gap: 9px;
+}
+.menu-list .item.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.menu-list .item.danger {
+  color: var(--danger);
+}
+.banner .btn.small + .btn.small {
+  margin-left: -4px;
 }

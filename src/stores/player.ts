@@ -50,12 +50,6 @@ export const usePlaylist = create<PlaylistState>(() => ({
 
 export type LyricsStatus = "idle" | "loading" | "none" | "loaded" | "error";
 
-export interface AsrJob {
-  mediaPath: string;
-  stage: "preparing" | "downloading" | "decoding" | "loading" | "transcribing" | "finishing";
-  percent: number;
-}
-
 export interface LyricsState {
   forPath: string | null;
   status: LyricsStatus;
@@ -65,7 +59,6 @@ export interface LyricsState {
   format: string | null;
   model: string | null;
   sourcePath: string | null;
-  asr: AsrJob | null;
 }
 
 export const useLyrics = create<LyricsState>(() => ({
@@ -77,7 +70,6 @@ export const useLyrics = create<LyricsState>(() => ({
   format: null,
   model: null,
   sourcePath: null,
-  asr: null,
 }));
 
 export interface SubtitleState {
@@ -96,7 +88,7 @@ export interface ModelsState {
 export const useModels = create<ModelsState>(() => ({ models: [], downloads: {} }));
 
 export type Page = "player" | "lyrics" | "library";
-export type Overlay = null | "settings" | "editor" | "videoInfo" | "asrSetup" | "shortcuts" | "libraryFolders";
+export type Overlay = null | "settings" | "editor" | "videoInfo" | "asrSetup" | "asrTasks" | "shortcuts" | "libraryFolders";
 
 export interface Toast {
   id: number;
@@ -116,7 +108,7 @@ export interface UIState {
 }
 
 export const useUI = create<UIState>(() => ({
-  page: "player",
+  page: "library",
   overlay: null,
   settingsTab: "appearance",
   fullscreen: false,
