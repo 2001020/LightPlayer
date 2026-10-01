@@ -231,7 +231,7 @@ function About() {
         </div>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700 }}>LightPlayer</div>
-          <div className="muted">版本 0.2.0</div>
+          <div className="muted">版本 {__APP_VERSION__}</div>
         </div>
       </div>
       <p className="note" style={{ marginTop: 16 }}>

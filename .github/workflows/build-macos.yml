@@ -126,3 +126,37 @@ jobs:
           export LIGHTPLAYER_FFMPEG_DIR="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app/Contents/MacOS"
           cd src-tauri
           cargo test --release --target aarch64-apple-darwin asr_smoke -- --ignored --nocapture
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: LightPlayer-macOS-arm64-dmg
+          path: dist-release
+      - uses: actions/download-artifact@v4
+        with:
+          name: LightPlayer-macOS-arm64-app
+          path: dist-release
+      - name: Prepare release files
+        run: |
+          cd dist-release
+          ver="${GITHUB_REF_NAME#v}"
+          mv LightPlayer.app.zip "LightPlayer_${ver}_aarch64.app.zip"
+          ls -la
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ format('LightPlayer {0} 预发布', github.ref_name) }}
+          body_path: docs/releases/${{ github.ref_name }}.md
+          # Published as prereleases until builds are notarized by Apple.
+          prerelease: true
+          files: |
+            dist-release/*.dmg
+            dist-release/*.zip
+          fail_on_unmatched_files: true
