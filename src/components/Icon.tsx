@@ -1,6 +1,6 @@
 // Minimal inline icon set (24px grid, stroke-based unless noted).
 
-const paths: Record<string, string> = {
+const paths = {
   play: "M8 5.5v13a1 1 0 0 0 1.52.85l10.4-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5z",
   pause: "M7 5h3.2v14H7zM13.8 5H17v14h-3.2z",
   next: "M5 5.8v12.4a.8.8 0 0 0 1.24.66L15 13V18.2h2V5.8h-2V11L6.24 5.14A.8.8 0 0 0 5 5.8z",
@@ -50,7 +50,7 @@ const paths: Record<string, string> = {
   warning: "M12 3L2 20h20zM12 10v4M12 17h.01",
   target: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   reveal: "M14 3h7v7M10 14L21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5",
-};
+} satisfies Record<string, string>;
 
 const filled = new Set(["play", "pause", "next", "prev"]);
 

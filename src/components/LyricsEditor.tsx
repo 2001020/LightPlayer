@@ -6,7 +6,7 @@ import { confirmDialog } from "../lib/confirm";
 import { formatTime } from "../lib/format";
 import { useLyrics, usePlayer, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
-import { Icon } from "./Icon";
+import { Icon, SkipIcon } from "./Icon";
 import { LyricsView } from "./LyricsView";
 import { Slider } from "./Slider";
 
@@ -26,13 +26,13 @@ function MiniTransport() {
   return (
     <>
       <button className="icon-btn" onClick={() => C.seekBy(-5)} title="后退 5 秒 (←)">
-        <Icon name="back15" />
+        <SkipIcon dir="back" seconds={5} size={24} />
       </button>
       <button className="icon-btn play-btn" style={{ width: 38, height: 38 }} onClick={() => engine.toggle()} title="播放/暂停 (P)">
         <Icon name={playing ? "pause" : "play"} size={18} />
       </button>
       <button className="icon-btn" onClick={() => C.seekBy(5)} title="前进 5 秒 (→)">
-        <Icon name="fwd15" />
+        <SkipIcon dir="fwd" seconds={5} size={24} />
       </button>
       <span className="time">
         {formatTimestamp(position)} / {formatTime(duration)}
