@@ -1,6 +1,6 @@
 # LightPlayer
 
-轻量、好看的桌面多媒体播放器（macOS 优先，架构上预留 Windows）。基于 **Tauri 2 + React + TypeScript**，
+轻量的macOS多媒体播放器。基于 **Tauri 2 + React + TypeScript**，
 借助内置 **FFmpeg** 几乎支持所有音视频格式，并内置基于 **whisper.cpp** 的**本地离线歌词识别**。
 
 详细设计见 [docs/PLAN.md](docs/PLAN.md)。
