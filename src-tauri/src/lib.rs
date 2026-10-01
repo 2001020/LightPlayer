@@ -118,6 +118,8 @@ pub fn run() {
                 } else if window.label() == "main" && background && has_tray {
                     // Keep playing in the background; the menu bar icon or the Dock brings it back.
                     api.prevent_close();
+                    // The UI pauses a video here unless it may keep playing.
+                    let _ = app.emit("app://closed-to-background", ());
                     if window.is_fullscreen().unwrap_or(false) {
                         let _ = window.set_fullscreen(false);
                     }

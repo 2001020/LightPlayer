@@ -58,6 +58,11 @@ export interface Settings {
   libraryRecordPlays: boolean;
   /** Closing the window keeps the app (and playback) running in the menu bar. */
   runInBackground: boolean;
+  /** A video keeps playing when its window is closed to the background. */
+  videoInBackground: boolean;
+  /** Play the next item when a song / a video ends ("single" mode repeats regardless). */
+  autoNextAudio: boolean;
+  autoNextVideo: boolean;
   /** Show the song title next to the menu bar icon. */
   trayShowTitle: boolean;
   /** Private browsing: opened files leave no history (recent list, plays, positions). */
@@ -112,6 +117,9 @@ export const defaultSettings: Settings = {
   libraryAutoRescan: true,
   libraryRecordPlays: true,
   runInBackground: true,
+  videoInBackground: false,
+  autoNextAudio: true,
+  autoNextVideo: false,
   trayShowTitle: false,
   privateMode: false,
   precisePaths: [],

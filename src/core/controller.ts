@@ -1012,6 +1012,11 @@ export async function init() {
       toast("睡眠定时：已暂停");
       return;
     }
+    // Single-loop repeats regardless; otherwise videos stop by default and
+    // songs go on to the next one (both can be changed in the settings).
+    const st = settings();
+    const auto = m?.kind === "video" ? st.autoNextVideo : st.autoNextAudio;
+    if (!auto && usePlaylist.getState().mode !== "single") return;
     void next(true);
   };
   engine.onError = (msg) => {
@@ -1050,6 +1055,11 @@ export async function init() {
 
   if (isTauri) {
     await on<string[]>("app://open-files", (paths) => void openFiles(paths));
+    // The window was closed while the app keeps running in the menu bar: a
+    // video pauses unless the settings say otherwise (songs keep playing).
+    await on("app://closed-to-background", () => {
+      if (engine.media?.kind === "video" && !engine.paused && !settings().videoInBackground) engine.pause();
+    });
     await on<MediaControlEvent>("media-control", (e) => {
       switch (e.action) {
         case "play":

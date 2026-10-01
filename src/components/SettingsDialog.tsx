@@ -282,6 +282,13 @@ function Playback() {
       <Row label="快进 / 快退按钮步长" hint="也可以用 J / L 键">
         <Seg value={s.jumpStep} options={[[10, "10 秒"], [15, "15 秒"], [30, "30 秒"]]} onChange={(jumpStep) => s.set({ jumpStep })} />
       </Row>
+      <h3>连续播放</h3>
+      <Row label="音乐播完后自动播放下一首" hint="“单曲循环”模式下总是重复当前这首">
+        <Switch on={s.autoNextAudio} onChange={(autoNextAudio) => s.set({ autoNextAudio })} />
+      </Row>
+      <Row label="视频播完后自动播放下一个" hint="默认播完当前视频就停下">
+        <Switch on={s.autoNextVideo} onChange={(autoNextVideo) => s.set({ autoNextVideo })} />
+      </Row>
       <h3>媒体库</h3>
       <Row label="启动时自动刷新媒体库" hint="检查已添加文件夹中新增、修改或删除的文件">
         <Switch on={s.libraryAutoRescan} onChange={(libraryAutoRescan) => s.set({ libraryAutoRescan })} />
@@ -298,6 +305,9 @@ function Playback() {
       <h3>后台与菜单栏</h3>
       <Row label="关闭窗口后继续在后台播放" hint="点窗口左上角的红色按钮只会隐藏窗口；用顶部菜单栏图标或程序坞可以重新打开，从菜单栏图标选择“退出”才会完全退出">
         <Switch on={s.runInBackground} onChange={(runInBackground) => s.set({ runInBackground })} />
+      </Row>
+      <Row label="关闭窗口后视频也继续播放" hint="默认关闭窗口时暂停视频，音乐照常在后台播放">
+        <Switch on={s.videoInBackground} onChange={(videoInBackground) => s.set({ videoInBackground })} />
       </Row>
       <Row label="在菜单栏图标旁显示歌名">
         <Switch on={s.trayShowTitle} onChange={(trayShowTitle) => s.set({ trayShowTitle })} />
