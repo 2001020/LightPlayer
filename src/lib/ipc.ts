@@ -357,6 +357,14 @@ function mockLibrary(cmd: string, args: Record<string, unknown>): unknown {
       }
       return null;
     }
+    case "library_trash_tracks": {
+      const paths = args.paths as string[];
+      const set = new Set(paths);
+      l.tracks = l.tracks.filter((t) => !set.has(t.path));
+      l.favorites = l.favorites.filter((p) => !set.has(p));
+      for (const p of l.playlists) p.items = p.items.filter((i) => !set.has(i));
+      return { trashed: paths, failed: [], error: null };
+    }
     case "library_remove_tracks": {
       const set = new Set(args.paths as string[]);
       l.tracks = l.tracks.filter((t) => !set.has(t.path));
@@ -523,7 +531,7 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
 }
 
 export const api = {
-  openMedia: (path: string, caps: Caps) => call<OpenedMedia>("open_media", { path, caps }),
+  openMedia: (path: string, caps: Caps, precise = false) => call<OpenedMedia>("open_media", { path, caps, precise }),
   requestStream: (path: string, start: number, transcode: boolean) =>
     call<{ url: string; baseOffset: number }>("request_stream", { path, start, transcode }),
   stopStreams: () => call<void>("stop_streams"),
@@ -551,6 +559,7 @@ export const api = {
   ffmpegAvailable: () => call<boolean>("ffmpeg_available"),
   setBackgroundPrefs: (runInBackground: boolean, showTitle: boolean, privateMode: boolean) =>
     call<void>("set_background_prefs", { runInBackground, showTitle, privateMode }),
+  desktopLyricsSet: (show: boolean) => call<void>("desktop_lyrics_set", { show }),
   weatherLocate: () => call<WeatherPlace>("weather_locate"),
   weatherFetch: (lat: number, lon: number, name?: string | null) => call<WeatherReport>("weather_fetch", { lat, lon, name: name ?? null }),
   weatherSearch: (query: string) => call<CityHit[]>("weather_search", { query }),
@@ -560,6 +569,8 @@ export const api = {
   libraryRescan: () => call<void>("library_rescan"),
   libraryAddPaths: (paths: string[]) => call<{ folders: number; files: number }>("library_add_paths", { paths }),
   libraryRemoveTracks: (paths: string[]) => call<void>("library_remove_tracks", { paths }),
+  libraryTrashTracks: (paths: string[]) => call<{ trashed: string[]; failed: string[]; error?: string | null }>("library_trash_tracks", { paths }),
+  libraryImportFolder: (path: string) => call<{ playlistId: string; name: string; files: number }>("library_import_folder", { path }),
   libraryRecordPlay: (path: string, add: boolean) => call<void>("library_record_play", { path, add }),
   librarySetFavorite: (path: string, on: boolean) => call<void>("library_set_favorite", { path, on }),
   playlistCreate: (name: string, items: string[]) => call<string>("playlist_create", { name, items }),

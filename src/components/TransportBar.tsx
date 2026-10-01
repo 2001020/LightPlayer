@@ -5,6 +5,8 @@ import { useSettings } from "../stores/settings";
 import { useLibrary } from "../stores/library";
 import { Icon, SkipIcon, type IconName } from "./Icon";
 import { Popover } from "./Popover";
+import { togglePlaylist, usePlaylistShown } from "./PlaylistPanel";
+import { setDesktopLyrics } from "../core/desktopLyrics";
 import { Slider } from "./Slider";
 import { tip } from "./Tooltip";
 
@@ -191,7 +193,8 @@ export function TransportBar() {
   const ab = usePlayer((s) => s.abLoop);
   const mode = usePlaylist((s) => s.mode);
   const count = usePlaylist((s) => s.items.length);
-  const playlistOpen = useSettings((s) => s.playlistOpen);
+  const playlistShown = usePlaylistShown();
+  const desktopLyrics = useSettings((s) => s.desktopLyrics.enabled);
   const page = useUI((s) => s.page);
   const fullscreen = useUI((s) => s.fullscreen);
   const jump = useSettings((s) => s.jumpStep);
@@ -256,11 +259,11 @@ export function TransportBar() {
           <SleepMenu />
           {media?.kind === "audio" && (
             <button
-              className={`icon-btn ${page === "lyrics" ? "active" : ""}`}
-              onClick={() => useUI.setState({ page: page === "lyrics" ? "player" : "lyrics" })}
-              {...tip(page === "lyrics" ? "返回播放页" : "歌词", "Y")}
+              className={`icon-btn ${desktopLyrics ? "active" : ""}`}
+              onClick={() => setDesktopLyrics(!desktopLyrics)}
+              {...tip(desktopLyrics ? "关闭桌面歌词" : "桌面歌词（悬浮在所有窗口之上）")}
             >
-              <Icon name="lyrics" />
+              <Icon name="desktopLyrics" />
             </button>
           )}
           {isVideo && <SubtitleMenu />}
@@ -275,12 +278,9 @@ export function TransportBar() {
             </button>
           )}
           <button
-            className={`icon-btn pl-toggle ${playlistOpen ? "active" : ""}`}
-            onClick={() => {
-              useSettings.getState().set({ playlistOpen: page === "lyrics" ? true : !playlistOpen });
-              useUI.setState({ page: "player" });
-            }}
-            {...tip(playlistOpen && page !== "lyrics" ? "收起播放列表" : "显示播放列表")}
+            className={`icon-btn pl-toggle ${playlistShown ? "active" : ""}`}
+            onClick={() => togglePlaylist()}
+            {...tip(playlistShown ? "收起播放列表" : "显示播放列表")}
           >
             <Icon name="list" />
           </button>

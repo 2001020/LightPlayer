@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextIndex, nextMode, prevIndex, shuffled, type QueueState } from "./queue";
+import { moveItem, nextIndex, nextMode, prevIndex, removeItem, shuffled, type QueueState } from "./queue";
 
 const q = (over: Partial<QueueState>): QueueState => ({ length: 5, index: 0, mode: "sequential", order: [], history: [], ...over });
 
@@ -56,5 +56,21 @@ describe("queue", () => {
     const s = shuffled(10, 7, seeded(1));
     expect(s[0]).toBe(7);
     expect([...s].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it("moves items and keeps track of the playing one", () => {
+    const items = ["a", "b", "c", "d"];
+    expect(moveItem(items, 1, 0, 3)).toEqual({ items: ["b", "c", "d", "a"], index: 0 });
+    expect(moveItem(items, 1, 1, 3)).toEqual({ items: ["a", "c", "d", "b"], index: 3 });
+    expect(moveItem(items, 2, 3, 0)).toEqual({ items: ["d", "a", "b", "c"], index: 3 });
+    expect(moveItem(items, 1, 2, 2).items).toBe(items);
+  });
+
+  it("removes items and picks what plays next", () => {
+    const items = ["a", "b", "c"];
+    expect(removeItem(items, 1, 0)).toEqual({ items: ["b", "c"], index: 0, removedCurrent: false });
+    expect(removeItem(items, 1, 2)).toEqual({ items: ["a", "b"], index: 1, removedCurrent: false });
+    expect(removeItem(items, 1, 1)).toEqual({ items: ["a", "c"], index: 1, removedCurrent: true });
+    expect(removeItem(items, 2, 2)).toEqual({ items: ["a", "b"], index: 1, removedCurrent: true });
   });
 });

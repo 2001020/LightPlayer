@@ -4,6 +4,12 @@ import type { PlayMode } from "../core/playlist/queue";
 
 export type ThemeMode = "system" | "light" | "dark" | "weather";
 
+export interface DesktopLyricsSettings {
+  /** The floating, always-on-top lyrics window is shown. */
+  enabled: boolean;
+  color: string;
+}
+
 export interface WeatherSettings {
   /** "auto": the system location service (or the network as a fallback). */
   source: "auto" | "city";
@@ -56,6 +62,11 @@ export interface Settings {
   trayShowTitle: boolean;
   /** Private browsing: opened files leave no history (recent list, plays, positions). */
   privateMode: boolean;
+  /** Files played through an ffmpeg copy because WebKit's clock drifts on them. */
+  precisePaths: string[];
+  /** Active lyric line colour on the lyrics page (null: theme colour). */
+  lyricHighlight: string | null;
+  desktopLyrics: DesktopLyricsSettings;
   tapCompensation: number;
   asr: AsrSettings;
   recent: string[];
@@ -103,6 +114,9 @@ export const defaultSettings: Settings = {
   runInBackground: true,
   trayShowTitle: false,
   privateMode: false,
+  precisePaths: [],
+  lyricHighlight: null,
+  desktopLyrics: { enabled: false, color: "#66ccff" },
   tapCompensation: 0.15,
   asr: {
     model: "large-v3-turbo-q5_0",
@@ -177,6 +191,7 @@ export const useSettings = create<SettingsStore>()(
           asr: { ...current.asr, ...(p.asr ?? {}) },
           background: { ...current.background, ...(p.background ?? {}) },
           weather: { ...current.weather, ...(p.weather ?? {}) },
+          desktopLyrics: { ...current.desktopLyrics, ...(p.desktopLyrics ?? {}) },
         };
       },
     },

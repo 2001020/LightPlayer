@@ -7,6 +7,8 @@ mod media;
 mod nowplaying;
 mod server;
 mod tools;
+mod desktop_lyrics;
+mod trash;
 mod tray;
 mod weather;
 #[cfg(target_os = "macos")]
@@ -98,13 +100,19 @@ pub fn run() {
                 let app = window.app_handle();
                 let background = app.try_state::<AppState>().map(|s| s.tray.background.load(Ordering::SeqCst)).unwrap_or(false);
                 let has_tray = app.try_state::<AppState>().map(|s| s.tray.tray.lock().unwrap().is_some()).unwrap_or(false);
-                if window.label() == "main" && background && has_tray {
+                if window.label() == desktop_lyrics::LABEL {
+                    api.prevent_close();
+                    desktop_lyrics::on_close_requested(app);
+                } else if window.label() == "main" && background && has_tray {
                     // Keep playing in the background; the menu bar icon or the Dock brings it back.
                     api.prevent_close();
                     if window.is_fullscreen().unwrap_or(false) {
                         let _ = window.set_fullscreen(false);
                     }
                     let _ = window.hide();
+                } else if window.label() == "main" {
+                    // Quitting: take the desktop lyrics window along.
+                    app.exit(0);
                 }
             }
         })
@@ -132,6 +140,9 @@ pub fn run() {
             commands::now_playing_metadata,
             commands::now_playing_state,
             commands::set_background_prefs,
+            commands::desktop_lyrics_set,
+            commands::library_trash_tracks,
+            commands::library_import_folder,
             commands::weather_locate,
             commands::weather_fetch,
             commands::weather_search,

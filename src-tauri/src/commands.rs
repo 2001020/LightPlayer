@@ -125,7 +125,7 @@ fn find_subtitles(state: &AppState, path: &Path, probe: &Probe) -> Vec<SubtitleT
 }
 
 #[tauri::command]
-pub async fn open_media(state: State<'_, AppState>, path: String, caps: Caps) -> AppResult<OpenedMedia> {
+pub async fn open_media(state: State<'_, AppState>, path: String, caps: Caps, precise: Option<bool>) -> AppResult<OpenedMedia> {
     let p = PathBuf::from(&path);
     if !p.is_file() {
         return Err(AppError::msg("文件不存在"));
@@ -133,7 +133,13 @@ pub async fn open_media(state: State<'_, AppState>, path: String, caps: Caps) ->
     state.hls.stop_all();
     let probe = cached_probe(&state, &p).await?;
     let kind = media_kind(&p, Some(&probe));
-    let strategy = router::decide(kind, &probe, &ext_of(&p), &caps);
+    let mut strategy = router::decide(kind, &probe, &ext_of(&p), &caps);
+    // "Precise timing": decode with ffmpeg into a clean file instead of letting
+    // WebKit play a file whose timing it gets wrong (lyrics drift further and
+    // further). Asked for by the UI, or when the file is known to be odd.
+    if strategy == Strategy::Direct && kind == MediaKind::Audio && (precise.unwrap_or(false) || router::odd_timing(&p, &probe)) {
+        strategy = Strategy::AudioTranscode;
+    }
     let (url, base_offset) = match strategy {
         Strategy::Direct => (state.server.file_url(&p), 0.0),
         Strategy::AudioTranscode => {
@@ -490,6 +496,13 @@ pub fn set_background_prefs(state: State<'_, AppState>, run_in_background: bool,
     state.tray.set_prefs(run_in_background, show_title, private_mode);
 }
 
+// ---------------------------------------------------------------- desktop lyrics
+
+#[tauri::command]
+pub fn desktop_lyrics_set(app: AppHandle, show: bool) -> AppResult<()> {
+    crate::desktop_lyrics::set_visible(&app, show).map_err(|e| AppError::msg(e.to_string()))
+}
+
 // ---------------------------------------------------------------- weather theme
 
 #[tauri::command]
@@ -624,6 +637,88 @@ pub fn library_remove_tracks(app: AppHandle, state: State<'_, AppState>, paths: 
     state.media_lib.update(|l| l.remove_tracks(&paths))?;
     lib_changed(&app);
     Ok(())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrashResult {
+    pub trashed: Vec<String>,
+    pub failed: Vec<String>,
+    pub error: Option<String>,
+}
+
+/// Moves files to the Trash and drops the ones that went from the library.
+#[tauri::command]
+pub async fn library_trash_tracks(app: AppHandle, state: State<'_, AppState>, paths: Vec<String>) -> AppResult<TrashResult> {
+    let (trashed, failed, error) = tokio::task::spawn_blocking(move || {
+        let mut ok = Vec::new();
+        let mut failed = Vec::new();
+        let mut error = None;
+        for p in paths {
+            match crate::trash::trash(&p) {
+                Ok(()) => ok.push(p),
+                Err(e) => {
+                    error.get_or_insert(e);
+                    failed.push(p);
+                }
+            }
+        }
+        (ok, failed, error)
+    })
+    .await
+    .map_err(|e| AppError::msg(e.to_string()))?;
+    if !trashed.is_empty() {
+        state.media_lib.update(|l| {
+            l.remove_tracks(&trashed);
+            for pl in l.playlists.iter_mut() {
+                pl.items.retain(|i| !trashed.contains(i));
+            }
+        })?;
+        lib_changed(&app);
+    }
+    Ok(TrashResult { trashed, failed, error })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportFolderResult {
+    pub playlist_id: String,
+    pub name: String,
+    pub files: usize,
+}
+
+/// Adds every media file under `path` to the library and makes a playlist
+/// of them named after the folder.
+#[tauri::command]
+pub async fn library_import_folder(app: AppHandle, state: State<'_, AppState>, path: String) -> AppResult<ImportFolderResult> {
+    let root = path.clone();
+    let mut tracks = tokio::task::spawn_blocking(move || {
+        let known = std::collections::HashMap::new();
+        medialib::scan::scan(std::slice::from_ref(&root), &[], &known, &|_, _| {}).tracks
+    })
+    .await
+    .map_err(|e| AppError::msg(e.to_string()))?;
+    if tracks.is_empty() {
+        return Err(AppError::msg("这个文件夹里没有可以播放的音乐或视频"));
+    }
+    tracks.sort_by(|a, b| natord::compare(&a.path, &b.path));
+    for t in tracks.iter_mut() {
+        t.source = Source::Added;
+    }
+    let items: Vec<String> = tracks.iter().map(|t| t.path.clone()).collect();
+    let base = std::path::Path::new(&path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "导入的文件夹".into());
+    let files = items.len();
+    let (playlist_id, name) = state.media_lib.update(|l| {
+        l.add_files(tracks);
+        let name = medialib::unique_playlist_name(l, &base);
+        (l.create_playlist(&name, items), name)
+    })?;
+    lib_changed(&app);
+    Ok(ImportFolderResult { playlist_id, name, files })
 }
 
 /// Counts a play; files outside the library are recorded as "played".

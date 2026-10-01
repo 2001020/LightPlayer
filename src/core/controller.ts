@@ -3,8 +3,9 @@
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { engine } from "./player/engine";
 import { startWeather } from "./weather/service";
+import { startDesktopLyrics } from "./desktopLyrics";
 import { parseLyrics, serializeLrc, type Lyrics, type LyricLine } from "./lyrics/lrc";
-import { nextIndex, nextMode, prevIndex } from "./playlist/queue";
+import { moveItem, nextIndex, nextMode, prevIndex, removeItem } from "./playlist/queue";
 import {
   api,
   AUDIO_EXTS,
@@ -21,6 +22,7 @@ import {
   type Caps,
   type DownloadProgress,
   type LyricsOrigin,
+  type OpenedMedia,
   type MediaControlEvent,
   type MediaEntry,
   type MediaKind,
@@ -107,6 +109,63 @@ export function playNext(entries: MediaEntry[]) {
   insertIntoQueue(entries, true);
 }
 
+// ------------------------------------------------------------------ precise timing
+
+const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+
+/**
+ * Some downloaded files (VBR MP3 without a seek table, odd FLAC) make WebKit
+ * run a clock that drifts from the real audio, so lyrics get further and
+ * further ahead. Such files report a duration that disagrees with ffprobe;
+ * they are then played through an ffmpeg-decoded copy instead.
+ */
+async function checkTiming(media: OpenedMedia) {
+  const probed = media.duration ?? 0;
+  if (probed < 20 || settings().precisePaths.includes(media.path)) return;
+  for (let i = 0; i < 40 && !(engine.duration > 0); i++) await sleep(100);
+  if (engine.media?.path !== media.path) return;
+  const actual = engine.duration;
+  if (!(actual > 0) || !isFinite(actual)) return;
+  if (Math.abs(actual - probed) > Math.max(1.5, probed * 0.01)) {
+    console.warn(`timing mismatch for ${media.path}: webkit ${actual.toFixed(2)}s, ffprobe ${probed.toFixed(2)}s`);
+    await setPreciseTiming(media.path, true, true);
+  }
+}
+
+/** Plays a file through an exact-timing ffmpeg copy (or back to direct playback). */
+export async function setPreciseTiming(path: string, on: boolean, auto = false) {
+  const list = settings().precisePaths.filter((p) => p !== path);
+  useSettings.getState().set({ precisePaths: on ? [path, ...list].slice(0, 300) : list });
+  const pl = usePlaylist.getState();
+  if (usePlayer.getState().media?.path !== path || pl.items[pl.index]?.path !== path) return;
+  const at = engine.position;
+  const wasPlaying = !engine.paused;
+  if (on) toast(auto ? "这首歌的文件计时不标准，已切换为精确计时播放，歌词会对得更准" : "正在切换为精确计时播放…", "info", 5000);
+  await playIndex(pl.index, wasPlaying, { at });
+  if (!on) toast("已恢复普通播放");
+}
+
+/** Drag-and-drop reordering in the play queue. */
+export function moveQueueItem(from: number, to: number) {
+  const pl = usePlaylist.getState();
+  const r = moveItem(pl.items, pl.index, from, to);
+  if (r.items === pl.items) return;
+  // Shuffle order and history refer to old positions; start them afresh.
+  usePlaylist.setState({ items: r.items, index: r.index, order: [], history: [] });
+}
+
+/** Takes an item out of the play queue (the file itself is untouched). */
+export async function removeQueueItem(at: number) {
+  const pl = usePlaylist.getState();
+  if (pl.items.length <= 1) {
+    toast("播放列表中至少要保留一项");
+    return;
+  }
+  const r = removeItem(pl.items, pl.index, at);
+  usePlaylist.setState({ items: r.items, index: r.removedCurrent ? -1 : r.index, order: [], history: [] });
+  if (r.removedCurrent) await playIndex(r.index, !engine.paused);
+}
+
 /** Appends entries to the end of the queue. */
 export function enqueue(entries: MediaEntry[]) {
   insertIntoQueue(entries, false);
@@ -151,7 +210,7 @@ export async function openWithDialog() {
   if (typeof res === "string") await openFile(res);
 }
 
-export async function playIndex(index: number, autoplay = true) {
+export async function playIndex(index: number, autoplay = true, reload?: { at: number }) {
   const pl = usePlaylist.getState();
   const entry = pl.items[index];
   if (!entry) return;
@@ -164,26 +223,29 @@ export async function playIndex(index: number, autoplay = true) {
   usePlayer.setState({ loading: true, error: null, abLoop: { a: null, b: null } });
   caps ??= detectCaps();
   try {
-    const media = await api.openMedia(entry.path, caps);
+    const media = await api.openMedia(entry.path, caps, settings().precisePaths.includes(entry.path));
     // Ignore stale results if the user skipped again in the meantime.
     if (usePlaylist.getState().items[usePlaylist.getState().index]?.path !== entry.path) return;
     const st = settings();
-    let startAt = 0;
+    let startAt = reload?.at ?? 0;
     const saved = st.positions[media.path];
     const dur = media.duration ?? 0;
-    if (st.resume && saved && saved > 10 && (!dur || saved < dur - 10)) {
+    if (!reload && st.resume && saved && saved > 10 && (!dur || saved < dur - 10)) {
       startAt = saved;
       toast(`已从上次位置 ${Math.floor(saved / 60)}:${String(Math.floor(saved % 60)).padStart(2, "0")} 继续播放`);
     }
     usePlayer.setState({ media, loading: false, duration: dur, position: startAt });
-    if (!st.privateMode) useSettings.getState().addRecent(media.path);
+    if (!st.privateMode && !reload) useSettings.getState().addRecent(media.path);
     if (media.kind === "video" && useUI.getState().page === "lyrics") useUI.setState({ page: "player" });
     await engine.load(media, startAt, autoplay);
-    void loadLyrics(media.path);
-    setupSubtitles();
+    if (!reload) {
+      void loadLyrics(media.path);
+      setupSubtitles();
+    }
     void updateNowPlaying();
     void updateDynamicAccent();
-    if (!st.privateMode && (isTauri || media.path.startsWith("browser:"))) {
+    if (media.kind === "audio" && media.strategy === "direct") void checkTiming(media);
+    if (!reload && !st.privateMode && (isTauri || media.path.startsWith("browser:"))) {
       void api.libraryRecordPlay(media.path, st.libraryRecordPlays).catch(() => {});
     }
   } catch (e) {
@@ -907,6 +969,7 @@ export async function init() {
   });
 
   startWeather();
+  void startDesktopLyrics();
 
   await on<AsrProgressEvent>("asr://progress", onAsrProgress);
   await on<AsrDone>("asr://done", onAsrDone);

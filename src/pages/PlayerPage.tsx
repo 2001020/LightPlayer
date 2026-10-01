@@ -1,9 +1,9 @@
-import { useEffect, useRef, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import * as C from "../core/controller";
 import { engine } from "../core/player/engine";
 import { findActiveCue, findLineIndex } from "../core/lyrics/lrc";
 import { Icon } from "../components/Icon";
-import { PlaylistPanel } from "../components/PlaylistPanel";
+import { PlaylistPanel, togglePlaylist, usePlaylistLayout, usePlaylistShown } from "../components/PlaylistPanel";
 import { tip } from "../components/Tooltip";
 import { toggleFullscreen } from "../components/TransportBar";
 import { basename } from "../lib/format";
@@ -55,19 +55,49 @@ function EmptyState() {
   );
 }
 
+interface PeekLine {
+  key: string;
+  cur: string;
+  next: string;
+  leaving: boolean;
+}
+
+/**
+ * Current and next lyric line. The box has a fixed size so changing lines
+ * never moves the cover or the song info; lines slide and fade in and out.
+ */
 function LyricPeek() {
   const lyrics = useLyrics((s) => s.lyrics);
   const position = usePlayer((s) => s.position);
   const media = usePlayer((s) => s.media);
   const offset = useSettings((s) => (media ? s.lyricOffsets[media.path] ?? 0 : 0));
-  if (!lyrics?.synced) return null;
-  const i = findLineIndex(lyrics.lines, position + offset);
-  const cur = lyrics.lines[i];
-  const nxt = lyrics.lines[i + 1];
+  const synced = !!lyrics?.synced;
+  const i = synced ? findLineIndex(lyrics!.lines, position + offset) : -1;
+  const cur = synced ? lyrics!.lines[i]?.text || "♪" : "";
+  const next = synced ? lyrics!.lines[i + 1]?.text ?? "" : "";
+  const key = `${media?.path}|${i}`;
+  const [lines, setLines] = useState<PeekLine[]>([]);
+  useEffect(() => {
+    if (!synced) {
+      setLines([]);
+      return;
+    }
+    setLines((prev) => {
+      if (prev[0]?.key === key) return prev;
+      return [{ key, cur, next, leaving: false }, ...prev.filter((l) => !l.leaving).slice(0, 1).map((l) => ({ ...l, leaving: true }))];
+    });
+    const t = window.setTimeout(() => setLines((prev) => prev.filter((l) => !l.leaving)), 450);
+    return () => clearTimeout(t);
+  }, [key, cur, next, synced]);
+  if (!synced) return null;
   return (
     <div className="lyric-peek" onClick={() => useUI.setState({ page: "lyrics" })}>
-      {cur?.text || "♪"}
-      {nxt && <span className="next">{nxt.text}</span>}
+      {lines.map((l) => (
+        <div key={l.key} className={`peek-line ${l.leaving ? "out" : "in"}`}>
+          <span className="cur">{l.cur}</span>
+          {l.next && <span className="next">{l.next}</span>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -178,7 +208,7 @@ function PlaylistHandle() {
   return (
     <button
       className="playlist-handle"
-      onClick={() => useSettings.getState().set({ playlistOpen: true })}
+      onClick={() => togglePlaylist(true)}
       {...tip("显示播放列表")}
     >
       <Icon name="chevronLeft" size={16} />
@@ -191,8 +221,9 @@ function PlaylistHandle() {
 export function PlayerPage() {
   const media = usePlayer((s) => s.media);
   const loading = usePlayer((s) => s.loading);
-  const playlistOpen = useSettings((s) => s.playlistOpen);
-  const showList = !!media && playlistOpen;
+  const layout = usePlaylistLayout();
+  const shown = usePlaylistShown();
+  const showList = !!media && shown && layout === "side";
   return (
     <div className={`player-page ${showList ? "with-list" : ""}`}>
       <div className={`stage ${media?.kind === "video" ? "is-video" : ""}`}>
@@ -205,7 +236,7 @@ export function PlayerPage() {
         )}
         {media?.kind === "audio" && <AudioNowPlaying />}
         {media?.kind === "video" && <VideoStage />}
-        {media && !playlistOpen && <PlaylistHandle />}
+        {media && !shown && <PlaylistHandle />}
       </div>
       {showList && <PlaylistPanel />}
     </div>

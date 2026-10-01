@@ -55,6 +55,17 @@ fn mp4_audio_ok(codec: &str) -> bool {
     matches!(codec, "aac" | "mp3" | "alac" | "ac3" | "eac3")
 }
 
+/// Files WebKit plays with a drifting clock: FLAC with an ID3 tag in front of
+/// the stream (common for downloads from music services).
+pub fn odd_timing(path: &std::path::Path, probe: &Probe) -> bool {
+    if !has(probe.format.format_name.as_str(), "flac") {
+        return false;
+    }
+    let mut head = [0u8; 3];
+    use std::io::Read;
+    std::fs::File::open(path).and_then(|mut f| f.read_exact(&mut head)).is_ok() && &head == b"ID3"
+}
+
 pub fn decide(kind: MediaKind, probe: &Probe, ext: &str, caps: &Caps) -> Strategy {
     let fmt = probe.format.format_name.as_str();
     let video = probe.video();

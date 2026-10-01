@@ -263,6 +263,15 @@ impl LibraryStore {
 }
 
 /// Media files among `paths`; directories are returned separately.
+/// `base`, or "base 2", "base 3"… when a playlist already has that name.
+pub fn unique_playlist_name(l: &Library, base: &str) -> String {
+    let taken = |n: &str| l.playlists.iter().any(|p| p.name == n);
+    if !taken(base) {
+        return base.to_string();
+    }
+    (2..).map(|i| format!("{base} {i}")).find(|n| !taken(n)).unwrap()
+}
+
 pub fn split_paths(paths: &[String]) -> (Vec<PathBuf>, Vec<String>) {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
@@ -386,5 +395,15 @@ mod tests {
         assert_eq!(again.playlists[0].items, vec!["/b".to_string(), "/a".to_string()]);
         store.update(|l| l.delete_playlist(&id)).unwrap();
         assert!(LibraryStore::load(dir.path()).snapshot().playlists.is_empty());
+    }
+
+    #[test]
+    fn unique_playlist_names() {
+        let mut l = Library::default();
+        assert_eq!(unique_playlist_name(&l, "周杰伦"), "周杰伦");
+        l.create_playlist("周杰伦", vec![]);
+        assert_eq!(unique_playlist_name(&l, "周杰伦"), "周杰伦 2");
+        l.create_playlist("周杰伦 2", vec![]);
+        assert_eq!(unique_playlist_name(&l, "周杰伦"), "周杰伦 3");
     }
 }

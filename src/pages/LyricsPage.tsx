@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { ColorChoices } from "../components/ColorChoices";
 import * as C from "../core/controller";
 import { Icon } from "../components/Icon";
 import { LyricsView } from "../components/LyricsView";
@@ -86,7 +87,30 @@ export function AsrProgressCard({ path }: { path: string }) {
 }
 
 /** Where the lyrics come from: rescan, upload, recognise again, remove AI lyrics. */
+function HighlightMenu() {
+  const color = useSettings((s) => s.lyricHighlight);
+  return (
+    <Popover
+      down
+      trigger={(open, t) => (
+        <button className={`icon-btn ${open ? "active" : ""}`} onClick={t} {...tip("歌词高亮颜色")}>
+          <span className="hl-dot" style={{ background: color ?? "var(--accent)" }} />
+        </button>
+      )}
+    >
+      {() => (
+        <div className="font-menu">
+          <div className="label">当前歌词高亮颜色</div>
+          <ColorChoices value={color} onChange={(lyricHighlight) => useSettings.getState().set({ lyricHighlight })} allowDefault="跟随主题色" />
+        </div>
+      )}
+    </Popover>
+  );
+}
+
 function LyricsSourceMenu({ isAi, busy }: { isAi: boolean; busy: boolean }) {
+  const path = usePlayer((s) => s.media?.path);
+  const precise = useSettings((s) => !!path && s.precisePaths.includes(path));
   return (
     <Popover
       down
@@ -113,6 +137,15 @@ function LyricsSourceMenu({ isAi, busy }: { isAi: boolean; busy: boolean }) {
               <div className="sep" />
               <div className="item danger" onClick={() => (close(), void C.removeAiLyrics())}>
                 <Icon name="trash" size={15} /> 移除 AI 歌词
+              </div>
+            </>
+          )}
+          {path && (
+            <>
+              <div className="sep" />
+              <div className="label">播放计时</div>
+              <div className="item" onClick={() => (close(), void C.setPreciseTiming(path, !precise))}>
+                <Icon name="timer" size={15} /> {precise ? "恢复普通播放" : "歌词越来越快或越慢？改用精确计时"}
               </div>
             </>
           )}
@@ -145,7 +178,7 @@ export function LyricsPage() {
   const nudge = (d: number) => s.setLyricOffset(media.path, offset + d);
 
   return (
-    <div className="lyrics-page">
+    <div className="lyrics-page" style={s.lyricHighlight ? ({ "--lyric-hl": s.lyricHighlight } as React.CSSProperties) : undefined}>
       <div className="lyrics-head">
         <div>
           <button className="btn ghost" onClick={() => useUI.setState({ page: "player" })} {...tip("返回播放页", "Esc")}>
@@ -153,7 +186,6 @@ export function LyricsPage() {
           </button>
         </div>
         <div className="who">
-          {meta.cover ? <img src={meta.cover} alt="" /> : <div className="ph" />}
           <div style={{ minWidth: 0 }}>
             <div className="t">{meta.title || media.name}</div>
             {meta.artist && <div className="a">{meta.artist}</div>}
@@ -172,6 +204,7 @@ export function LyricsPage() {
               </button>
             </span>
           )}
+          <HighlightMenu />
           <FontSizeMenu />
           <button className="icon-btn" onClick={C.importLyricsWithDialog} {...tip("上传歌词文件")}>
             <Icon name="upload" />

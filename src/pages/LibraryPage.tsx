@@ -3,7 +3,16 @@
 
 import { useEffect, useMemo } from "react";
 import * as C from "../core/controller";
-import { deletePlaylist, newPlaylist, openTrackMenu, playTracks, renamePlaylist, shuffleTracks } from "../core/library/actions";
+import {
+  deletePlaylist,
+  importFolderAsPlaylist,
+  newPlaylist,
+  openAlbumMenu,
+  openTrackMenu,
+  playTracks,
+  renamePlaylist,
+  shuffleTracks,
+} from "../core/library/actions";
 import { derive, filterTracks, playlistTracks, UNKNOWN_ALBUM, UNKNOWN_ARTIST, type Album, type Artist } from "../core/library/views";
 import { Icon, type IconName } from "../components/Icon";
 import { Thumb, TrackTable } from "../components/TrackTable";
@@ -71,9 +80,14 @@ function Sidebar() {
       </div>
       <div className="lib-group">
         <span>歌单</span>
-        <button className="icon-btn small" onClick={() => void newPlaylist().then((id) => id && go({ view: "playlist", id }))} {...tip("新建歌单")}>
-          <Icon name="plus" size={16} />
-        </button>
+        <div className="acts">
+          <button className="icon-btn small" onClick={() => void importFolderAsPlaylist().then((id) => id && go({ view: "playlist", id }))} {...tip("导入文件夹为歌单")}>
+            <Icon name="folderPlus" size={16} />
+          </button>
+          <button className="icon-btn small" onClick={() => void newPlaylist().then((id) => id && go({ view: "playlist", id }))} {...tip("新建歌单")}>
+            <Icon name="plus" size={16} />
+          </button>
+        </div>
       </div>
       <div className="lib-nav lib-playlists">
         {playlists.map((p) => (
@@ -87,7 +101,14 @@ function Sidebar() {
             <span className="n">{p.items.length}</span>
           </button>
         ))}
-        {!playlists.length && <div className="lib-hint">还没有歌单</div>}
+        {!playlists.length && (
+          <div className="lib-hint">
+            还没有歌单。
+            <button className="link" onClick={() => void importFolderAsPlaylist().then((id) => id && go({ view: "playlist", id }))}>
+              导入文件夹为歌单
+            </button>
+          </div>
+        )}
       </div>
       <div className="lib-side-foot">
         {progress && (
@@ -203,7 +224,7 @@ function NoMatch() {
 
 function AlbumCard({ a, onOpen }: { a: Album; onOpen: () => void }) {
   return (
-    <div className="lib-card" onClick={onOpen} onContextMenu={(e) => openTrackMenu(e, a.tracks[0], { queue: a.tracks, source: `专辑《${a.title}》` })}>
+    <div className="lib-card" onClick={onOpen} onContextMenu={(e) => openAlbumMenu(e, a, onOpen)}>
       <div className="art">
         <Thumb path={a.tracks[0].path} size={256} icon="album" />
         <button
@@ -275,6 +296,9 @@ function AlbumDetail({ album, from }: { album: Album | undefined; from: "albums"
             </button>
             <button className="btn" onClick={() => shuffleTracks(album.tracks, source)}>
               <Icon name="shuffle" size={15} /> 随机播放
+            </button>
+            <button className="icon-btn" onClick={(e) => openAlbumMenu(e, album, () => {})} {...tip("更多：移除专辑、移到废纸篓等")}>
+              <Icon name="more" />
             </button>
           </div>
         </div>

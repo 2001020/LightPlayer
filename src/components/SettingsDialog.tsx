@@ -6,6 +6,7 @@ import { api, isTauri, localFileUrl, pickBrowserFiles, type CityHit } from "../l
 import { useWeather } from "../stores/weather";
 import { useUI, type UIState } from "../stores/player";
 import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZE_MIN } from "../stores/settings";
+import { ColorChoices } from "./ColorChoices";
 import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
 
@@ -298,6 +299,9 @@ function LyricsSettings() {
       </Row>
       <Row label="显示翻译" hint="同一时间点的第二行歌词作为翻译显示">
         <Switch on={s.showTranslation} onChange={(showTranslation) => s.set({ showTranslation })} />
+      </Row>
+      <Row label="当前歌词高亮颜色" hint="歌词页中正在唱的那一行">
+        <ColorChoices value={s.lyricHighlight} onChange={(lyricHighlight) => s.set({ lyricHighlight })} allowDefault="跟随主题色" />
       </Row>
       <Row label="逐字高亮（卡拉 OK）" hint="歌词包含逐字时间时生效">
         <Switch on={s.karaoke} onChange={(karaoke) => s.set({ karaoke })} />

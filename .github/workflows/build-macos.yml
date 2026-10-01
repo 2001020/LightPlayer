@@ -8,9 +8,19 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Publish a prerelease with this tag (e.g. v1.0.0); leave empty to just build"
+        description: "Publish a release with this tag (e.g. v1.0.0); leave empty to just build"
         required: false
         default: ""
+      prerelease:
+        description: "Mark the release as a prerelease"
+        type: boolean
+        required: false
+        default: true
+      replace:
+        description: "Delete an existing release and tag with the same name first"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   # Release runs get their own group so a later push can't cancel them.
@@ -160,14 +170,25 @@ jobs:
           ver="${TAG#v}"
           mv LightPlayer.app.zip "LightPlayer_${ver}_aarch64.app.zip"
           ls -la
+      - name: Replace an existing release
+        if: github.event_name == 'workflow_dispatch' && inputs.replace
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          fi
+          # The tag may exist without a release.
+          git push origin ":refs/tags/$TAG" 2>/dev/null || true
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
-          name: ${{ format('LightPlayer {0} 预发布', env.TAG) }}
+          name: ${{ (github.event_name == 'workflow_dispatch' && !inputs.prerelease) && format('LightPlayer {0}', env.TAG) || format('LightPlayer {0} 预发布', env.TAG) }}
           body_path: docs/releases/${{ env.TAG }}.md
-          # Published as prereleases until builds are notarized by Apple.
-          prerelease: true
+          # Tag pushes stay prereleases; a manual run can publish a full release.
+          prerelease: ${{ github.event_name != 'workflow_dispatch' || inputs.prerelease }}
+          make_latest: ${{ (github.event_name == 'workflow_dispatch' && !inputs.prerelease) && 'true' || 'false' }}
           files: |
             dist-release/*.dmg
             dist-release/*.zip

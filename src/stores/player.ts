@@ -100,6 +100,8 @@ export interface UIState {
   page: Page;
   overlay: Overlay;
   settingsTab: "appearance" | "playback" | "lyrics" | "asr" | "shortcuts" | "about";
+  /** The floating play queue (narrow windows). */
+  playlistFloat: boolean;
   fullscreen: boolean;
   toasts: Toast[];
   dragOver: boolean;
@@ -111,6 +113,7 @@ export const useUI = create<UIState>(() => ({
   page: "library",
   overlay: null,
   settingsTab: "appearance",
+  playlistFloat: false,
   fullscreen: false,
   toasts: [],
   dragOver: false,

@@ -68,3 +68,25 @@ export function prevIndex(q: QueueState): { index: number; history: number[] } {
   }
   return { index: (index - 1 + length) % length, history: q.history };
 }
+
+/** Moves the item at `from` to `to`; the current index follows the playing item. */
+export function moveItem<T>(items: T[], index: number, from: number, to: number): { items: T[]; index: number } {
+  if (from === to || from < 0 || from >= items.length || to < 0 || to >= items.length) return { items, index };
+  const current = items[index];
+  const out = items.slice();
+  const [moved] = out.splice(from, 1);
+  out.splice(to, 0, moved);
+  return { items: out, index: index >= 0 ? out.indexOf(current) : index };
+}
+
+/**
+ * Removes the item at `at`. When it is the playing one, `index` points at the
+ * item that took its place (the next one, or the new last item).
+ */
+export function removeItem<T>(items: T[], index: number, at: number): { items: T[]; index: number; removedCurrent: boolean } {
+  if (at < 0 || at >= items.length) return { items, index, removedCurrent: false };
+  const out = items.slice();
+  out.splice(at, 1);
+  if (at === index) return { items: out, index: Math.min(at, out.length - 1), removedCurrent: true };
+  return { items: out, index: at < index ? index - 1 : index, removedCurrent: false };
+}

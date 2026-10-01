@@ -4,7 +4,10 @@ import { AsrSetupDialog } from "./components/AsrSetupDialog";
 import { AsrTasks, AsrTasksButton } from "./components/AsrTasks";
 import { ContextMenuHost } from "./components/ContextMenu";
 import { LibraryFolders } from "./components/LibraryFolders";
+import { PlaylistPanel, usePlaylistLayout, usePlaylistShown } from "./components/PlaylistPanel";
 import { PromptHost } from "./components/Prompt";
+import { DesktopLyricsOverlay } from "./components/DesktopLyrics";
+import { isTauri } from "./lib/ipc";
 import { Icon } from "./components/Icon";
 import { LyricsEditor } from "./components/LyricsEditor";
 import { SettingsDialog } from "./components/SettingsDialog";
@@ -57,6 +60,10 @@ export default function App() {
 
   const showLyrics = page === "lyrics" && media?.kind === "audio";
   const showLibrary = page === "library" && !immersive;
+  const listLayout = usePlaylistLayout();
+  const listShown = usePlaylistShown();
+  const listBeside = showLyrics && listShown && listLayout === "side";
+  const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive;
 
   return (
     <div className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""}`}>
@@ -95,7 +102,10 @@ export default function App() {
       </header>
       <main className="main">
         {showLyrics ? (
-          <LyricsPage />
+          <div className={`lyrics-host ${listBeside ? "with-list" : ""}`}>
+            <LyricsPage />
+            {listBeside && <PlaylistPanel />}
+          </div>
         ) : (
           // Kept mounted (just hidden) under the library so a playing video keeps playing.
           <div className={`page-host ${showLibrary ? "hidden" : ""}`}>
@@ -103,6 +113,7 @@ export default function App() {
           </div>
         )}
         {showLibrary && <LibraryPage />}
+        {listFloating && <PlaylistPanel floating />}
       </main>
       {immersive && (
         <div className="immersive-top">
@@ -116,6 +127,7 @@ export default function App() {
       {overlay === "asrSetup" && <AsrSetupDialog />}
       {overlay === "asrTasks" && <AsrTasks />}
       {overlay === "libraryFolders" && <LibraryFolders />}
+      {!isTauri && <DesktopLyricsOverlay />}
       <PromptHost />
       <ContextMenuHost />
       <Toasts />

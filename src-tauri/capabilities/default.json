@@ -1,9 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Main window capabilities",
+  "description": "Main and desktop lyrics window capabilities",
   "windows": [
-    "main"
+    "main",
+    "desktop-lyrics"
   ],
   "permissions": [
     "core:default",
@@ -15,6 +16,10 @@
     "core:window:allow-set-title",
     "dialog:default",
     "opener:default",
-    "opener:allow-reveal-item-in-dir"
+    "opener:allow-reveal-item-in-dir",
+    "core:window:allow-set-position",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-close"
   ]
 }
