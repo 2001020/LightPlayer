@@ -5,6 +5,8 @@
 // melts, hail bounces.
 
 import type { Scene } from "../../core/weather/scene";
+import { cloudKey, cloudTexture, peekCloud } from "./cloudBank";
+import { cloudKindsFor, cloudPalette, type CloudJob } from "./cloudNoise";
 
 type Kind = "rain" | "snow" | "hail";
 
@@ -69,39 +71,6 @@ function softDot(rgb: string): HTMLCanvasElement {
   });
 }
 
-function cloudSprite(rgb: [number, number, number], dark: number): HTMLCanvasElement {
-  const W = 460;
-  const H = 210;
-  const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
-  const g = c.getContext("2d")!;
-  const [r, gr, b] = rgb;
-  const puffs = 9 + Math.floor(Math.random() * 6);
-  for (let i = 0; i < puffs; i++) {
-    const cx = rand(0.18, 0.82) * W;
-    const mid = 1 - Math.abs(cx / W - 0.5) * 1.4; // taller in the middle
-    const rad = rand(0.12, 0.2) * W * (0.6 + mid * 0.5);
-    const cy = H * 0.68 - mid * rand(0.1, 0.22) * H;
-    const grad = g.createRadialGradient(cx, cy, 0, cx, cy, rad);
-    grad.addColorStop(0, `rgba(${r},${gr},${b},0.9)`);
-    grad.addColorStop(0.55, `rgba(${r},${gr},${b},0.55)`);
-    grad.addColorStop(1, `rgba(${r},${gr},${b},0)`);
-    g.fillStyle = grad;
-    g.fillRect(0, 0, W, H);
-  }
-  // Shaded underside.
-  if (dark > 0) {
-    g.globalCompositeOperation = "source-atop";
-    const shade = g.createLinearGradient(0, H * 0.35, 0, H);
-    shade.addColorStop(0, "rgba(40,48,66,0)");
-    shade.addColorStop(1, `rgba(40,48,66,${dark})`);
-    g.fillStyle = shade;
-    g.fillRect(0, 0, W, H);
-  }
-  return c;
-}
-
 function fogSprite(): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = 512;
@@ -119,13 +88,43 @@ function fogSprite(): HTMLCanvasElement {
   return c;
 }
 
+/** One generated texture and when it became available. */
+interface Tex {
+  key: string;
+  img: HTMLCanvasElement | null;
+  readyAt: number;
+}
+
 interface Cloud {
-  img: HTMLCanvasElement;
+  /** Two textures of the same shape with different detail, cross-faded slowly. */
+  a: Tex;
+  b: Tex;
   x: number;
   y: number;
-  scale: number;
+  w: number;
+  h: number;
   speed: number;
   alpha: number;
+  flip: boolean;
+  phase: number;
+  period: number;
+}
+
+/** A tileable sheet of stratus across the top of the sky. */
+interface Deck {
+  tex: Tex;
+  x: number;
+  y: number;
+  h: number;
+  w: number;
+  speed: number;
+  alpha: number;
+}
+
+function texture(job: CloudJob, t: number): Tex {
+  const key = cloudKey(job);
+  const img = cloudTexture(job, key);
+  return { key, img, readyAt: img ? t - 10 : 0 };
 }
 
 export class WeatherRenderer {
@@ -139,6 +138,9 @@ export class WeatherRenderer {
   private near: P[] = [];
   private bits: Bit[] = [];
   private clouds: Cloud[] = [];
+  private decks: Deck[] = [];
+  /** No animation: draw everything fully faded in. */
+  private still = false;
   private stars: { x: number; y: number; r: number; a: number; f: number; p: number }[] = [];
   private fog: { y: number; hgt: number; x: number; speed: number; a: number }[] = [];
   private ledges: LedgeRect[] = [];
@@ -278,46 +280,102 @@ export class WeatherRenderer {
   private buildClouds() {
     const s = this.scene;
     this.clouds = [];
+    this.decks = [];
     if (s.clouds <= 0.01) return;
-    let rgb: [number, number, number];
-    let dark = 0;
-    switch (s.kind) {
-      case "rain":
-      case "drizzle":
-      case "sleet":
-        rgb = [184, 194, 206];
-        dark = 0.35;
-        break;
-      case "heavyRain":
-      case "thunder":
-      case "hail":
-        rgb = [128, 136, 154];
-        dark = 0.5;
-        break;
-      case "snow":
-        rgb = [236, 241, 248];
-        dark = 0.15;
-        break;
-      default:
-        rgb = s.phase === "dawn" || s.phase === "dusk" ? [255, 226, 212] : [252, 253, 255];
-        dark = s.kind === "overcast" ? 0.25 : 0.08;
-    }
-    if (this.night) rgb = rgb.map((v) => Math.round(v * 0.42 + 18)) as [number, number, number];
-    const imgs = Array.from({ length: 5 }, () => cloudSprite(rgb, dark));
-    const count = Math.max(3, Math.round(s.clouds * 15));
+    const { puffs, decks } = cloudKindsFor(s.kind);
+    const palette = cloudPalette(s.kind, s.phase);
+    const cb = puffs === "cumulonimbus";
+    const [tw, th] = cb ? [512, 288] : [448, 224];
+    const t = this.t;
     const scaleBase = Math.min(1.7, Math.max(0.75, this.w / 1280));
+    const count = cb ? 3 + Math.round(s.clouds * 3) : Math.max(3, Math.round(s.clouds * (decks ? 8 : 13)));
+    const shapes = 5;
     for (let i = 0; i < count; i++) {
       const layer = i % 3;
+      const shape = (i % shapes) + 1 + (cb ? 100 : 0);
+      const job = (detail: number): CloudJob => ({ kind: puffs, palette, shapeSeed: shape, detailSeed: shape * 31 + detail, w: tw, h: th });
+      const w = tw * scaleBase * (0.8 + layer * 0.38) * rand(0.85, 1.2) * (cb ? 1.35 : 1);
+      const h = (w * th) / tw;
       this.clouds.push({
-        img: imgs[i % imgs.length],
-        x: rand(-0.3, 1.1) * this.w,
-        y: rand(-0.12, 0.12 + 0.3 * s.clouds) * this.h,
-        scale: scaleBase * (0.75 + layer * 0.35) * rand(0.85, 1.3),
+        a: texture(job(1), t),
+        b: texture(job(2), t),
+        x: rand(-0.3, 1.05) * this.w,
+        y: rand(-0.12, 0.08 + 0.3 * s.clouds) * this.h - h * 0.2 + (cb ? this.h * 0.05 : 0),
+        w,
+        h,
         speed: (4 + layer * 6) * (1 + Math.abs(s.wind) * 2.2) * (s.wind < 0 ? -1 : 1),
-        alpha: Math.min(1, (s.kind === "partly" ? 0.75 : 0.62) + layer * 0.14),
+        alpha: Math.min(1, (decks ? 0.78 : 0.85) + layer * 0.07) * (this.night ? 0.9 : 1),
+        flip: Math.random() < 0.5,
+        phase: rand(0, Math.PI * 2),
+        period: rand(40, 80),
       });
     }
-    this.clouds.sort((a, b) => a.scale - b.scale);
+    // Far clouds first.
+    this.clouds.sort((a, b) => a.w - b.w);
+    for (let d = 0; d < decks; d++) {
+      const job: CloudJob = { kind: "stratus", palette, shapeSeed: 0, detailSeed: 200 + d, w: 768, h: 192 };
+      const light = s.kind === "cloudy" || s.kind === "fog";
+      this.decks.push({
+        tex: texture(job, t),
+        x: rand(0, this.w),
+        y: (d ? 0.06 : -0.08) * this.h,
+        h: this.h * (d ? 0.48 : 0.42) * (cb ? 1.15 : 1),
+        w: this.w * 1.3,
+        speed: (3 + d * 5) * (1 + Math.abs(s.wind) * 2) * (s.wind < 0 ? -1 : 1),
+        alpha: (d ? 0.8 : 0.95) * (light ? 0.5 : 1),
+      });
+    }
+  }
+
+  /** Fade-in factor for a texture (0 until generated). */
+  private shown(tex: Tex): number {
+    if (!tex.img) {
+      tex.img = peekCloud(tex.key);
+      if (!tex.img) return 0;
+      tex.readyAt = this.t;
+    }
+    return this.still ? 1 : Math.min(1, (this.t - tex.readyAt) / 0.8);
+  }
+
+  private drawClouds(dt: number, boost = 0) {
+    const { bg, w } = this;
+    // The lightning pass (boost) only re-lights the cloud puffs.
+    for (const d of boost ? [] : this.decks) {
+      const k = this.shown(d.tex);
+      d.x = (((d.x + d.speed * dt) % d.w) + d.w) % d.w;
+      if (!k || !d.tex.img) continue;
+      bg.globalAlpha = (boost || d.alpha) * k;
+      // Tileable: two copies side by side cover the window.
+      for (let x = d.x - d.w; x < w; x += d.w) bg.drawImage(d.tex.img, x, d.y, d.w, d.h);
+    }
+    for (const c of this.clouds) {
+      c.x += c.speed * dt;
+      if (c.speed > 0 && c.x > w + 40) c.x = -c.w - rand(0, 200);
+      if (c.speed < 0 && c.x < -c.w - 40) c.x = w + rand(0, 200);
+      const ka = this.shown(c.a);
+      if (!ka || !c.a.img) continue;
+      const kb = this.shown(c.b);
+      // Slowly morphing: the second texture fades in and out over the first.
+      const m = kb && !boost ? (0.5 + 0.5 * Math.sin((this.t * Math.PI * 2) / c.period + c.phase)) * kb : 0;
+      const alpha = (boost || c.alpha) * ka;
+      this.blit(c.a.img, c, alpha);
+      if (m > 0.01 && c.b.img) this.blit(c.b.img, c, alpha * m);
+    }
+    bg.globalAlpha = 1;
+  }
+
+  private blit(img: HTMLCanvasElement, c: Cloud, alpha: number) {
+    const { bg } = this;
+    bg.globalAlpha = alpha;
+    if (!c.flip) {
+      bg.drawImage(img, c.x, c.y, c.w, c.h);
+      return;
+    }
+    bg.save();
+    bg.translate(c.x + c.w, c.y);
+    bg.scale(-1, 1);
+    bg.drawImage(img, 0, 0, c.w, c.h);
+    bg.restore();
   }
 
   private buildStars() {
@@ -334,6 +392,7 @@ export class WeatherRenderer {
   /** Advances by `dt` seconds and draws. With `animate` false only the still parts are drawn. */
   frame(dt: number, animate: boolean) {
     this.t += dt;
+    this.still = !animate;
     const { bg, fg, dpr } = this;
     bg.setTransform(dpr, 0, 0, dpr, 0, 0);
     fg.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -369,25 +428,7 @@ export class WeatherRenderer {
       bg.fillStyle = g;
       bg.fillRect(0, 0, w, h);
     }
-    // Overcast skies get a heavy top band.
-    if (s.clouds > 0.7) {
-      const g = bg.createLinearGradient(0, 0, 0, h * 0.5);
-      const c = this.night ? "40,46,62" : s.kind === "thunder" || s.kind === "hail" || s.kind === "heavyRain" ? "70,76,92" : "150,160,174";
-      g.addColorStop(0, `rgba(${c},${0.55 * s.clouds})`);
-      g.addColorStop(1, `rgba(${c},0)`);
-      bg.fillStyle = g;
-      bg.fillRect(0, 0, w, h * 0.5);
-    }
-    // Clouds.
-    for (const c of this.clouds) {
-      c.x += c.speed * dt;
-      const cw = c.img.width * c.scale;
-      if (c.speed > 0 && c.x > w + 40) c.x = -cw - rand(0, 200);
-      if (c.speed < 0 && c.x < -cw - 40) c.x = w + rand(0, 200);
-      bg.globalAlpha = c.alpha;
-      bg.drawImage(c.img, c.x, c.y, cw, c.img.height * c.scale);
-    }
-    bg.globalAlpha = 1;
+    this.drawClouds(dt);
     // Fog.
     if (this.fog.length) {
       bg.fillStyle = `rgba(214,220,226,${0.12 + 0.12 * s.intensity})`;
@@ -707,8 +748,14 @@ export class WeatherRenderer {
     const e = this.t - this.flashAt;
     if (e > 0.9) return;
     const env = e < 0.07 ? 1 : e < 0.15 ? 0.25 : e < 0.24 ? 0.85 : Math.max(0, 1 - (e - 0.24) / 0.6) * 0.55;
-    bg.fillStyle = `rgba(222,230,255,${env * 0.42})`;
+    bg.fillStyle = `rgba(222,230,255,${env * 0.3})`;
     bg.fillRect(0, 0, w, h);
+    // The flash lights the clouds from inside.
+    if (env > 0.15) {
+      bg.globalCompositeOperation = "lighter";
+      this.drawClouds(0, env * 0.35);
+      bg.globalCompositeOperation = "source-over";
+    }
     fg.fillStyle = `rgba(255,255,255,${env * 0.08})`;
     fg.fillRect(0, 0, w, h);
     if (this.bolt) {

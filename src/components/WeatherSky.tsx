@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { skyColors, type Scene } from "../core/weather/scene";
+import { onCloudReady } from "./weather/cloudBank";
 import { WeatherRenderer, type LedgeRect } from "./weather/effects";
 
 /** Elements precipitation can land on (their top edge). */
@@ -98,6 +99,8 @@ export function WeatherSky({ scene, motion, paused }: { scene: Scene; motion: bo
       raf = requestAnimationFrame(draw);
     };
     wake();
+    // A still sky is drawn once; draw again as cloud textures arrive.
+    const offClouds = onCloudReady(() => !animate && wake());
     const onVis = () => document.visibilityState === "visible" && wake();
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("resize", wake);
@@ -105,6 +108,7 @@ export function WeatherSky({ scene, motion, paused }: { scene: Scene; motion: bo
       cancelAnimationFrame(raf);
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("resize", wake);
+      offClouds();
     };
   }, [motion, paused, broken, scene]);
 
