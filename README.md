@@ -6,7 +6,7 @@
 
 详细设计见 [docs/PLAN.md](docs/PLAN.md)。
 
-功能宣传片（Three.js + GLSL 实时渲染，中文版与英文版）见 [animation-pv/](animation-pv/)。
+功能宣传片（Three.js + GLSL 实时渲染，中文版与英文版）见 [animation-pv/](animation-pv/)，产品介绍网站见 [website/](website/)。
 
 ## 功能
 

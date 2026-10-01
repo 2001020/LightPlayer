@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>LightPlayer</title>
+    <meta name="description" content="LightPlayer 是一款为 Mac 打造的轻量多媒体播放器：几乎所有格式打开就能播，本地离线 AI 识别歌词，桌面歌词与天气主题。" data-i18n-attr="content:meta.description" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" href="../assets/icon.svg" />
+    <link rel="stylesheet" href="css/site.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main" data-i18n="nav.skip">跳到正文</a>
+
+    <header class="nav">
+      <div class="nav-in">
+        <a class="brand" href="#top" aria-label="LightPlayer">
+          <img src="../assets/icon.svg" alt="" width="26" height="26" />
+          <span>LightPlayer</span>
+        </a>
+        <nav class="nav-links" aria-label="页面导航" data-i18n-attr="aria-label:nav.label">
+          <a href="#formats" data-i18n="nav.formats">格式</a>
+          <a href="#lyrics" data-i18n="nav.lyrics">歌词</a>
+          <a href="#ai" data-i18n="nav.ai">AI 识别</a>
+          <a href="#weather" data-i18n="nav.weather">天气主题</a>
+          <a href="#video" data-i18n="nav.video">视频</a>
+          <a href="#keys" data-i18n="nav.keys">快捷键</a>
+        </nav>
+        <div class="nav-end">
+          <button class="lang" id="lang" type="button" aria-label="Switch to English" data-i18n-attr="aria-label:nav.langLabel"><span data-i18n="nav.lang">EN</span></button>
+          <a class="pill pill-sm" href="#download" data-i18n="nav.download">下载</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- hero -->
+      <section class="hero" id="top">
+        <div class="wrap hero-copy">
+          <img class="hero-icon" src="../assets/icon.svg" alt="" width="104" height="104" />
+          <h1 class="hero-name">LightPlayer</h1>
+          <p class="hero-tag grad" data-i18n="hero.tag">轻，而无所不能。</p>
+          <p class="hero-sub" data-i18n="hero.sub">一款为 Mac 打造的轻量多媒体播放器。几乎所有格式打开就能播，没有歌词时让它听一遍。</p>
+          <div class="cta">
+            <a class="pill" href="https://github.com/2001020/LightPlayer/releases/latest" data-i18n="hero.download">下载 1.1.0</a>
+            <a class="link-more" id="film-link" href="../animation-pv/zh.html" data-i18n="hero.film">观看宣传片</a>
+          </div>
+          <p class="fine" data-i18n="hero.req">适用于搭载 Apple 芯片的 Mac，需要 macOS 12 或更高版本。</p>
+        </div>
+        <div class="hero-stage" id="hero-stage">
+          <div class="glow" aria-hidden="true"></div>
+          <canvas class="window" id="cv-hero" role="img" aria-label="LightPlayer 播放页：封面、歌词预览、播放列表和播放栏" data-i18n-attr="aria-label:hero.alt"></canvas>
+        </div>
+      </section>
+
+      <!-- formats -->
+      <section class="sec" id="formats">
+        <div class="wrap">
+          <header class="head rv">
+            <p class="eyebrow" data-i18n="fmt.eyebrow">全格式播放</p>
+            <h2 data-i18n="fmt.title">几乎所有格式，打开就能播。</h2>
+            <p class="lede" data-i18n="fmt.lede">LightPlayer 内置 FFmpeg。打开文件时，它先分析编码，再结合系统的解码能力，自动选出最合适的播放方式。拖到还没处理到的位置，也会立刻从那里开始。</p>
+          </header>
+          <div class="routes">
+            <article class="route rv">
+              <h3 data-i18n="fmt.r1.t">直接播放</h3>
+              <p data-i18n="fmt.r1.d">系统原生解码，打开即播，零等待。</p>
+              <ul class="chips"><li>MP3</li><li>AAC</li><li>M4A</li><li>FLAC</li><li>WAV</li><li>MP4</li></ul>
+            </article>
+            <article class="route rv">
+              <h3 data-i18n="fmt.r2.t">无损转封装</h3>
+              <p data-i18n="fmt.r2.d">H.264 或 HEVC 视频流原样复制，无损，几乎不占 CPU。</p>
+              <ul class="chips"><li>MKV</li><li>FLV</li><li>TS</li><li>AVI</li></ul>
+            </article>
+            <article class="route rv">
+              <h3 data-i18n="fmt.r3.t">音频转换</h3>
+              <p data-i18n="fmt.r3.d">解码为 FLAC 缓存后播放，音质不打折扣。</p>
+              <ul class="chips"><li>APE</li><li>WMA</li><li>DSF</li><li>TTA</li><li>WV</li></ul>
+            </article>
+            <article class="route rv">
+              <h3 data-i18n="fmt.r4.t">硬件实时转码</h3>
+              <p data-i18n="fmt.r4.d">用 VideoToolbox 硬件编码为 H.264，边转边播。</p>
+              <ul class="chips"><li>WMV</li><li>RMVB</li><li>MPEG-2</li><li>10-bit H.264</li></ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- lyrics -->
+      <section class="sec" id="lyrics">
+        <div class="wrap split">
+          <div class="copy rv">
+            <p class="eyebrow" data-i18n="lyr.eyebrow">歌词</p>
+            <h2 data-i18n="lyr.title">歌词，随歌声流动。</h2>
+            <p class="lede" data-i18n="lyr.lede">自动加载同名的 LRC、SRT、VTT、TXT 歌词或内嵌歌词，GBK 和 Big5 编码也能认出来。当前一句始终居中，逐字高亮，点按任意一句就跳过去。</p>
+            <dl class="facts">
+              <div><dt data-i18n="lyr.f1.t">翻译与偏移</dt><dd data-i18n="lyr.f1.d">显示翻译行，整体提前或推后，字号随手调。</dd></div>
+              <div><dt data-i18n="lyr.f2.t">歌词编辑器</dt><dd data-i18n="lyr.f2.d">边听边按空格打点，或逐行微调时间，保存时自动备份。</dd></div>
+              <div><dt data-i18n="lyr.f3.t">精确计时</dt><dd data-i18n="lyr.f3.d">有些下载来的文件会让歌词越走越快，LightPlayer 能自动发现并改用精确计时。</dd></div>
+            </dl>
+          </div>
+          <figure class="shot rv">
+            <canvas class="window" id="cv-lyrics" role="img" aria-label="歌词页：当前一句居中并逐字高亮" data-i18n-attr="aria-label:lyr.alt"></canvas>
+          </figure>
+        </div>
+      </section>
+
+      <!-- AI -->
+      <section class="sec sec-ai" id="ai">
+        <div class="wrap">
+          <header class="head rv">
+            <p class="eyebrow" data-i18n="ai.eyebrow">AI 识别歌词</p>
+            <h2 data-i18n="ai.title">没有歌词？让它听一遍。</h2>
+            <p class="lede" data-i18n="ai.lede">点一下“AI 识别歌词”，基于 whisper.cpp 的模型就在你的 Mac 上离线运行，Apple 芯片用 Metal 加速。音频从不离开这台电脑。</p>
+          </header>
+          <figure class="shot shot-wide rv">
+            <canvas class="window" id="cv-ai" role="img" aria-label="AI 识别歌词：识别进度，随后歌词出现并显示提示条" data-i18n-attr="aria-label:ai.alt"></canvas>
+          </figure>
+          <ol class="steps rv" aria-label="识别流程" data-i18n-attr="aria-label:ai.stepsLabel">
+            <li><b data-i18n="ai.s1.t">找出人声</b><span data-i18n="ai.s1.d">Silero VAD 跳过前奏和间奏</span></li>
+            <li><b data-i18n="ai.s2.t">增强人声</b><span data-i18n="ai.s2.d">突出人声所在的频段</span></li>
+            <li><b data-i18n="ai.s3.t">本地识别</b><span data-i18n="ai.s3.d">Whisper 模型，Metal 加速</span></li>
+            <li><b data-i18n="ai.s4.t">清理结果</b><span data-i18n="ai.s4.d">过滤幻觉内容，繁体转简体</span></li>
+            <li><b data-i18n="ai.s5.t">逐字对齐</b><span data-i18n="ai.s5.d">生成逐字时间轴，随歌声高亮</span></li>
+          </ol>
+          <p class="fine center rv" data-i18n="ai.note">首次使用时下载模型，推荐模型约 550 MB，可切换到国内镜像。识别结果会标明由模型生成，可以直接进编辑器校对。视频也能用同样的方式生成字幕。</p>
+        </div>
+      </section>
+
+      <!-- desktop lyrics -->
+      <section class="sec" id="desktop">
+        <div class="wrap split split-rev">
+          <div class="copy rv">
+            <p class="eyebrow" data-i18n="dl.eyebrow">桌面歌词与菜单栏</p>
+            <h2 data-i18n="dl.title">桌面歌词，浮于一切之上。</h2>
+            <p class="lede" data-i18n="dl.lede">一行歌词悬浮在所有窗口之上，换行时轻轻滑入。按住拖到任何位置，拉伸边角调整大小。关掉主窗口，音乐照常播放，菜单栏图标可以暂停、切歌或重新打开窗口。</p>
+            <div class="swatches" role="radiogroup" aria-label="桌面歌词颜色" data-i18n-attr="aria-label:dl.colors" id="swatches"></div>
+            <p class="fine" data-i18n="dl.try">换个颜色试试，也可以点菜单栏里的歌名。</p>
+          </div>
+          <figure class="shot desk rv" id="desk">
+            <canvas class="desk-gl" id="cv-wall" aria-hidden="true"></canvas>
+            <canvas class="desk-ui" id="cv-desk" role="img" aria-label="macOS 桌面上的桌面歌词与菜单栏" data-i18n-attr="aria-label:dl.alt"></canvas>
+          </figure>
+        </div>
+      </section>
+
+      <!-- weather -->
+      <section class="sec sec-weather" id="weather">
+        <div class="wrap">
+          <header class="head rv">
+            <p class="eyebrow" data-i18n="wx.eyebrow">天气主题</p>
+            <h2 data-i18n="wx.title">窗外的天气，也在窗内。</h2>
+            <p class="lede" data-i18n="wx.lede">选择“天气”外观，LightPlayer 会按你所在位置的实时天气，把整个界面换成动态的天空。雨滴落在播放栏上溅起水花，雪会积起薄薄一层，再慢慢融化。</p>
+          </header>
+          <figure class="shot shot-wide rv">
+            <canvas class="window" id="cv-weather" role="img" aria-label="天气主题下的播放页" data-i18n-attr="aria-label:wx.alt"></canvas>
+          </figure>
+          <div class="seg rv" role="tablist" aria-label="天气" data-i18n-attr="aria-label:wx.label" id="wx-seg">
+            <button type="button" role="tab" data-wx="rain" aria-selected="true" data-i18n="wx.rain">雷雨</button>
+            <button type="button" role="tab" data-wx="snow" aria-selected="false" data-i18n="wx.snow">落雪</button>
+            <button type="button" role="tab" data-wx="night" aria-selected="false" data-i18n="wx.night">星空</button>
+          </div>
+          <p class="fine center rv" data-i18n="wx.note">晴天的阳光、云、雨、雷电、雪、冰雹、雾和星空都有。天气数据来自 Open-Meteo，地名来自 BigDataCloud，都免费且无需账号。</p>
+        </div>
+      </section>
+
+      <!-- library -->
+      <section class="sec" id="library">
+        <div class="wrap split">
+          <div class="copy rv">
+            <p class="eyebrow" data-i18n="lib.eyebrow">媒体库</p>
+            <h2 data-i18n="lib.title">整个音乐库，井然有序。</h2>
+            <p class="lede" data-i18n="lib.lede">添加文件夹，子文件夹一并扫描，每次打开时增量刷新。按歌曲、专辑、艺术家和视频浏览，搜索、排序、收藏；自建歌单，或者把一个文件夹直接导入为歌单。</p>
+            <div class="seg seg-left" role="tablist" aria-label="媒体库视图" data-i18n-attr="aria-label:lib.label" id="lib-seg">
+              <button type="button" role="tab" data-view="albums" aria-selected="true" data-i18n="lib.albums">专辑</button>
+              <button type="button" role="tab" data-view="songs" aria-selected="false" data-i18n="lib.songs">歌曲</button>
+            </div>
+          </div>
+          <figure class="shot rv">
+            <canvas class="window" id="cv-library" role="img" aria-label="媒体库：专辑网格与歌曲列表" data-i18n-attr="aria-label:lib.alt"></canvas>
+          </figure>
+        </div>
+      </section>
+
+      <!-- video -->
+      <section class="sec" id="video">
+        <div class="wrap">
+          <header class="head rv">
+            <p class="eyebrow" data-i18n="vid.eyebrow">视频</p>
+            <h2 data-i18n="vid.title">看电影，同样出色。</h2>
+            <p class="lede" data-i18n="vid.lede">沉浸式全屏时，控制栏和顶栏自动隐藏。外挂和内嵌字幕都能显示，没有字幕就让 AI 生成。截图、逐帧步进，分辨率、帧率、码率、编码和 HDR 信息一查便知。</p>
+          </header>
+          <figure class="shot shot-wide rv">
+            <canvas class="window" id="cv-video" role="img" aria-label="视频播放页，可进入沉浸式全屏" data-i18n-attr="aria-label:vid.alt"></canvas>
+          </figure>
+          <div class="center rv">
+            <button class="pill pill-ghost" type="button" id="immersive" aria-pressed="false" data-i18n="vid.enter">进入沉浸模式</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- more -->
+      <section class="sec" id="more">
+        <div class="wrap">
+          <header class="head rv">
+            <h2 class="huge grad" data-i18n="more.title">还有更多。</h2>
+          </header>
+          <ul class="grid" id="more-grid">
+            <li class="card rv" data-icon="ab"><h3 data-i18n="more.ab.t">A-B 段落循环</h3><p data-i18n="more.ab.d">反复聆听任意一段，按 A 设定起点和终点。</p></li>
+            <li class="card rv" data-icon="speed"><h3 data-i18n="more.speed.t">倍速播放</h3><p data-i18n="more.speed.d">0.5× 到 3×，音调保持不变。</p></li>
+            <li class="card rv" data-icon="timer"><h3 data-i18n="more.timer.t">睡眠定时</h3><p data-i18n="more.timer.d">到时渐弱暂停，或者等这首歌放完。</p></li>
+            <li class="card rv" data-icon="clock"><h3 data-i18n="more.resume.t">断点续播</h3><p data-i18n="more.resume.d">再次打开，从上次停下的地方继续。</p></li>
+            <li class="card rv" data-icon="incognito"><h3 data-i18n="more.private.t">无痕浏览</h3><p data-i18n="more.private.d">不进最近播放，不记播放位置，不加进媒体库。</p></li>
+            <li class="card rv" data-icon="edit"><h3 data-i18n="more.editor.t">歌词编辑器</h3><p data-i18n="more.editor.d">打标、逐行编辑、预览，保存到歌曲旁边。</p></li>
+            <li class="card rv" data-icon="shuffle"><h3 data-i18n="more.mode.t">播放模式</h3><p data-i18n="more.mode.d">顺序、列表循环、单曲循环和随机，随机一轮内不重复。</p></li>
+            <li class="card rv" data-icon="volume"><h3 data-i18n="more.volume.t">应用内音量</h3><p data-i18n="more.volume.d">只调 LightPlayer，系统音量保持不变。</p></li>
+            <li class="card rv" data-icon="image"><h3 data-i18n="more.look.t">外观随心</h3><p data-i18n="more.look.d">浅色、深色或跟随系统，主题色可以随封面变化。</p></li>
+            <li class="card rv" data-icon="check"><h3 data-i18n="more.default.t">设为默认播放器</h3><p data-i18n="more.default.d">一键关联常见音视频格式，双击文件就开始播放。</p></li>
+            <li class="card rv" data-icon="keyboard"><h3 data-i18n="more.media.t">媒体键与控制中心</h3><p data-i18n="more.media.d">键盘上的媒体键和控制中心都能控制播放。</p></li>
+            <li class="card rv" data-icon="sparkles"><h3 data-i18n="more.queue.t">识别任务队列</h3><p data-i18n="more.queue.d">整个歌单一次加入，排队识别，可暂停和调整顺序。</p></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- shortcuts -->
+      <section class="sec" id="keys">
+        <div class="wrap">
+          <header class="head rv">
+            <p class="eyebrow" data-i18n="keys.eyebrow">快捷键</p>
+            <h2 data-i18n="keys.title">双手不离键盘。</h2>
+            <p class="lede" data-i18n="keys.lede">几乎每个操作都有快捷键。在这里按一下键盘试试。</p>
+          </header>
+          <ul class="keys rv" id="keylist">
+            <li data-k="space"><span class="caps"><kbd class="wide" data-i18n="keys.space">空格</kbd></span><span data-i18n="keys.play">播放或暂停</span></li>
+            <li data-k="arrowleft arrowright"><span class="caps"><kbd>←</kbd><kbd>→</kbd></span><span data-i18n="keys.seek">快退、快进</span></li>
+            <li data-k="j l"><span class="caps"><kbd>J</kbd><kbd>L</kbd></span><span data-i18n="keys.jump">后退、前进 15 秒</span></li>
+            <li data-k="arrowup arrowdown"><span class="caps"><kbd>↑</kbd><kbd>↓</kbd></span><span data-i18n="keys.vol">音量</span></li>
+            <li data-k="m"><span class="caps"><kbd>M</kbd></span><span data-i18n="keys.mute">静音</span></li>
+            <li data-k="meta+arrowleft meta+arrowright"><span class="caps"><kbd>⌘←</kbd><kbd>⌘→</kbd></span><span data-i18n="keys.track">上一首、下一首</span></li>
+            <li data-k="meta+o"><span class="caps"><kbd>⌘O</kbd></span><span data-i18n="keys.open">打开文件</span></li>
+            <li data-k="meta+l"><span class="caps"><kbd>⌘L</kbd></span><span data-i18n="keys.lib">媒体库</span></li>
+            <li data-k="meta+,"><span class="caps"><kbd>⌘,</kbd></span><span data-i18n="keys.settings">设置</span></li>
+            <li data-k="y"><span class="caps"><kbd>Y</kbd></span><span data-i18n="keys.lyrics">歌词页</span></li>
+            <li data-k="e"><span class="caps"><kbd>E</kbd></span><span data-i18n="keys.editor">歌词编辑器</span></li>
+            <li data-k="i"><span class="caps"><kbd>I</kbd></span><span data-i18n="keys.info">视频信息</span></li>
+            <li data-k="f"><span class="caps"><kbd>F</kbd></span><span data-i18n="keys.full">全屏</span></li>
+            <li data-k="s"><span class="caps"><kbd>S</kbd></span><span data-i18n="keys.shot">截图</span></li>
+            <li data-k=", ."><span class="caps"><kbd>,</kbd><kbd>.</kbd></span><span data-i18n="keys.frame">逐帧</span></li>
+            <li data-k="[ ]"><span class="caps"><kbd>[</kbd><kbd>]</kbd></span><span data-i18n="keys.speed">调速</span></li>
+            <li data-k="a"><span class="caps"><kbd>A</kbd></span><span data-i18n="keys.ab">A-B 循环</span></li>
+            <li data-k="shift+meta+n"><span class="caps"><kbd>⇧⌘N</kbd></span><span data-i18n="keys.private">无痕浏览</span></li>
+            <li data-k="meta+= meta++ meta+- meta+0"><span class="caps"><kbd>⌘+</kbd><kbd>⌘−</kbd></span><span data-i18n="keys.size">歌词字号</span></li>
+            <li data-k="escape"><span class="caps"><kbd>Esc</kbd></span><span data-i18n="keys.back">返回</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- download -->
+      <section class="sec sec-dl" id="download">
+        <div class="wrap dl">
+          <img class="dl-icon rv" src="../assets/icon.svg" alt="" width="128" height="128" />
+          <h2 class="rv" data-i18n="dl2.title">下载 LightPlayer</h2>
+          <p class="lede rv" data-i18n="dl2.lede">免费下载，源代码公开在 GitHub。适用于搭载 Apple 芯片的 Mac，需要 macOS 12 或更高版本。</p>
+          <div class="cta rv">
+            <a class="pill pill-lg" href="https://github.com/2001020/LightPlayer/releases/latest" data-i18n="dl2.button">下载 1.1.0</a>
+            <a class="link-more" href="https://github.com/2001020/LightPlayer" data-i18n="dl2.source">在 GitHub 上查看源代码</a>
+          </div>
+          <ol class="install rv" aria-label="安装步骤" data-i18n-attr="aria-label:dl2.stepsLabel">
+            <li>
+              <h3 data-i18n="dl2.s1.t">下载安装包</h3>
+              <p data-i18n="dl2.s1.d">在 GitHub Releases 下载最新的 <code>LightPlayer_1.1.0_aarch64.dmg</code>。</p>
+            </li>
+            <li>
+              <h3 data-i18n="dl2.s2.t">拖进“应用程序”</h3>
+              <p data-i18n="dl2.s2.d">打开 .dmg，把 LightPlayer 拖进“应用程序”文件夹。升级时直接覆盖，媒体库和设置都会保留。</p>
+            </li>
+            <li>
+              <h3 data-i18n="dl2.s3.t">首次打开</h3>
+              <p data-i18n="dl2.s3.d">安装包未经 Apple 公证。如果提示“已损坏”或“无法验证开发者”，在“应用程序”里右键 LightPlayer 选“打开”，或者在终端执行：</p>
+              <div class="cmd">
+                <code id="cmd-text">xattr -dr com.apple.quarantine /Applications/LightPlayer.app</code>
+                <button type="button" id="copy-cmd" data-i18n="dl2.copy">拷贝</button>
+              </div>
+            </li>
+          </ol>
+          <p class="fine rv" data-i18n="dl2.note">暂时只提供 Apple 芯片版本。AI 识别第一次使用时需要下载模型。</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="wrap foot-in">
+        <div class="foot-links">
+          <a href="https://github.com/2001020/LightPlayer" data-i18n="foot.github">GitHub</a>
+          <a href="https://github.com/2001020/LightPlayer/releases" data-i18n="foot.releases">版本说明</a>
+          <a id="film-link-2" href="../animation-pv/zh.html" data-i18n="foot.film">宣传片</a>
+        </div>
+        <p data-i18n="foot.license">应用代码可自由使用。随包分发的 FFmpeg 为 GPL 构建，仅以独立进程方式调用；Whisper 模型与 whisper.cpp 为 MIT 许可。</p>
+        <p data-i18n="foot.made">LightPlayer 使用 Claude 构建。页面中的界面由代码实时绘制，歌曲、歌手和歌词均为虚构示例。</p>
+      </div>
+    </footer>
+
+    <!-- The app UI kit and GLSL sources are shared with the promo film. -->
+    <script src="../animation-pv/js/util.js"></script>
+    <script src="../animation-pv/js/icons.js"></script>
+    <script src="../animation-pv/js/art.js"></script>
+    <script src="../animation-pv/js/ui.js"></script>
+    <script src="../animation-pv/js/shaders.js"></script>
+    <script src="../animation-pv/js/copy.zh.js"></script>
+    <script>
+      window.PV.copies = { zh: window.PV.copy };
+    </script>
+    <script src="../animation-pv/js/copy.en.js"></script>
+    <script>
+      window.PV.copies.en = window.PV.copy;
+    </script>
+    <script src="js/i18n.en.js"></script>
+    <script src="js/gl.js"></script>
+    <script src="js/site.js"></script>
+  </body>
+</html>
