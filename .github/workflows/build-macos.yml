@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Publish a prerelease with this tag (e.g. v1.0.0); leave empty to just build"
+        required: false
+        default: ""
 
 concurrency:
   group: macos-${{ github.ref }}
@@ -129,11 +134,15 @@ jobs:
 
   release:
     name: Publish GitHub release
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Runs for pushed v* tags, or for a manual run with a release tag (the
+    # release then creates the tag on the built commit).
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: build
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -147,13 +156,15 @@ jobs:
       - name: Prepare release files
         run: |
           cd dist-release
-          ver="${GITHUB_REF_NAME#v}"
+          ver="${TAG#v}"
           mv LightPlayer.app.zip "LightPlayer_${ver}_aarch64.app.zip"
           ls -la
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ format('LightPlayer {0} 预发布', github.ref_name) }}
-          body_path: docs/releases/${{ github.ref_name }}.md
+          tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ format('LightPlayer {0} 预发布', env.TAG) }}
+          body_path: docs/releases/${{ env.TAG }}.md
           # Published as prereleases until builds are notarized by Apple.
           prerelease: true
           files: |
