@@ -1,11 +1,11 @@
-// Procedural soundtrack (Web Audio). 128 BPM in D major, one chord a bar
+// Procedural soundtrack (Web Audio). 112 BPM in D major, one chord a bar
 // (I, vi, IV, V); sections follow the film's scene grid so every cut lands
 // on a downbeat with an impact and a short whoosh into it. The audio clock
 // drives the picture while it plays.
 (function () {
   const PV = (window.PV = window.PV || {});
 
-  const BPM = 128;
+  const BPM = 112;
   const STEP = 60 / BPM / 4; // a sixteenth note
   const midi = (n) => 440 * Math.pow(2, (n - 69) / 12);
 
@@ -27,16 +27,16 @@
 
   /** Section of the score at bar b: which instruments play. */
   function section(b) {
-    if (b < 2) return { pad: 0.8, bell: 0.6, hits: true, intro: true };
-    if (b < 4) return { pad: 0.6, kick: "four", bass: 0.6, arp: 0.45, hat: b >= 3 ? 0.35 : 0 };
-    if (b < 11) return { pad: 0.5, kick: "four", bass: 0.7, arp: 0.5, hat: 0.55, clap: 0.5 };
-    if (b < 13) return { pad: 0.55, kick: "four", bass: 0.65, arp: 0.5, hat: 0.45, bubbles: 0.45 };
-    if (b < 18) return { pad: 0.55, kick: "four", bass: 0.7, arp: 0.55, hat: 0.55, clap: 0.45 };
-    if (b < 20) return { pad: 0.7, kick: "half", bass: 0.6, bell: 0.45, hat: 0.25 };
-    if (b < 22) return { pad: 0.55, kick: "four", bass: 0.75, arp: 0.55, hat: 0.6, clap: 0.5, lead: 0.5 };
+    if (b < 3) return { pad: 0.8, bell: 0.6, hits: true, intro: true };
+    if (b < 5) return { pad: 0.6, kick: "four", bass: 0.6, arp: 0.45, hat: b >= 4 ? 0.35 : 0 };
+    if (b < 13) return { pad: 0.5, kick: "four", bass: 0.7, arp: 0.5, hat: 0.55, clap: 0.5 };
+    if (b < 16) return { pad: 0.55, kick: "four", bass: 0.65, arp: 0.5, hat: 0.45, bubbles: 0.45 };
+    if (b < 22) return { pad: 0.55, kick: "four", bass: 0.7, arp: 0.55, hat: 0.55, clap: 0.45 };
+    if (b < 24) return { pad: 0.7, kick: "half", bass: 0.6, bell: 0.45, hat: 0.25 };
+    if (b < 26) return { pad: 0.55, kick: "four", bass: 0.75, arp: 0.55, hat: 0.6, clap: 0.5, lead: 0.5 };
     return { pad: 0.6, bell: 0.55, outro: true };
   }
-  const BARS = 24;
+  const BARS = 28;
 
   function createMusic(timeline) {
     let ctx = null;
@@ -362,7 +362,7 @@
       if (cuts.has(s)) impact(when, bar === finalBar ? 0.9 : 0.5);
       if (cuts.has(s + 3) && bar + 1 < BARS) whoosh(when, STEP * 3, 0.8);
       // the opening words land on the beat
-      if (sec.hits && pos % 8 === 0 && s < 24) {
+      if (sec.hits && (s === 0 || s === 12 || s === 24)) {
         kick(when, 0.8);
         noiseHit(when, 0.12, "lowpass", 1200, 0.5, 0.5, 0.6);
       }
@@ -373,7 +373,7 @@
       if (sec.clap && (pos === 4 || pos === 12)) clap(when, sec.clap);
       if (sec.hat && pos % 4 === 2) hat(when, sec.hat);
       if (sec.hat && sec.hat > 0.45 && pos % 2 === 1) hat(when, sec.hat * 0.45);
-      if (sec.arp && (pos % 2 === 0 || bar >= 4)) {
+      if (sec.arp && (pos % 2 === 0 || bar >= 5)) {
         const n = ch.arp[ARP[pos] % ch.arp.length];
         pluck(n, when, sec.arp * (pos % 4 === 0 ? 1 : 0.75), Math.sin(s * 0.7) * 0.4);
       }
@@ -381,7 +381,7 @@
       if (sec.bell && (pos === 0 || pos === 6 || pos === 10)) bell(ch.arp[(bar * 3 + pos) % 8] + 12, when, sec.bell);
       if (sec.lead) LEAD.forEach(([n, at, len]) => at === pos && lead(n + (bar % 2 ? -2 : 0), when, len * STEP * 0.95, sec.lead));
       // risers into the big sections
-      if (pos === 0 && (bar === 1 || bar === 19)) riser(when, barDur, 0.9);
+      if (pos === 0 && (bar === 2 || bar === 23)) riser(when, barDur, 0.9);
     }
 
     function schedule() {

@@ -1,31 +1,40 @@
-// The film's timeline. Scenes are laid out on a bar grid (128 BPM, 1.875 s a
-// bar, 24 bars, 45 s in all) so every cut lands on a downbeat. Cuts are hard,
-// with a short push-in and zoom blur, in the manner of Apple product films.
-// Every frame is a pure function of time t: scrubbing and frame-exact export
-// just call render(t).
+// The film's timeline. Scenes are laid out on a bar grid (112 BPM, 28 bars,
+// 60 s in all) so every cut lands on a downbeat. Cuts are hard, with a short
+// push-in and zoom blur, in the manner of Apple product films. Every frame is
+// a pure function of time t: scrubbing and frame-exact export just call
+// render(t).
+//
+// Scene code is written on a design clock with a 1.875 s bar; STRETCH maps it
+// onto the score's slower 2.143 s bar, so beats in the code stay on the beat.
 (function () {
   const PV = (window.PV = window.PV || {});
   const { clamp, lerp, ease, prog, envelope, hash } = PV.util;
 
   const BAR = 1.875;
   const BEAT = BAR / 4;
+  const STRETCH = 128 / 112;
   const PLAN = [
-    ["intro", 0, 2],
-    ["hero", 2, 4],
-    ["formats", 4, 6],
-    ["lyrics", 6, 8],
-    ["ai", 8, 11],
-    ["desktop", 11, 13],
-    ["weather", 13, 16],
-    ["library", 16, 18],
-    ["video", 18, 20],
-    ["more", 20, 22],
-    ["outro", 22, 24],
+    ["intro", 0, 3],
+    ["hero", 3, 5],
+    ["formats", 5, 8],
+    ["lyrics", 8, 10],
+    ["ai", 10, 13],
+    ["desktop", 13, 16],
+    ["weather", 16, 20],
+    ["library", 20, 22],
+    ["video", 22, 24],
+    ["more", 24, 26],
+    ["outro", 26, 28],
   ];
-  const SCENES = PLAN.map(([id, a, b]) => ({ id, t0: a * BAR, t1: b * BAR }));
-  const DURATION = 24 * BAR;
-  // hard cuts inside a scene (seconds from its start)
-  const INNER_CUTS = { weather: [2 * BEAT, 4 * BEAT] };
+  const BARS = 28;
+  // design clock
+  const SCENES_D = PLAN.map(([id, a, b]) => ({ id, t0: a * BAR, t1: b * BAR }));
+  // hard cuts inside a scene (design seconds from its start)
+  const CUTS_D = { weather: [3 * BEAT, 6 * BEAT] };
+  // real clock, for the player and the score
+  const SCENES = SCENES_D.map((s) => ({ id: s.id, t0: s.t0 * STRETCH, t1: s.t1 * STRETCH }));
+  const INNER_CUTS = Object.fromEntries(Object.entries(CUTS_D).map(([k, v]) => [k, v.map((c) => c * STRETCH)]));
+  const DURATION = BARS * BAR * STRETCH;
 
   function createScenes(W, ui, copy) {
     const T = window.THREE;
@@ -35,7 +44,7 @@
     const cover512 = PV.art.cover(0, 512);
     const cover256 = PV.art.cover(0, 256);
     const v3 = (x, y, z) => new T.Vector3(x, y, z);
-    const scene = (id) => SCENES.find((s) => s.id === id);
+    const scene = (id) => SCENES_D.find((s) => s.id === id);
     const at = (id) => scene(id).t0;
     const len = (id) => scene(id).t1 - scene(id).t0;
 
@@ -161,25 +170,25 @@
       P.points.visible = true;
       P.points.position.set(0, 0.83, 0);
       P.u.uTime.value = u * 1.6 + 3;
-      const conv = ease.inOutCubic(prog(u, 1.75, 2.85));
+      const conv = ease.inOutCubic(prog(u, 2.95, 4.1));
       P.u.uConverge.value = conv;
       P.u.uSpread.value = 1;
-      P.u.uOpacity.value = Math.min(prog(u, 0, 0.45), 1 - prog(u, 2.75, 3.25)) * lerp(0.8, 1, prog(u, 1.6, 2.4));
+      P.u.uOpacity.value = Math.min(prog(u, 0, 0.45), 1 - prog(u, 4.0, 4.5)) * lerp(0.8, 1, prog(u, 2.6, 3.6));
       P.u.uGlow.value = lerp(1.7, 0.42, conv);
       const L3 = W.logo;
-      if (u > 2.7) {
-        const k = prog(u, 2.7, 3.15, ease.inOutSine);
+      if (u > 3.95) {
+        const k = prog(u, 3.95, 4.4, ease.inOutSine);
         L3.group.visible = true;
         L3.group.position.set(0, 0.83, 0);
-        L3.group.scale.setScalar(lerp(0.86, 1, prog(u, 2.7, D, ease.outCubic)));
-        L3.mesh.rotation.set(0.05 * Math.sin(u * 0.5), lerp(-0.55, 0.0, prog(u, 2.7, D + 0.6, ease.outCubic)), 0);
+        L3.group.scale.setScalar(lerp(0.86, 1, prog(u, 3.95, D, ease.outCubic)));
+        L3.mesh.rotation.set(0.05 * Math.sin(u * 0.5), lerp(-0.55, 0.0, prog(u, 3.95, D + 0.6, ease.outCubic)), 0);
         [L3.face, L3.side].forEach((m) => {
           m.transparent = true;
           m.opacity = k;
         });
         L3.glow.userData.mat.uniforms.uAlpha.value = 0.5 * k;
       }
-      W.bg.uAurora.value = 0.55 * prog(u, 2.5, D);
+      W.bg.uAurora.value = 0.55 * prog(u, 3.7, D);
       W.bg.uCenter.value.set(0, 0.12);
       cam(v3(0, 0, lerp(15.5, 12.6, ease.inOutSine(prog(u, 0, D)))), v3(0, 0, 0));
       dip(u, D, 0.2, 0);
@@ -255,7 +264,7 @@
         const cell = i % ch.labels.length;
         const target = i < ch.labels.length ? chipTargets.get(cell) : null;
         if (target) {
-          const st = 1.4 + target.c * 0.09 + target.r * 0.045;
+          const st = 2.25 + target.c * 0.09 + target.r * 0.045;
           const k = ease.inOutCubic(prog(u, st, st + 0.85));
           const [tx, ty] = screenToWorld(COL_X[target.c], 452 + target.r * 92, 20);
           x = lerp(x, tx, k);
@@ -264,14 +273,14 @@
           rz = lerp(rz, 0, k);
           h = lerp(h, 0.64, k);
           alpha = lerp(alpha, 1, k);
-        } else alpha *= 1 - prog(u, 1.25, 1.9);
+        } else alpha *= 1 - prog(u, 2.1, 2.75);
         ch.set(i, cell, [x, y, zz], [0, 0, rz], h, alpha, 0);
       }
       ch.commit(N);
       W.bg.uAurora.value = 0.38;
       W.bg.uCenter.value.set(0, 0);
-      const roll = 0.06 * Math.sin(u * 0.9) * (1 - prog(u, 1.2, 2.3));
-      cam(v3(0, 0, lerp(21, 20, prog(u, 0, 2.4, ease.outCubic))), v3(0, 0, 0), 35, roll);
+      const roll = 0.06 * Math.sin(u * 0.9) * (1 - prog(u, 2.05, 3.15));
+      cam(v3(0, 0, lerp(21, 20, prog(u, 0, 3.3, ease.outCubic))), v3(0, 0, 0), 35, roll);
     };
 
     update.lyrics = (u) => {
@@ -437,11 +446,11 @@
       DK.group.visible = true;
       DK.group.position.set(0, 0, 0);
       DK.wallMat.uniforms.uTime.value = t;
-      const trayAt = 2.4;
+      const trayAt = 3.2;
       DK.drawMenuBar({ title: copy.song.title, open: u > trayAt });
       const item = ui.hits.trayItem || { x: 1270, w: 90, cx: 1315 };
-      // app window (closes at 1.55 s)
-      const closeK = prog(u, 1.55, 1.85, ease.inOutSine);
+      // app window (closes at 2.1 s)
+      const closeK = prog(u, 2.1, 2.4, ease.inOutSine);
       if (closeK < 1) {
         showWindow({});
         const c = DK.local(WIN_RECT.x + (ui.W * WIN_RECT.s) / 2, WIN_RECT.y + (ui.H * WIN_RECT.s) / 2, 0.25);
@@ -465,34 +474,34 @@
       }
       // desktop lyrics
       const a = lyricAt(t);
-      const color = u < 1.3 ? "#66ccff" : "#ff4d8d";
-      const hover = envelope(u, 0.4, 1.6, 0.15, 0.2);
+      const color = u < 1.55 ? "#66ccff" : "#ff4d8d";
+      const hover = envelope(u, 0.45, 2.0, 0.15, 0.2);
       DK.dl.position.copy(DK.local(DL_RECT.x + DL_RECT.w / 2, DL_RECT.y + DL_RECT.h / 2, 0.45));
-      DK.drawLyrics({ text: L[a.i], lineK: a.k, color, hover, palette: u > 0.98 && u < 1.45 });
+      DK.drawLyrics({ text: L[a.i], lineK: a.k, color, hover, palette: u > 1.12 && u < 1.75 });
       // status item menu
       const trayK = prog(u, trayAt, trayAt + 0.15, ease.outCubic);
       DK.tray.visible = trayK > 0;
       if (trayK > 0) {
-        DK.drawTray({ hover: u > 2.85 ? 2 : null });
+        DK.drawTray({ hover: u > 3.75 ? 2 : null });
         DK.trMat.uniforms.uOpacity.value = trayK;
         DK.tray.position.copy(DK.local(item.x + 140, 28 + 5 + 150 - 6 * (1 - trayK), 0.5));
       }
       // pointer
       const cur = cursorAt(u, [
         [0.2, 760, 560],
-        [0.5, 930, 770],
-        [0.82, DL_RECT.x + DL_DOT, DL_RECT.y + 18],
-        [1.15, DL_RECT.x + DL_PINK, DL_RECT.y + 48],
-        [1.65, 880, 600],
-        [2.2, item.cx, 14],
-        [2.75, item.x + 64, 28 + 5 + 6 + 24 + 11 + 14],
-      ], [[0.88, 1.0], [1.2, 1.32], [trayAt - 0.12, trayAt]]);
+        [0.55, 930, 770],
+        [0.95, DL_RECT.x + DL_DOT, DL_RECT.y + 18],
+        [1.4, DL_RECT.x + DL_PINK, DL_RECT.y + 48],
+        [2.2, 880, 600],
+        [2.95, item.cx, 14],
+        [3.6, item.x + 64, 28 + 5 + 6 + 24 + 11 + 14],
+      ], [[1.0, 1.12], [1.45, 1.57], [trayAt - 0.12, trayAt]]);
       DK.pointer(cur.x, cur.y, cur.alpha, cur.press);
       camPath(u, [
         [0, v3(0, 0, 27.6), v3(0, 0, 0)],
-        [1.3, v3(0.6, -1.6, 22.5), v3(0.6, -1.7, 0)],
-        [1.85, v3(0.6, -1.6, 22.5), v3(0.6, -1.7, 0)],
-        [2.6, v3(10.6, 4.9, 13.5), v3(10.6, 5.2, 0)],
+        [1.5, v3(0.6, -1.6, 22.5), v3(0.6, -1.7, 0)],
+        [2.4, v3(0.6, -1.6, 22.5), v3(0.6, -1.7, 0)],
+        [3.3, v3(10.6, 4.9, 13.5), v3(10.6, 5.2, 0)],
         [D, v3(10.9, 5.0, 12.4), v3(10.9, 5.3, 0)],
       ]);
     };
@@ -502,14 +511,14 @@
       snow: ["#7f95ae", "#a7b8cb", "#cfdae6"],
       night: ["#060a1c", "#111d45", "#22346a"],
     };
-    const WX_SNOW = 2.0;
-    const WX_NIGHT = 3.75;
+    const WX_SNOW = 3.0;
+    const WX_NIGHT = 5.25;
     update.weather = (u) => {
       const D = len("weather");
       const t = at("weather") + u;
-      const [c1, c2] = INNER_CUTS.weather;
-      const kAB = prog(u, WX_SNOW, WX_SNOW + 0.6, ease.inOutSine);
-      const kBC = prog(u, WX_NIGHT, WX_NIGHT + 0.55, ease.inOutSine);
+      const [c1, c2] = CUTS_D.weather;
+      const kAB = prog(u, WX_SNOW, WX_SNOW + 0.7, ease.inOutSine);
+      const kBC = prog(u, WX_NIGHT, WX_NIGHT + 0.65, ease.inOutSine);
       const cols = kBC > 0 ? mixCols(SKY.snow, SKY.night, kBC) : mixCols(SKY.rain, SKY.snow, kAB);
       setSky(cols);
       const wu = W.win.u;
@@ -519,8 +528,8 @@
       wu.uSnow.value = kAB * (1 - kBC);
       wu.uClouds.value = 0.85 * (1 - kBC);
       wu.uStars.value = kBC;
-      wu.uSnowCover.value = clamp((u - WX_SNOW - 0.3) / 1.3) * (1 - kBC);
-      wu.uFlash.value = 0.55 * Math.exp(-Math.pow((u - 0.35) / 0.05, 2)) + 0.4 * Math.exp(-Math.pow((u - 0.52) / 0.07, 2)) + 0.45 * Math.exp(-Math.pow((u - 1.4) / 0.06, 2));
+      wu.uSnowCover.value = clamp((u - WX_SNOW - 0.3) / 1.6) * (1 - kBC);
+      wu.uFlash.value = 0.55 * Math.exp(-Math.pow((u - 0.45) / 0.05, 2)) + 0.4 * Math.exp(-Math.pow((u - 0.62) / 0.07, 2)) + 0.45 * Math.exp(-Math.pow((u - 2.05) / 0.06, 2));
       wu.uWind.value = 0.14;
       const phase = u < WX_SNOW + 0.3 ? "rain" : u < WX_NIGHT + 0.25 ? "snow" : "night";
       const weather = {
@@ -727,31 +736,31 @@
     const add = (id, u0, u1, text, style, x, y, o = {}) => {
       const s = scene(id);
       const end = u1 == null ? s.t1 - s.t0 : u1;
-      caps.push({ t0: s.t0 + u0, t1: s.t0 + end, text, style, x, y, fout: u1 == null ? 0.06 : 0.25, ...o });
+      caps.push({ t0: (s.t0 + u0) * STRETCH, t1: (s.t0 + end) * STRETCH, text, style, x, y, fout: u1 == null ? 0.06 : 0.25, ...o });
     };
     const HEAD = { stagger: true };
-    add("intro", 0.05, 2 * BEAT - 0.04, C.intro[0], "intro", 960, 540, { ...HEAD, zoom: true, fin: 0.3, fout: 0.08 });
-    add("intro", 2 * BEAT, 4 * BEAT - 0.04, C.intro[1], "intro", 960, 540, { ...HEAD, zoom: true, fin: 0.3, fout: 0.08 });
-    add("intro", 4 * BEAT, 2.75, C.intro[2], "intro", 960, 540, { ...HEAD, zoom: true, fin: 0.3, fout: 0.18 });
-    add("intro", 2.85, null, "LightPlayer", "mark", 960, 735, { fin: 0.5 });
+    add("intro", 0.05, 3 * BEAT - 0.04, C.intro[0], "intro", 960, 540, { ...HEAD, zoom: true, fin: 0.35, fout: 0.1 });
+    add("intro", 3 * BEAT, 6 * BEAT - 0.04, C.intro[1], "intro", 960, 540, { ...HEAD, zoom: true, fin: 0.35, fout: 0.1 });
+    add("intro", 6 * BEAT, 3.95, C.intro[2], "intro", 960, 540, { ...HEAD, zoom: true, fin: 0.35, fout: 0.25 });
+    add("intro", 4.15, null, "LightPlayer", "mark", 960, 735, { fin: 0.6 });
     add("hero", 1.0, null, C.heroTitle, "hero", 960, 132, HEAD);
     add("hero", 1.45, null, C.heroSub, "sub", 960, 222);
-    add("formats", 0.1, 1.35, C.fmtTitle, "title", 960, 540, { ...HEAD, max: 1500, fout: 0.2 });
+    add("formats", 0.1, 2.15, C.fmtTitle, "title", 960, 540, { ...HEAD, max: 1500, fout: 0.2 });
     C.fmtCols.forEach((col, c) => {
-      add("formats", 1.6 + c * 0.08, null, col.t, "col", COL_X[c], 318, { fin: 0.45 });
-      add("formats", 1.8 + c * 0.08, null, col.d, "colsub", COL_X[c], 370, { fin: 0.45 });
+      add("formats", 2.5 + c * 0.08, null, col.t, "col", COL_X[c], 318, { fin: 0.45 });
+      add("formats", 2.7 + c * 0.08, null, col.d, "colsub", COL_X[c], 370, { fin: 0.45 });
     });
-    add("formats", 2.3, null, C.fmtFoot, "small", 960, 1000, { fin: 0.45 });
+    add("formats", 3.2, null, C.fmtFoot, "small", 960, 1000, { fin: 0.45 });
     add("lyrics", 0.12, null, C.lyrTitle, "title", 140, 470, { ...HEAD, align: "left", max: 600, size: 70 });
     add("lyrics", 0.6, null, C.lyrSub, "sub", 140, 640, { align: "left", max: 560 });
     add("ai", 0.08, 2.25, C.aiTitle, "title", 960, 124, HEAD);
     add("ai", 2.35, 3.9, C.aiSub1, "subBright", 960, 124, { max: 1500, fin: 0.4 });
     add("ai", 4.0, null, C.aiSub2, "titleGrad", 960, 124, { ...HEAD, size: 64 });
-    add("desktop", 0.08, 1.8, C.dlTitle, "title", 110, 330, { ...HEAD, align: "left", max: 660, size: 68 });
-    add("desktop", 1.95, null, C.dlSub, "subBright", 110, 960, { align: "left", max: 1100, fin: 0.4 });
-    add("weather", 0.08, INNER_CUTS.weather[0] - 0.02, C.wxTitle, "title", 960, 128, { ...HEAD, fout: 0.06 });
-    add("weather", INNER_CUTS.weather[0] + 0.06, INNER_CUTS.weather[1] - 0.02, C.wxSplash, "subBright", 960, 128, { fin: 0.35, fout: 0.06 });
-    add("weather", INNER_CUTS.weather[1] + 0.12, WX_NIGHT, C.wxSub1, "subBright", 960, 128, { max: 1500, fin: 0.4 });
+    add("desktop", 0.08, 2.35, C.dlTitle, "title", 110, 330, { ...HEAD, align: "left", max: 660, size: 68 });
+    add("desktop", 2.5, null, C.dlSub, "subBright", 110, 960, { align: "left", max: 1100, fin: 0.4 });
+    add("weather", 0.08, CUTS_D.weather[0] - 0.02, C.wxTitle, "title", 960, 128, { ...HEAD, fout: 0.06 });
+    add("weather", CUTS_D.weather[0] + 0.06, CUTS_D.weather[1] - 0.02, C.wxSplash, "subBright", 960, 128, { fin: 0.35, fout: 0.06 });
+    add("weather", CUTS_D.weather[1] + 0.12, WX_NIGHT, C.wxSub1, "subBright", 960, 128, { max: 1500, fin: 0.4 });
     add("weather", WX_NIGHT + 0.15, null, C.wxSub2, "subBright", 960, 128, { max: 1500, fin: 0.4 });
     add("library", 0.08, 2.4, C.libTitle, "title", 960, 124, HEAD);
     add("library", 2.5, null, C.libSub, "subBright", 960, 124, { max: 1500, fin: 0.4 });
@@ -764,6 +773,12 @@
     add("outro", 0.95, null, C.outroAvail, "small", 960, 900, { fin: 0.6, fout: 0.5 });
     add("outro", 1.15, null, C.outroUrl, "url", 960, 948, { fin: 0.6, fout: 0.5 });
 
+    /** Scene at design time t. */
+    function sceneAtD(t) {
+      for (const s of SCENES_D) if (t >= s.t0 && t < s.t1) return s;
+      return SCENES_D[SCENES_D.length - 1];
+    }
+    /** Scene at real time t. */
     function sceneAt(t) {
       for (const s of SCENES) if (t >= s.t0 && t < s.t1) return s;
       return SCENES[SCENES.length - 1];
@@ -776,7 +791,7 @@
      */
     function cutFx(s, u) {
       const dur = s.t1 - s.t0;
-      const inner = INNER_CUTS[s.id] || [];
+      const inner = CUTS_D[s.id] || [];
       let since = u;
       let next = dur;
       for (const c of inner) {
@@ -796,12 +811,12 @@
     }
 
     function render(t) {
-      const tt = clamp(t, 0, DURATION - 1e-4);
+      const tt = clamp(t, 0, DURATION - 1e-4) / STRETCH;
       W.reset();
-      const s = sceneAt(tt);
+      const s = sceneAtD(tt);
       update[s.id](tt - s.t0, tt);
       cutFx(s, tt - s.t0);
-      return s;
+      return sceneAt(tt * STRETCH);
     }
 
     return { render, captions: caps, SCENES, DURATION, BAR, sceneAt };
