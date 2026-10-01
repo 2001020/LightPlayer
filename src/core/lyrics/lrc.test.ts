@@ -8,6 +8,7 @@ import {
   parseLyrics,
   parseTimestamp,
   serializeLrc,
+  spokenLines,
 } from "./lrc";
 
 describe("parseLrc", () => {
@@ -99,5 +100,16 @@ describe("serializeLrc", () => {
     const out = serializeLrc(parsed.lines, parsed.meta);
     expect(out).toBe(src);
     expect(parseLrc(out)).toEqual(parsed);
+  });
+});
+
+describe("spokenLines", () => {
+  it("drops empty lines so the previous line lasts until the next one", () => {
+    const { lines } = parseLrc(["[00:01.00]编织一个天堂", "[00:05.00]", "[00:08.00] ", "[00:12.00]唱 你和我的梦想"].join("\n"));
+    const said = spokenLines(lines);
+    expect(said.map((l) => l.text)).toEqual(["编织一个天堂", "唱 你和我的梦想"]);
+    expect(said[findLineIndex(said, 9)].text).toBe("编织一个天堂");
+    expect(said[findLineIndex(said, 12.5)].text).toBe("唱 你和我的梦想");
+    expect(spokenLines(lines)).toBe(said);
   });
 });

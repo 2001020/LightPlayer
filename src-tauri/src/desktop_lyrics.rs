@@ -22,7 +22,7 @@ pub fn set_visible(app: &AppHandle, show: bool) -> tauri::Result<()> {
     let mut b = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html#desktop-lyrics".into()))
         .title("桌面歌词")
         .inner_size(w, h)
-        .min_inner_size(240.0, 56.0)
+        .min_inner_size(360.0, 56.0)
         .decorations(false)
         .transparent(true)
         .shadow(false)

@@ -138,10 +138,10 @@ export async function setPreciseTiming(path: string, on: boolean, auto = false) 
   useSettings.getState().set({ precisePaths: on ? [path, ...list].slice(0, 300) : list });
   const pl = usePlaylist.getState();
   if (usePlayer.getState().media?.path !== path || pl.items[pl.index]?.path !== path) return;
-  const at = engine.position;
-  const wasPlaying = !engine.paused;
   if (on) toast(auto ? "这首歌的文件计时不标准，已切换为精确计时播放，歌词会对得更准" : "正在切换为精确计时播放…", "info", 5000);
-  await playIndex(pl.index, wasPlaying, { at });
+  // The file keeps playing while the copy is prepared; the switch picks up
+  // from wherever it is by then.
+  await playIndex(pl.index, !engine.paused, { live: true });
   if (!on) toast("已恢复普通播放");
 }
 
@@ -210,7 +210,11 @@ export async function openWithDialog() {
   if (typeof res === "string") await openFile(res);
 }
 
-export async function playIndex(index: number, autoplay = true, reload?: { at: number }) {
+/**
+ * `reload.live`: the same file again (another playback strategy); it continues
+ * from the position and play state it has when the new source is ready.
+ */
+export async function playIndex(index: number, autoplay = true, reload?: { live: true }) {
   const pl = usePlaylist.getState();
   const entry = pl.items[index];
   if (!entry) return;
@@ -227,7 +231,8 @@ export async function playIndex(index: number, autoplay = true, reload?: { at: n
     // Ignore stale results if the user skipped again in the meantime.
     if (usePlaylist.getState().items[usePlaylist.getState().index]?.path !== entry.path) return;
     const st = settings();
-    let startAt = reload?.at ?? 0;
+    if (reload && engine.media?.path === entry.path) autoplay = !engine.paused;
+    let startAt = reload && engine.media?.path === entry.path ? engine.position : 0;
     const saved = st.positions[media.path];
     const dur = media.duration ?? 0;
     if (!reload && st.resume && saved && saved > 10 && (!dur || saved < dur - 10)) {

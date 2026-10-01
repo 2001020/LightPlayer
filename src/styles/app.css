@@ -3396,22 +3396,41 @@ html.desktop-lyrics #root {
   border-radius: 50%;
   box-shadow: 0 0 0 1.5px #fff;
 }
+.dl-btn.on {
+  background: rgba(255, 255, 255, 0.22);
+}
+/* The colour row takes the lyric's place inside the window (a small window
+   cannot show anything past its edges). */
+.dl-root.open .dl-line {
+  visibility: hidden;
+}
 .dl-palette {
+  --sw: min(22px, 40cqh);
   position: absolute;
-  top: 36px;
-  right: 8px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(18, 20, 28, 0.88);
+  left: 14px;
+  right: 74px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  scrollbar-width: none;
   --text: #fff;
+  animation: fadeIn 0.18s ease;
 }
-.dl-palette .swatch {
-  width: 20px;
-  height: 20px;
+.dl-palette::-webkit-scrollbar {
+  display: none;
 }
+.dl-palette .swatches {
+  flex-wrap: nowrap;
+  gap: max(4px, calc(var(--sw) * 0.36));
+  padding: 3px 2px;
+}
+.dl-palette .swatch,
 .dl-palette input[type="color"] {
-  width: 24px;
-  height: 24px;
+  flex: none;
+  width: var(--sw);
+  height: var(--sw);
 }
 .dl-resize {
   position: absolute;

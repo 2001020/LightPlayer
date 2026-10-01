@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import * as C from "../core/controller";
 import { engine } from "../core/player/engine";
-import { findActiveCue, findLineIndex } from "../core/lyrics/lrc";
+import { findActiveCue, findLineIndex, spokenLines } from "../core/lyrics/lrc";
 import { Icon } from "../components/Icon";
 import { PlaylistPanel, togglePlaylist, usePlaylistLayout, usePlaylistShown } from "../components/PlaylistPanel";
 import { tip } from "../components/Tooltip";
@@ -72,9 +72,11 @@ function LyricPeek() {
   const media = usePlayer((s) => s.media);
   const offset = useSettings((s) => (media ? s.lyricOffsets[media.path] ?? 0 : 0));
   const synced = !!lyrics?.synced;
-  const i = synced ? findLineIndex(lyrics!.lines, position + offset) : -1;
-  const cur = synced ? lyrics!.lines[i]?.text || "♪" : "";
-  const next = synced ? lyrics!.lines[i + 1]?.text ?? "" : "";
+  const said = synced ? spokenLines(lyrics!.lines) : [];
+  const i = synced ? findLineIndex(said, position + offset) : -1;
+  // Before the first line only the upcoming one is shown.
+  const cur = said[i]?.text || said[i]?.translation || "";
+  const next = said[i + 1]?.text || said[i + 1]?.translation || "";
   const key = `${media?.path}|${i}`;
   const [lines, setLines] = useState<PeekLine[]>([]);
   useEffect(() => {
@@ -94,7 +96,7 @@ function LyricPeek() {
     <div className="lyric-peek" onClick={() => useUI.setState({ page: "lyrics" })}>
       {lines.map((l) => (
         <div key={l.key} className={`peek-line ${l.leaving ? "out" : "in"}`}>
-          <span className="cur">{l.cur}</span>
+          {l.cur && <span className="cur">{l.cur}</span>}
           {l.next && <span className="next">{l.next}</span>}
         </div>
       ))}

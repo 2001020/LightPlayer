@@ -213,6 +213,21 @@ export function serializeLrc(lines: LyricLine[], meta: LyricMeta = {}, keepWords
 }
 
 /** Index of the line active at time `t` (-1 before the first line). */
+const spoken = new WeakMap<LyricLine[], LyricLine[]>();
+
+/**
+ * The lines worth showing: empty timestamps (instrumental gaps) are dropped,
+ * so the line before a gap stays current until the next one starts.
+ */
+export function spokenLines(lines: LyricLine[]): LyricLine[] {
+  let out = spoken.get(lines);
+  if (!out) {
+    out = lines.filter((l) => l.time === null || l.text.trim() || l.translation?.trim());
+    spoken.set(lines, out);
+  }
+  return out;
+}
+
 export function findLineIndex(lines: LyricLine[], t: number): number {
   let lo = 0;
   let hi = lines.length - 1;

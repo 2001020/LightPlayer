@@ -143,7 +143,7 @@ pub async fn open_media(state: State<'_, AppState>, path: String, caps: Caps, pr
     let (url, base_offset) = match strategy {
         Strategy::Direct => (state.server.file_url(&p), 0.0),
         Strategy::AudioTranscode => {
-            let out = transcode::audio_to_cache(&p, &probe, &caps, &state.cache_dir).await?;
+            let out = transcode::audio_to_cache(&p, &probe, &state.cache_dir).await?;
             (state.server.file_url(&out), 0.0)
         }
         Strategy::HlsRemux | Strategy::HlsTranscode => {

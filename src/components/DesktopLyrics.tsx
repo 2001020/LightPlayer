@@ -10,6 +10,9 @@ import { Icon } from "./Icon";
 
 const PRESETS = ["#66ccff", "#ffd166", "#ff4d8d", "#13ce66", "#ffffff", "#ff7849", "#b388ff"];
 
+/** Smallest window: room for the colour row and the two buttons. */
+export const DL_MIN = { w: 360, h: 56 } as const;
+
 interface ViewProps {
   line: DesktopLine;
   onClose: () => void;
@@ -22,14 +25,36 @@ interface ViewProps {
 
 function DesktopLyricsView({ line, onClose, onColor, onMoveStart, onResizeStart, dragRegion }: ViewProps) {
   const [palette, setPalette] = useState(false);
+  const leaveTimer = useRef(0);
   const drag = dragRegion ? { "data-tauri-drag-region": true } : {};
+
+  // The colour row closes with Esc, or shortly after the pointer leaves.
+  useEffect(() => {
+    if (!palette) return;
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setPalette(false);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("keydown", key);
+      clearTimeout(leaveTimer.current);
+    };
+  }, [palette]);
+
   return (
-    <div className={`dl-root ${palette ? "open" : ""}`} {...drag} onPointerDown={onMoveStart}>
+    <div
+      className={`dl-root ${palette ? "open" : ""}`}
+      {...drag}
+      onPointerDown={onMoveStart}
+      onPointerEnter={() => clearTimeout(leaveTimer.current)}
+      onPointerLeave={() => {
+        clearTimeout(leaveTimer.current);
+        if (palette) leaveTimer.current = window.setTimeout(() => setPalette(false), 1500);
+      }}
+    >
       <div key={line.key} className="dl-line" style={{ color: line.color }} {...drag}>
         {line.text}
       </div>
       <div className="dl-tools" onPointerDown={(e) => e.stopPropagation()}>
-        <button className="dl-btn" onClick={() => setPalette((p) => !p)} title="文字颜色">
+        <button className={`dl-btn ${palette ? "on" : ""}`} onClick={() => setPalette((p) => !p)} title={palette ? "收起颜色" : "文字颜色"}>
           <span className="dl-dot" style={{ background: line.color }} />
         </button>
         <button className="dl-btn" onClick={onClose} title="关闭桌面歌词">
@@ -41,7 +66,7 @@ function DesktopLyricsView({ line, onClose, onColor, onMoveStart, onResizeStart,
           <ColorChoices value={line.color} presets={PRESETS} onChange={(c) => c && onColor(c)} />
         </div>
       )}
-      <div className="dl-resize" onPointerDown={onResizeStart} title="拖动调整大小" />
+      {!palette && <div className="dl-resize" onPointerDown={onResizeStart} title="拖动调整大小" />}
     </div>
   );
 }
@@ -65,7 +90,7 @@ export function DesktopLyricsWindow() {
       try {
         const saved = JSON.parse(localStorage.getItem("lightplayer-desktop-lyrics-rect") ?? "null");
         if (saved) {
-          await w.setSize(new LogicalSize(saved.w, saved.h));
+          await w.setSize(new LogicalSize(Math.max(DL_MIN.w, saved.w), Math.max(DL_MIN.h, saved.h)));
           await w.setPosition(new LogicalPosition(saved.x, saved.y));
         }
       } catch {
@@ -105,7 +130,7 @@ export function DesktopLyricsWindow() {
     let raf = 0;
     const move = (ev: PointerEvent) => {
       if (!start || !LogicalSize) return;
-      const size = new LogicalSize(Math.max(240, start.width + ev.screenX - x0), Math.max(56, start.height + ev.screenY - y0));
+      const size = new LogicalSize(Math.max(DL_MIN.w, start.width + ev.screenX - x0), Math.max(DL_MIN.h, start.height + ev.screenY - y0));
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => void w.setSize(size));
     };
@@ -167,7 +192,7 @@ export function DesktopLyricsOverlay() {
         onResizeStart={(e) => {
           e.stopPropagation();
           const r = rect;
-          track(e, (dx, dy) => setRect({ ...r, w: Math.max(240, r.w + dx), h: Math.max(56, r.h + dy) }));
+          track(e, (dx, dy) => setRect({ ...r, w: Math.max(DL_MIN.w, r.w + dx), h: Math.max(DL_MIN.h, r.h + dy) }));
         }}
       />
     </div>

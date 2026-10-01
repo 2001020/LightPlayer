@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { api, isTauri, on } from "../lib/ipc";
 import { useLyrics, usePlayer } from "../stores/player";
 import { useSettings } from "../stores/settings";
-import { findLineIndex } from "./lyrics/lrc";
+import { findLineIndex, spokenLines } from "./lyrics/lrc";
 
 export interface DesktopLine {
   /** Changes whenever the shown line changes (drives the line animation). */
@@ -31,9 +31,10 @@ function current(): DesktopLine {
   const { status, lyrics } = useLyrics.getState();
   if (media.kind === "audio" && status === "loaded" && lyrics?.synced) {
     const offset = s.lyricOffsets[media.path] ?? 0;
-    const i = findLineIndex(lyrics.lines, usePlayer.getState().position + offset);
-    const line = lyrics.lines[i];
-    return { key: `${media.path}|${i}`, text: line?.text || "♪", color };
+    const lines = spokenLines(lyrics.lines);
+    const i = findLineIndex(lines, usePlayer.getState().position + offset);
+    // Before the first line: the song title.
+    if (i >= 0) return { key: `${media.path}|${i}`, text: lines[i].text || lines[i].translation || "", color };
   }
   const title = media.meta?.title || media.name;
   const artist = media.meta?.artist;

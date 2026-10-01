@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { engine } from "../core/player/engine";
-import { findLineIndex, type LyricLine } from "../core/lyrics/lrc";
+import { findLineIndex, spokenLines, type LyricLine } from "../core/lyrics/lrc";
 import { usePlayer } from "../stores/player";
 
 interface Props {
@@ -64,7 +64,8 @@ function smoothScroll(box: HTMLElement, target: number, anim: { current: number 
   anim.current = requestAnimationFrame(step);
 }
 
-export function LyricsView({ lines, synced, offset = 0, fontSize, align = "center", showTranslation = true, karaoke = true, onSeek }: Props) {
+export function LyricsView({ lines: all, synced, offset = 0, fontSize, align = "center", showTranslation = true, karaoke = true, onSeek }: Props) {
+  const lines = synced ? spokenLines(all) : all;
   const position = usePlayer((s) => s.position);
   const scrollRef = useRef<HTMLDivElement>(null);
   const anim = useRef(0);
@@ -157,7 +158,7 @@ export function LyricsView({ lines, synced, offset = 0, fontSize, align = "cente
             className={cls}
             onClick={() => jump(i, l)}
           >
-            {i === active && karaoke && l.words?.length ? <KaraokeWords line={l} offset={offset} /> : l.text || "♪"}
+            {i === active && karaoke && l.words?.length ? <KaraokeWords line={l} offset={offset} /> : l.text || "\u00a0"}
             {showTranslation && l.translation && <span className="tr">{l.translation}</span>}
           </div>
         );

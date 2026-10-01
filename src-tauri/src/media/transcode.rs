@@ -1,7 +1,6 @@
 //! ffmpeg-backed conversions: cached audio decode and live HLS sessions.
 
 use super::probe::Probe;
-use super::router::Caps;
 use crate::error::{AppError, AppResult};
 use crate::tools::{command, has_encoder, tools};
 use sha1::{Digest, Sha1};
@@ -30,12 +29,16 @@ pub fn file_key(path: &Path) -> String {
     hex::encode(&h.finalize()[..10])
 }
 
-/// Decodes any audio file to FLAC (or WAV when FLAC is unsupported) in the cache
-/// directory and returns the cached path. Subsequent calls are instant.
-pub async fn audio_to_cache(path: &Path, probe: &Probe, caps: &Caps, cache_dir: &Path) -> AppResult<PathBuf> {
+/// Decodes any audio file to WAV in the cache directory and returns the cached
+/// path. Subsequent calls are instant.
+///
+/// WAV rather than FLAC: ffmpeg writes FLAC without a seek table, and WebKit on
+/// macOS then seeks by estimate, landing away from the reported time (lyrics
+/// stop matching). PCM seeks and reports time exactly.
+pub async fn audio_to_cache(path: &Path, probe: &Probe, cache_dir: &Path) -> AppResult<PathBuf> {
     let dir = cache_dir.join("audio");
     tokio::fs::create_dir_all(&dir).await?;
-    let ext = if caps.flac { "flac" } else { "wav" };
+    let ext = "wav";
     let out = dir.join(format!("{}.{ext}", file_key(path)));
     if out.is_file() {
         let _ = filetime_touch(&out);
@@ -46,16 +49,15 @@ pub async fn audio_to_cache(path: &Path, probe: &Probe, caps: &Caps, cache_dir: 
     cmd.args(["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i"])
         .arg(path)
         .args(["-map", "0:a:0", "-vn", "-sn", "-map_metadata", "-1"]);
-    let sr = probe.audio().and_then(|a| a.sample_rate).unwrap_or(44100.0);
+    let a = probe.audio();
+    let sr = a.and_then(|a| a.sample_rate).unwrap_or(44100.0);
     if sr > 192_000.0 {
         // DSD and friends decode to absurd PCM rates.
         cmd.args(["-ar", "96000"]);
     }
-    if ext == "flac" {
-        cmd.args(["-c:a", "flac", "-compression_level", "0"]);
-    } else {
-        cmd.args(["-c:a", "pcm_s16le"]);
-    }
+    // Keep hi-res sources at 24 bits; everything else (incl. lossy) fits 16.
+    let deep = a.and_then(|a| a.bits_per_raw_sample).is_some_and(|b| b > 16.0) || sr > 192_000.0;
+    cmd.args(["-c:a", if deep { "pcm_s24le" } else { "pcm_s16le" }]);
     cmd.arg(&tmp);
     let res = cmd.output().await?;
     if !res.status.success() {
@@ -290,7 +292,7 @@ mod tests {
     use super::*;
     use crate::media::kinds::MediaKind;
     use crate::media::probe::probe;
-    use crate::media::router::{decide, Strategy};
+    use crate::media::router::{decide, Caps, Strategy};
 
     fn ffmpeg_ok() -> bool {
         std::process::Command::new(&tools().ffmpeg).arg("-version").output().is_ok()
@@ -317,12 +319,12 @@ mod tests {
         let p = probe(&wma).await.unwrap();
         let caps = Caps { flac: true, ..Default::default() };
         assert_eq!(decide(MediaKind::Audio, &p, "wma", &caps), Strategy::AudioTranscode);
-        let out = audio_to_cache(&wma, &p, &caps, dir.path()).await.unwrap();
-        assert!(out.extension().unwrap() == "flac");
+        let out = audio_to_cache(&wma, &p, dir.path()).await.unwrap();
+        assert!(out.extension().unwrap() == "wav");
         let converted = probe(&out).await.unwrap();
-        assert_eq!(converted.audio().unwrap().codec_name, "flac");
+        assert_eq!(converted.audio().unwrap().codec_name, "pcm_s16le");
         // Second call is served from the cache.
-        assert_eq!(audio_to_cache(&wma, &p, &caps, dir.path()).await.unwrap(), out);
+        assert_eq!(audio_to_cache(&wma, &p, dir.path()).await.unwrap(), out);
     }
 
     #[tokio::test]
