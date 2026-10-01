@@ -4,8 +4,8 @@ import { engine } from "./core/player/engine";
 import { accentPalette } from "./lib/color";
 import { localFileUrl } from "./lib/ipc";
 import { usePlayer, useUI } from "./stores/player";
-import { useSettings } from "./stores/settings";
-import { toggleFullscreen } from "./components/TransportBar";
+import { clampLyricSize, useSettings } from "./stores/settings";
+import { lastFullscreenToggle, toggleFullscreen } from "./components/TransportBar";
 
 function useSystemDark() {
   const [dark, setDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -128,7 +128,10 @@ export function useKeyboard() {
       else if (k === ".") C.stepFrame(1);
       else if (k === "[") C.setRate(Math.max(0.25, Math.round((s.rate - 0.25) * 100) / 100));
       else if (k === "]") C.setRate(Math.min(4, Math.round((s.rate + 0.25) * 100) / 100));
-      else if (k === "Escape" && ui.fullscreen) void toggleFullscreen(false);
+      else if (k === "Escape" && ui.fullscreen && !document.querySelector(".popover")) void toggleFullscreen(false);
+      else if (mod && (k === "=" || k === "+") && ui.page === "lyrics") s.set({ lyricFontSize: clampLyricSize(s.lyricFontSize + 2) });
+      else if (mod && k === "-" && ui.page === "lyrics") s.set({ lyricFontSize: clampLyricSize(s.lyricFontSize - 2) });
+      else if (mod && k === "0" && ui.page === "lyrics") s.set({ lyricFontSize: 22 });
       else handled = false;
       if (handled) e.preventDefault();
     };
@@ -155,19 +158,75 @@ export function useIdle(active: boolean, ms = 2500) {
       setIdle(false);
       return;
     }
-    let t = window.setTimeout(() => setIdle(!engine.paused), ms);
-    const wake = () => {
+    let hovering = false;
+    // Stay visible while paused, while the pointer is over the controls or
+    // while one of their menus is open.
+    const check = () => setIdle(!engine.paused && !hovering && !document.querySelector(".transport .popover"));
+    let t = window.setTimeout(check, ms);
+    const wake = (e: Event) => {
+      const el = e.target as HTMLElement | null;
+      hovering = !!el?.closest?.(".transport, .immersive-top");
       setIdle(false);
       clearTimeout(t);
-      t = window.setTimeout(() => setIdle(!engine.paused), ms);
+      t = window.setTimeout(check, ms);
     };
-    window.addEventListener("mousemove", wake);
+    const opts = { passive: true } as const;
+    window.addEventListener("mousemove", wake, opts);
+    window.addEventListener("pointerdown", wake, opts);
     window.addEventListener("keydown", wake);
+    window.addEventListener("wheel", wake, opts);
     return () => {
       clearTimeout(t);
       window.removeEventListener("mousemove", wake);
+      window.removeEventListener("pointerdown", wake);
       window.removeEventListener("keydown", wake);
+      window.removeEventListener("wheel", wake);
     };
   }, [active, ms]);
   return idle;
+}
+
+/**
+ * Keeps `useUI.fullscreen` in sync with the real window state, which can also
+ * change through the green traffic light, ⌃⌘F or the system Esc handling.
+ */
+export function useFullscreenSync() {
+  useEffect(() => {
+    let disposed = false;
+    let timer = 0;
+    const sync = async () => {
+      const settle = lastFullscreenToggle + 1200 - Date.now();
+      if (settle > 0) {
+        clearTimeout(timer);
+        timer = window.setTimeout(() => void sync(), settle);
+        return;
+      }
+      try {
+        const { isTauri } = await import("./lib/ipc");
+        let fs: boolean;
+        if (isTauri) {
+          const { getCurrentWindow } = await import("@tauri-apps/api/window");
+          fs = await getCurrentWindow().isFullscreen();
+        } else {
+          fs = !!document.fullscreenElement;
+        }
+        if (!disposed && fs !== useUI.getState().fullscreen) useUI.setState({ fullscreen: fs });
+      } catch {
+        /* ignore */
+      }
+    };
+    // Window animations take a moment; check once they have settled.
+    const onResize = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(() => void sync(), 250);
+    };
+    window.addEventListener("resize", onResize);
+    document.addEventListener("fullscreenchange", onResize);
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("fullscreenchange", onResize);
+    };
+  }, []);
 }

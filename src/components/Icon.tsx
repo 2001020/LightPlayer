@@ -5,8 +5,6 @@ const paths: Record<string, string> = {
   pause: "M7 5h3.2v14H7zM13.8 5H17v14h-3.2z",
   next: "M5 5.8v12.4a.8.8 0 0 0 1.24.66L15 13V18.2h2V5.8h-2V11L6.24 5.14A.8.8 0 0 0 5 5.8z",
   prev: "M19 5.8v12.4a.8.8 0 0 1-1.24.66L9 13V18.2H7V5.8h2V11l8.76-5.86A.8.8 0 0 1 19 5.8z",
-  back15: "M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z",
-  fwd15: "M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z",
   sequential: "M4 7h12M4 12h12M4 17h8M18 14v6l3-3z",
   loop: "M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4",
   single: "M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4M11.5 10.5l1.5-1v5",
@@ -25,6 +23,9 @@ const paths: Record<string, string> = {
   sparkles: "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1L16 18l2.1-.9zM5 15l.6 1.4 1.4.6-1.4.6L5 19l-.6-1.4L3 17l1.4-.6z",
   chevronLeft: "M15 18l-6-6 6-6",
   chevronDown: "M6 9l6 6 6-6",
+  chevronRight: "M9 18l6-6-6-6",
+  sidebar: "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM15 5v14",
+  textSize: "M3 19l5-13 5 13M4.8 14.5h6.4M14 19l3.5-8.5L21 19M15.1 16.3h4.8",
   close: "M6 6l12 12M18 6L6 18",
   fullscreen: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
   exitFullscreen: "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5",
@@ -72,6 +73,39 @@ export function Icon({ name, size = 20, className }: { name: IconName; size?: nu
       aria-hidden="true"
     >
       <path d={d} />
+    </svg>
+  );
+}
+
+/** Circular "jump back / forward N seconds" icon with the step drawn inside. */
+export function SkipIcon({ dir, seconds, size = 28 }: { dir: "back" | "fwd"; seconds: number; size?: number }) {
+  const back = dir === "back";
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={back ? "M12 4.6A8.6 8.6 0 1 1 4.55 8.9" : "M12 4.6A8.6 8.6 0 1 0 19.45 8.9"} />
+      <path d={back ? "M14.3 2.3 11.7 4.6l2.6 2.3" : "M9.7 2.3 12.3 4.6 9.7 6.9"} />
+      <text
+        x="12"
+        y="16.25"
+        textAnchor="middle"
+        fill="currentColor"
+        stroke="none"
+        fontSize={seconds >= 100 ? 6 : 8.2}
+        fontWeight={650}
+        fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif"
+      >
+        {seconds}
+      </text>
     </svg>
   );
 }

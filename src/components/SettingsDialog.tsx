@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, isTauri, localFileUrl, pickBrowserFiles } from "../lib/ipc";
 import { useUI, type UIState } from "../stores/player";
-import { ACCENT_PRESETS, defaultSettings, useSettings } from "../stores/settings";
+import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZE_MIN } from "../stores/settings";
 import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
 
@@ -110,7 +110,7 @@ function Appearance() {
       </Row>
 
       <h3>声波动画</h3>
-      <Row label="显示声波动画" hint="歌词页左右两侧、播放控制栏上方的竖直声波（窗口宽度 ≥ 1100 时显示）">
+      <Row label="显示声波动画" hint="在歌词页底部、横跨整个播放控制栏的低矮竖条声波">
         <Switch on={s.waveform} onChange={(waveform) => s.set({ waveform })} />
       </Row>
       <Row label="动画样式">
@@ -150,7 +150,7 @@ function LyricsSettings() {
     <>
       <h3>显示</h3>
       <Row label="歌词字号" hint={`${s.lyricFontSize}px`}>
-        <input type="range" min={14} max={40} value={s.lyricFontSize} onChange={(e) => s.set({ lyricFontSize: +e.target.value })} />
+        <input type="range" min={LYRIC_SIZE_MIN} max={LYRIC_SIZE_MAX} value={s.lyricFontSize} onChange={(e) => s.set({ lyricFontSize: +e.target.value })} />
       </Row>
       <Row label="对齐方式">
         <Seg value={s.lyricAlign} options={[["center", "居中"], ["left", "左对齐"]]} onChange={(lyricAlign) => s.set({ lyricAlign })} />

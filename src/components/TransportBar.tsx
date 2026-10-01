@@ -2,9 +2,10 @@ import * as C from "../core/controller";
 import { formatTime } from "../lib/format";
 import { usePlayer, usePlaylist, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
-import { Icon, type IconName } from "./Icon";
+import { Icon, SkipIcon, type IconName } from "./Icon";
 import { Popover } from "./Popover";
 import { Slider } from "./Slider";
+import { tip } from "./Tooltip";
 
 const MODE_META: Record<string, { icon: IconName; label: string }> = {
   sequential: { icon: "sequential", label: "顺序播放" },
@@ -43,7 +44,7 @@ function Volume() {
   const icon: IconName = muted || volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume";
   return (
     <div className="volume">
-      <button className="icon-btn" onClick={C.toggleMute} title={muted ? "取消静音 (M)" : "静音 (M)"}>
+      <button className="icon-btn" onClick={C.toggleMute} {...tip(muted ? "取消静音" : "静音", "M")}>
         <Icon name={icon} />
       </button>
       <Slider
@@ -66,7 +67,7 @@ function SleepMenu() {
   return (
     <Popover
       trigger={(_, t) => (
-        <button className={`icon-btn hide-narrow ${active ? "active" : ""}`} onClick={t} title="睡眠定时">
+        <button className={`icon-btn hide-narrow ${active ? "active" : ""}`} onClick={t} {...tip("睡眠定时")}>
           <Icon name="timer" />
           {left !== null && <span className="badge">{left}</span>}
         </button>
@@ -102,7 +103,7 @@ function RateMenu() {
   return (
     <Popover
       trigger={(_, t) => (
-        <button className={`icon-btn hide-narrow ${rate !== 1 ? "active" : ""}`} onClick={t} title="播放速度">
+        <button className={`icon-btn hide-narrow ${rate !== 1 ? "active" : ""}`} onClick={t} {...tip("播放速度", "[ / ]")}>
           {rate === 1 ? <Icon name="speed" /> : <span style={{ fontSize: 11.5, fontWeight: 700 }}>{rate}×</span>}
         </button>
       )}
@@ -127,7 +128,7 @@ function SubtitleMenu() {
   return (
     <Popover
       trigger={(_, t) => (
-        <button className={`icon-btn ${active >= 0 ? "active" : ""}`} onClick={t} title="字幕">
+        <button className={`icon-btn ${active >= 0 ? "active" : ""}`} onClick={t} {...tip("字幕")}>
           <Icon name="subtitles" />
         </button>
       )}
@@ -163,7 +164,7 @@ export function TransportBar() {
   const ab = usePlayer((s) => s.abLoop);
   const mode = usePlaylist((s) => s.mode);
   const count = usePlaylist((s) => s.items.length);
-  const playlistOpen = useUI((s) => s.playlistOpen);
+  const playlistOpen = useSettings((s) => s.playlistOpen);
   const page = useUI((s) => s.page);
   const fullscreen = useUI((s) => s.fullscreen);
   const jump = useSettings((s) => s.jumpStep);
@@ -179,7 +180,7 @@ export function TransportBar() {
         <div
           className="mini"
           onClick={() => media?.kind === "audio" && useUI.setState({ page: page === "lyrics" ? "player" : "lyrics" })}
-          title={media?.kind === "audio" ? "歌词" : undefined}
+          {...(media?.kind === "audio" ? tip("打开歌词", "Y") : {})}
         >
           <div className="thumb">
             {media?.meta?.cover ? <img src={media.meta.cover} alt="" /> : <Icon name={isVideo ? "film" : "music"} />}
@@ -191,35 +192,29 @@ export function TransportBar() {
         </div>
 
         <div className="center">
-          <button className="icon-btn" onClick={C.cycleMode} title={`${m.label}（点击切换）`}>
+          <button className="icon-btn" onClick={C.cycleMode} {...tip(`${m.label}（点击切换）`)}>
             <Icon name={m.icon} />
           </button>
-          <button className="icon-btn" onClick={() => C.prev()} disabled={!count} title="上一曲 (⌘←)">
+          <button className="icon-btn" onClick={() => C.prev()} disabled={!count} {...tip("上一曲", "⌘←")}>
             <Icon name="prev" />
           </button>
-          <button className="icon-btn" onClick={() => C.seekBy(-jump)} disabled={!media} title={`后退 ${jump} 秒 (J)`}>
-            <Icon name="back15" />
-            <span className="badge" style={{ right: 10, top: 12, fontSize: 8, color: "inherit" }}>
-              {jump}
-            </span>
+          <button className="icon-btn skip-btn" onClick={() => C.seekBy(-jump)} disabled={!media} {...tip(`后退 ${jump} 秒`, "J")}>
+            <SkipIcon dir="back" seconds={jump} />
           </button>
-          <button className="icon-btn play-btn" onClick={C.toggle} title="播放/暂停 (空格)">
+          <button className="icon-btn play-btn" onClick={C.toggle} {...tip(playing ? "暂停" : "播放", "空格")}>
             {loading ? <div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : <Icon name={playing ? "pause" : "play"} size={22} />}
           </button>
-          <button className="icon-btn" onClick={() => C.seekBy(jump)} disabled={!media} title={`前进 ${jump} 秒 (L)`}>
-            <Icon name="fwd15" />
-            <span className="badge" style={{ right: 10, top: 12, fontSize: 8, color: "inherit" }}>
-              {jump}
-            </span>
+          <button className="icon-btn skip-btn" onClick={() => C.seekBy(jump)} disabled={!media} {...tip(`前进 ${jump} 秒`, "L")}>
+            <SkipIcon dir="fwd" seconds={jump} />
           </button>
-          <button className="icon-btn" onClick={() => C.next()} disabled={!count} title="下一曲 (⌘→)">
+          <button className="icon-btn" onClick={() => C.next()} disabled={!count} {...tip("下一曲", "⌘→")}>
             <Icon name="next" />
           </button>
           <button
             className={`icon-btn hide-narrow ${ab.a !== null ? "active" : ""}`}
             onClick={C.cycleAbLoop}
             disabled={!media}
-            title={ab.a === null ? "A-B 段落循环：设置 A 点" : ab.b === null ? "设置 B 点" : "关闭 A-B 循环"}
+            {...tip(ab.a === null ? "A-B 段落循环：设置 A 点" : ab.b === null ? "A-B 段落循环：设置 B 点" : "关闭 A-B 循环", "A")}
           >
             <Icon name="ab" />
           </button>
@@ -232,32 +227,35 @@ export function TransportBar() {
             <button
               className={`icon-btn ${page === "lyrics" ? "active" : ""}`}
               onClick={() => useUI.setState({ page: page === "lyrics" ? "player" : "lyrics" })}
-              title="歌词"
+              {...tip(page === "lyrics" ? "返回播放页" : "歌词", "Y")}
             >
               <Icon name="lyrics" />
             </button>
           )}
           {isVideo && <SubtitleMenu />}
           {isVideo && (
-            <button className="icon-btn hide-narrow" onClick={C.screenshot} title="截图 (S)">
+            <button className="icon-btn hide-narrow" onClick={C.screenshot} {...tip("截图", "S")}>
               <Icon name="camera" />
             </button>
           )}
           {isVideo && (
-            <button className="icon-btn" onClick={() => useUI.setState({ overlay: "videoInfo" })} title="视频详细信息 (I)">
+            <button className="icon-btn" onClick={() => useUI.setState({ overlay: "videoInfo" })} {...tip("视频详细信息", "I")}>
               <Icon name="info" />
             </button>
           )}
           <button
-            className={`icon-btn ${playlistOpen ? "active" : ""}`}
-            onClick={() => useUI.setState({ playlistOpen: !playlistOpen, page: "player" })}
-            title="播放列表"
+            className={`icon-btn pl-toggle ${playlistOpen ? "active" : ""}`}
+            onClick={() => {
+              useSettings.getState().set({ playlistOpen: page === "lyrics" ? true : !playlistOpen });
+              useUI.setState({ page: "player" });
+            }}
+            {...tip(playlistOpen && page !== "lyrics" ? "收起播放列表" : "显示播放列表")}
           >
             <Icon name="list" />
           </button>
           <Volume />
           {isVideo && (
-            <button className="icon-btn" onClick={() => toggleFullscreen()} title="全屏 (F)">
+            <button className="icon-btn" onClick={() => toggleFullscreen()} {...tip(fullscreen ? "退出全屏" : "全屏", fullscreen ? "Esc" : "F")}>
               <Icon name={fullscreen ? "exitFullscreen" : "fullscreen"} />
             </button>
           )}
@@ -267,8 +265,12 @@ export function TransportBar() {
   );
 }
 
+/** Time of the last fullscreen request; window-state syncing waits for its animation. */
+export let lastFullscreenToggle = 0;
+
 export async function toggleFullscreen(force?: boolean) {
   const next = force ?? !useUI.getState().fullscreen;
+  lastFullscreenToggle = Date.now();
   useUI.setState({ fullscreen: next });
   try {
     const { isTauri } = await import("../lib/ipc");

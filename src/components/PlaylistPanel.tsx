@@ -3,6 +3,8 @@ import * as C from "../core/controller";
 import { extOf } from "../lib/ipc";
 import { usePlayer, usePlaylist } from "../stores/player";
 import { Icon } from "./Icon";
+import { tip } from "./Tooltip";
+import { useSettings } from "../stores/settings";
 
 export function PlaylistPanel() {
   const items = usePlaylist((s) => s.items);
@@ -28,10 +30,12 @@ export function PlaylistPanel() {
     <aside className="playlist panel">
       <header>
         <div className="row">
-          <h3>播放列表</h3>
-          <span className="count">
-            {items.length} {kindLabel}
-          </span>
+          <h3>
+            播放列表 <span className="count">{items.length} {kindLabel}</span>
+          </h3>
+          <button className="icon-btn small" onClick={() => useSettings.getState().set({ playlistOpen: false })} {...tip("收起播放列表")}>
+            <Icon name="chevronRight" size={18} />
+          </button>
         </div>
         {items.length > 8 && (
           <div className="search">
@@ -50,9 +54,8 @@ export function PlaylistPanel() {
           <div
             key={it.path}
             className={`pl-item ${i === index ? "active" : ""}`}
-            onDoubleClick={() => C.playIndex(i)}
-            onClick={(e) => e.detail === 1 && i !== index && e.metaKey && C.playIndex(i)}
-            title={`${it.fileName}\n双击播放`}
+            onClick={() => (i === index ? C.toggle() : void C.playIndex(i))}
+            data-tip={it.fileName}
           >
             <span className="idx">
               {i === index ? (

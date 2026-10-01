@@ -105,7 +105,6 @@ export interface UIState {
   page: Page;
   overlay: Overlay;
   settingsTab: "appearance" | "playback" | "lyrics" | "asr" | "shortcuts" | "about";
-  playlistOpen: boolean;
   fullscreen: boolean;
   toasts: Toast[];
   dragOver: boolean;
@@ -117,7 +116,6 @@ export const useUI = create<UIState>(() => ({
   page: "player",
   overlay: null,
   settingsTab: "appearance",
-  playlistOpen: true,
   fullscreen: false,
   toasts: [],
   dragOver: false,

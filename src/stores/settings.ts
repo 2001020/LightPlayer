@@ -40,6 +40,7 @@ export interface Settings {
   karaoke: boolean;
   waveform: boolean;
   waveformStyle: "bars" | "wave";
+  playlistOpen: boolean;
   tapCompensation: number;
   asr: AsrSettings;
   recent: string[];
@@ -55,6 +56,10 @@ interface SettingsStore extends Settings {
   savePosition: (path: string, t: number | null) => void;
   setLyricOffset: (path: string, offset: number) => void;
 }
+
+export const LYRIC_SIZE_MIN = 14;
+export const LYRIC_SIZE_MAX = 56;
+export const clampLyricSize = (v: number) => Math.min(LYRIC_SIZE_MAX, Math.max(LYRIC_SIZE_MIN, Math.round(v)));
 
 export const ACCENT_PRESETS = ["#66ccff", "#7c5cff", "#13ce66", "#ff7849", "#ff4d8d", "#f7b500", "#00b8a9", "#8e8e93"];
 
@@ -77,6 +82,7 @@ export const defaultSettings: Settings = {
   karaoke: true,
   waveform: true,
   waveformStyle: "bars",
+  playlistOpen: true,
   tapCompensation: 0.15,
   asr: {
     model: "large-v3-turbo-q5_0",
@@ -120,7 +126,7 @@ export const useSettings = create<SettingsStore>()(
     }),
     {
       name: "lightplayer-settings",
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         const p = (persisted ?? {}) as Partial<Settings>;
         // v2: default accent changed from purple to light blue.

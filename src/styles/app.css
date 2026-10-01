@@ -297,6 +297,13 @@ button:focus:not(:focus-visible) {
   border-radius: 50%;
   background: var(--accent);
 }
+.icon-btn.small {
+  width: 28px;
+  height: 28px;
+}
+.icon-btn.skip-btn svg text {
+  font-variant-numeric: tabular-nums;
+}
 .icon-btn .badge {
   position: absolute;
   top: 3px;
@@ -529,6 +536,39 @@ input[type="range"] {
   flex: 1;
 }
 
+/* ---------------------------------------------------------------- tooltip */
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 12px));
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(30, 30, 36, 0.94);
+  color: #f2f2f5;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  word-break: break-all;
+  animation: tipIn 0.12s var(--ease);
+}
+.tooltip kbd {
+  font-size: 11px;
+  padding: 0 5px;
+  color: #c4c4cc;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+@keyframes tipIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
 /* ---------------------------------------------------------------- popover */
 .popover-wrap {
   position: relative;
@@ -549,6 +589,31 @@ input[type="range"] {
 .popover.down {
   bottom: auto;
   top: calc(100% + 8px);
+}
+.font-menu {
+  width: 240px;
+  padding: 2px 4px 4px;
+}
+.font-menu .label {
+  margin-bottom: 6px;
+}
+.font-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.font-row input {
+  flex: 1;
+  min-width: 0;
+}
+.font-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 .popover .item {
   display: flex;
@@ -588,14 +653,57 @@ input[type="range"] {
 .player-page {
   height: 100%;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   gap: 14px;
   padding: 4px 10px 12px 10px;
+}
+.player-page.with-list {
+  grid-template-columns: 1fr auto;
 }
 .stage {
   min-width: 0;
   min-height: 0;
   position: relative;
+}
+.playlist-handle {
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 26px;
+  padding: 10px 0;
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+  background: var(--panel);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.25;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.2s, color 0.2s, width 0.2s;
+  animation: fadeIn 0.3s var(--ease);
+}
+.playlist-handle svg {
+  margin-bottom: 2px;
+}
+.playlist-handle:hover {
+  opacity: 1;
+  color: var(--text);
+  width: 30px;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
 }
 .now-playing {
   height: 100%;
@@ -848,20 +956,49 @@ input[type="range"] {
 
 /* immersive (fullscreen video) */
 .app.immersive {
-  grid-template-rows: 0 1fr 0;
+  /* Titlebar is hidden and the transport floats, so main is the only grid item. */
+  grid-template-rows: 1fr;
+  background: #000;
+}
+.app.immersive .main {
+  grid-row: 1;
+}
+.app.immersive .bg-layer,
+.app.immersive .bg-image,
+.app.immersive .bg-dim {
+  display: none;
 }
 .app.immersive .titlebar {
   display: none;
 }
 .app.immersive .player-page {
   padding: 0;
+  gap: 0;
   grid-template-columns: 1fr;
 }
-.app.immersive .player-page .playlist {
+.app.immersive .player-page .playlist,
+.app.immersive .playlist-handle,
+.app.immersive .pl-toggle,
+.app.immersive .video-badge {
   display: none;
 }
 .app.immersive .video-stage {
   border-radius: 0;
+}
+/* Controls on top of the picture always use the dark palette. */
+.app.immersive .transport,
+.app.immersive .immersive-top {
+  --panel: rgba(18, 18, 22, 0.62);
+  --panel-solid: #1c1c22;
+  --panel-2: rgba(255, 255, 255, 0.06);
+  --hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #f2f2f5;
+  --text-dim: #c4c4cc;
+  --text-faint: #9a9aa6;
+  --track: rgba(255, 255, 255, 0.2);
+  color: var(--text);
+  color-scheme: dark;
 }
 .app.immersive .transport {
   position: fixed;
@@ -871,15 +1008,54 @@ input[type="range"] {
   width: min(1100px, calc(100% - 40px));
   height: var(--transport-h);
   margin: 0;
-  transition: opacity 0.35s, transform 0.35s;
+  background: var(--panel);
+  border-color: var(--border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.35s, transform 0.35s var(--ease);
+}
+.immersive-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px 36px 24px;
+  background: linear-gradient(rgba(0, 0, 0, 0.62), transparent);
+  transition: opacity 0.35s, transform 0.35s var(--ease);
+}
+.immersive-top .name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.app.immersive .subtitle-overlay {
+  bottom: calc(var(--transport-h) + 36px);
+  transition: bottom 0.35s var(--ease);
+}
+.app.immersive.idle .subtitle-overlay {
+  bottom: 6%;
 }
 .app.immersive.idle .transport {
   opacity: 0;
   transform: translate(-50%, 20px);
   pointer-events: none;
 }
-.app.immersive.idle {
-  cursor: none;
+.app.immersive.idle .immersive-top {
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+}
+.app.immersive.idle,
+.app.immersive.idle * {
+  cursor: none !important;
 }
 
 /* ---------------------------------------------------------------- playlist */
@@ -911,6 +1087,12 @@ input[type="range"] {
 .playlist header h3 {
   margin: 0;
   font-size: 15px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.playlist header .icon-btn {
+  margin-right: -6px;
 }
 .playlist header .count {
   font-size: 12px;
@@ -1003,6 +1185,7 @@ input[type="range"] {
 
 /* ---------------------------------------------------------------- lyrics page */
 .lyrics-page {
+  position: relative;
   height: 100%;
   display: grid;
   grid-template-rows: auto auto 1fr;
@@ -1081,15 +1264,24 @@ input[type="range"] {
   flex: 1;
 }
 .lyrics-body {
+  position: relative;
+  z-index: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr minmax(0, 680px) 1fr;
+  grid-template-columns: minmax(0, 680px);
+  justify-content: center;
 }
-.wave-side {
-  min-width: 0;
-  position: relative;
+/* Low sound-wave strip spanning the control bar, right above it. */
+.wave-strip {
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  bottom: 0;
+  height: 60px;
+  z-index: 0;
+  pointer-events: none;
 }
-.wave-side canvas {
+.wave-strip canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1108,7 +1300,7 @@ input[type="range"] {
   display: none;
 }
 .lyric-scroll .pad {
-  height: 45%;
+  height: 50%;
 }
 .lyric-line {
   padding: 10px 14px;
@@ -1116,7 +1308,7 @@ input[type="range"] {
   border-radius: 12px;
   color: var(--text-faint);
   line-height: 1.45;
-  transition: color 0.35s, transform 0.45s var(--ease), opacity 0.35s, filter 0.45s;
+  transition: color 0.2s, transform 0.25s var(--ease), opacity 0.2s, filter 0.25s;
   transform-origin: center;
   cursor: pointer;
   font-weight: 600;
@@ -1764,15 +1956,6 @@ kbd {
     width: 96px;
   }
   .transport .hide-narrow {
-    display: none;
-  }
-}
-
-@media (max-width: 1099px) {
-  .lyrics-body {
-    grid-template-columns: 0 minmax(0, 1fr) 0;
-  }
-  .wave-side {
     display: none;
   }
 }

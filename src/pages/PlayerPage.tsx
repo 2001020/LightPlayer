@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 import * as C from "../core/controller";
 import { engine } from "../core/player/engine";
 import { findActiveCue, findLineIndex } from "../core/lyrics/lrc";
 import { Icon } from "../components/Icon";
 import { PlaylistPanel } from "../components/PlaylistPanel";
+import { tip } from "../components/Tooltip";
+import { toggleFullscreen } from "../components/TransportBar";
 import { basename } from "../lib/format";
 import { useLyrics, usePlayer, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
@@ -75,7 +77,7 @@ function AudioNowPlaying() {
   const strat = STRATEGY_LABEL[media.strategy];
   return (
     <div className="now-playing">
-      <div className={`cover ${playing ? "" : "paused"}`} onClick={toLyrics} title="查看歌词">
+      <div className={`cover ${playing ? "" : "paused"}`} onClick={toLyrics}>
         {meta.cover ? (
           <img src={meta.cover} alt="" draggable={false} />
         ) : (
@@ -86,7 +88,7 @@ function AudioNowPlaying() {
         <div className="hint">点击查看歌词</div>
       </div>
       <div className="track-info">
-        <div className="title" onClick={toLyrics} title="查看歌词">
+        <div className="title" onClick={toLyrics} {...tip("查看歌词", "Y")}>
           {meta.title || media.name}
         </div>
         {meta.artist && <div className="artist">{meta.artist}</div>}
@@ -119,16 +121,35 @@ function SubtitleOverlay() {
 
 function VideoStage() {
   const host = useRef<HTMLDivElement>(null);
+  const clickTimer = useRef<number | null>(null);
   const waiting = usePlayer((s) => s.waiting || s.loading);
   const media = usePlayer((s) => s.media)!;
   useEffect(() => {
     const el = engine.video;
     host.current?.appendChild(el);
+    return () => {
+      if (clickTimer.current !== null) clearTimeout(clickTimer.current);
+    };
   }, []);
   const strat = STRATEGY_LABEL[media.strategy];
+  // A single click toggles playback, a double click toggles fullscreen. The
+  // single click waits briefly so a double click doesn't pause and resume.
+  const onClick = (e: MouseEvent) => {
+    if (e.detail > 1) return;
+    if (clickTimer.current !== null) clearTimeout(clickTimer.current);
+    clickTimer.current = window.setTimeout(() => {
+      clickTimer.current = null;
+      C.toggle();
+    }, 220);
+  };
+  const onDoubleClick = () => {
+    if (clickTimer.current !== null) clearTimeout(clickTimer.current);
+    clickTimer.current = null;
+    void toggleFullscreen();
+  };
   return (
-    <div className="video-stage" onDoubleClick={() => import("../components/TransportBar").then((m) => m.toggleFullscreen())}>
-      <div className="video-host" ref={host} onClick={() => C.toggle()} />
+    <div className="video-stage" onDoubleClick={onDoubleClick}>
+      <div className="video-host" ref={host} onClick={onClick} />
       <SubtitleOverlay />
       {strat && <div className="video-badge">{strat}</div>}
       {waiting && (
@@ -140,12 +161,27 @@ function VideoStage() {
   );
 }
 
+function PlaylistHandle() {
+  return (
+    <button
+      className="playlist-handle"
+      onClick={() => useSettings.getState().set({ playlistOpen: true })}
+      {...tip("显示播放列表")}
+    >
+      <Icon name="chevronLeft" size={16} />
+      <span>列</span>
+      <span>表</span>
+    </button>
+  );
+}
+
 export function PlayerPage() {
   const media = usePlayer((s) => s.media);
   const loading = usePlayer((s) => s.loading);
-  const playlistOpen = useUI((s) => s.playlistOpen);
+  const playlistOpen = useSettings((s) => s.playlistOpen);
+  const showList = !!media && playlistOpen;
   return (
-    <div className="player-page" style={!playlistOpen || !media ? { gridTemplateColumns: "1fr" } : undefined}>
+    <div className={`player-page ${showList ? "with-list" : ""}`}>
       <div className="stage">
         {!media && !loading && <EmptyState />}
         {!media && loading && (
@@ -155,8 +191,9 @@ export function PlayerPage() {
         )}
         {media?.kind === "audio" && <AudioNowPlaying />}
         {media?.kind === "video" && <VideoStage />}
+        {media && !playlistOpen && <PlaylistHandle />}
       </div>
-      {media && playlistOpen && <PlaylistPanel />}
+      {showList && <PlaylistPanel />}
     </div>
   );
 }

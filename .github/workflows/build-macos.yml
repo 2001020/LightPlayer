@@ -92,6 +92,28 @@ jobs:
         with:
           name: LightPlayer-macOS-arm64-app
           path: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app.zip
+      - name: UI screenshot (best effort)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          APP="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app"
+          SHOTS="$RUNNER_TEMP/shots"
+          mkdir -p "$SHOTS"
+          "$APP/Contents/MacOS/ffmpeg" -loglevel error -y -f lavfi -i testsrc2=size=1280x720:rate=30 \
+            -f lavfi -i sine=frequency=440 -t 20 -c:v libx264 -pix_fmt yuv420p -c:a aac "$RUNNER_TEMP/test.mp4"
+          open -n "$APP" --args "$RUNNER_TEMP/test.mp4"
+          sleep 10
+          screencapture -x "$SHOTS/window.png"
+          sleep 4
+          screencapture -x "$SHOTS/window-later.png"
+          osascript -e 'quit app "LightPlayer"' || pkill -f LightPlayer.app || true
+          ls -la "$SHOTS"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-screenshots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
       - name: Speech recognition smoke test (Metal)
         env:
           LP_ASR_MODEL_DIR: ${{ runner.temp }}/models

@@ -1,6 +1,8 @@
-// Subtle real-time audio visualisation for the sides of the lyrics page.
-// Uses the Web Audio analyser when available; otherwise falls back to a
-// precomputed loudness envelope from the backend.
+// Subtle real-time audio visualisation: a low strip of vertical bars right
+// above the control bar, spanning its full width and mirrored from the
+// centre (bass in the middle, treble towards both ends). Uses the Web Audio
+// analyser when available; otherwise falls back to a precomputed loudness
+// envelope from the backend.
 
 import { useEffect, useRef } from "react";
 import { engine } from "../core/player/engine";
@@ -9,7 +11,12 @@ import { usePlayer } from "../stores/player";
 
 const envCache = new Map<string, number[]>();
 
-export function Waveform({ side, style }: { side: "left" | "right"; style: "bars" | "wave" }) {
+/** Bars per half (the strip is mirrored, so twice as many are drawn). */
+const HALF = 32;
+/** Tallest bar in CSS pixels. */
+const MAX_BAR = 52;
+
+export function Waveform({ style }: { style: "bars" | "wave" }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const path = usePlayer((s) => s.media?.path);
 
@@ -29,8 +36,7 @@ export function Waveform({ side, style }: { side: "left" | "right"; style: "bars
     let raf = 0;
     let last = 0;
     let silentSince = performance.now();
-    const bins = 28;
-    const smooth = new Float32Array(bins);
+    const smooth = new Float32Array(HALF);
     const freq = new Uint8Array(128);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -50,14 +56,14 @@ export function Waveform({ side, style }: { side: "left" | "right"; style: "bars
       ctx.clearRect(0, 0, w, h);
 
       const playing = !engine.paused;
-      const target = new Float32Array(bins);
+      const target = new Float32Array(HALF);
       let energy = 0;
       if (engine.analyser && playing) {
         engine.analyser.getByteFrequencyData(freq);
-        for (let i = 0; i < bins; i++) {
-          // Log-ish mapping so bass doesn't dominate the column.
-          const a = Math.floor(Math.pow(i / bins, 1.6) * 100);
-          const b = Math.max(a + 1, Math.floor(Math.pow((i + 1) / bins, 1.6) * 100));
+        for (let i = 0; i < HALF; i++) {
+          // Log-ish mapping so bass doesn't dominate.
+          const a = Math.floor(Math.pow(i / HALF, 1.6) * 100);
+          const b = Math.max(a + 1, Math.floor(Math.pow((i + 1) / HALF, 1.6) * 100));
           let s = 0;
           for (let k = a; k < b; k++) s += freq[k];
           target[i] = s / (b - a) / 255;
@@ -71,42 +77,40 @@ export function Waveform({ side, style }: { side: "left" | "right"; style: "bars
         if (env && env.length) {
           const idx = Math.min(env.length - 1, Math.floor(engine.position * 20));
           const v = env[idx] / 255;
-          for (let i = 0; i < bins; i++) {
-            const shape = 0.55 + 0.45 * Math.sin(i * 0.7 + now / 420 + (side === "left" ? 0 : 1.3));
-            target[i] = v * shape * (1 - i / bins / 1.6);
+          for (let i = 0; i < HALF; i++) {
+            const shape = 0.55 + 0.45 * Math.sin(i * 0.7 + now / 420);
+            target[i] = v * shape * (1 - i / HALF / 1.6);
           }
         }
       }
-      for (let i = 0; i < bins; i++) {
+      for (let i = 0; i < HALF; i++) {
         const k = target[i] > smooth[i] ? 0.35 : 0.08;
         smooth[i] += (target[i] - smooth[i]) * (reduced ? 1 : k);
       }
 
       const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#66ccff";
-      // Vertical bars rising from the bottom edge (right above the control bar).
-      // Bass sits next to the lyrics column, treble towards the window edge.
-      const pad = 14;
+      const pad = 18;
       const usable = Math.max(40, w - pad * 2);
-      const base = h - 2;
-      const maxH = Math.min(h * 0.42, 220);
-      const xAt = (i: number) => {
-        const k = (i + 0.5) / bins;
-        return side === "left" ? pad + usable * (1 - k) : pad + usable * k;
-      };
+      const cols = HALF * 2;
+      const step = usable / cols;
+      const base = h - 1;
+      const maxH = Math.min(h - 4, MAX_BAR);
+      // Column j (left to right) → frequency bin, mirrored around the centre.
+      const binOf = (j: number) => (j < HALF ? HALF - 1 - j : j - HALF);
+      const xAt = (j: number) => pad + step * (j + 0.5);
       const grad = ctx.createLinearGradient(0, base - maxH, 0, base);
       grad.addColorStop(0, "rgba(0,0,0,0)");
       grad.addColorStop(1, accent);
-      ctx.globalAlpha = 0.32;
       ctx.lineCap = "round";
 
       if (style === "bars") {
-        const step = usable / bins;
+        ctx.globalAlpha = 0.34;
         ctx.strokeStyle = grad;
-        ctx.lineWidth = Math.max(2, Math.min(6, step * 0.5));
-        for (let i = 0; i < bins; i++) {
-          const bh = smooth[i] * maxH;
+        ctx.lineWidth = Math.max(2, Math.min(5, step * 0.42));
+        for (let j = 0; j < cols; j++) {
+          const bh = smooth[binOf(j)] * maxH;
           if (bh < 2) continue;
-          const x = xAt(i);
+          const x = xAt(j);
           ctx.beginPath();
           ctx.moveTo(x, base);
           ctx.lineTo(x, base - bh);
@@ -115,38 +119,39 @@ export function Waveform({ side, style }: { side: "left" | "right"; style: "bars
       } else {
         ctx.beginPath();
         ctx.moveTo(xAt(0), base);
-        for (let i = 0; i < bins; i++) ctx.lineTo(xAt(i), base - smooth[i] * maxH);
-        ctx.lineTo(xAt(bins - 1), base);
+        for (let j = 0; j < cols; j++) ctx.lineTo(xAt(j), base - smooth[binOf(j)] * maxH);
+        ctx.lineTo(xAt(cols - 1), base);
         ctx.closePath();
         ctx.fillStyle = grad;
-        ctx.globalAlpha = 0.22;
+        ctx.globalAlpha = 0.24;
         ctx.fill();
-        ctx.globalAlpha = 0.4;
+        ctx.globalAlpha = 0.42;
         ctx.strokeStyle = accent;
         ctx.lineWidth = 1.4;
         ctx.beginPath();
-        for (let i = 0; i < bins; i++) {
-          const x = xAt(i);
-          const y = base - smooth[i] * maxH;
-          if (i === 0) ctx.moveTo(x, y);
+        for (let j = 0; j < cols; j++) {
+          const x = xAt(j);
+          const y = base - smooth[binOf(j)] * maxH;
+          if (j === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
       }
-      // Soften the outer end so the animation fades into the window edge.
+      // Fade both ends into the window edges.
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "destination-out";
       const fade = ctx.createLinearGradient(0, 0, w, 0);
-      const outer = side === "left" ? 0 : 1;
-      fade.addColorStop(outer, "rgba(0,0,0,0.85)");
-      fade.addColorStop(side === "left" ? 0.35 : 0.65, "rgba(0,0,0,0)");
+      fade.addColorStop(0, "rgba(0,0,0,0.9)");
+      fade.addColorStop(0.16, "rgba(0,0,0,0)");
+      fade.addColorStop(0.84, "rgba(0,0,0,0)");
+      fade.addColorStop(1, "rgba(0,0,0,0.9)");
       ctx.fillStyle = fade;
       ctx.fillRect(0, 0, w, h);
       ctx.globalCompositeOperation = "source-over";
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [side, style, path]);
+  }, [style, path]);
 
   return <canvas ref={canvas} />;
 }
