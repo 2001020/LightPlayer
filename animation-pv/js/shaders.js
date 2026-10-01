@@ -563,6 +563,7 @@ uniform float uVignette;
 uniform float uGrain;
 uniform float uExposure;
 uniform float uCaptionOn;
+uniform float uZoom;
 uniform vec2 uRes;
 varying vec2 vUv;
 ${common}
@@ -570,11 +571,25 @@ vec3 softClip(vec3 x) {
   vec3 k = vec3(0.9);
   return mix(x, k + 0.1 * (1.0 - exp(-(x - k) / 0.1)), step(k, x));
 }
+vec3 sceneAt(vec2 uv) {
+  return texture2D(tScene, uv).rgb * uExposure + texture2D(tBloom, uv).rgb * uBloom;
+}
 void main() {
-  vec3 c = texture2D(tScene, vUv).rgb * uExposure;
-  c += texture2D(tBloom, vUv).rgb * uBloom;
-  c = softClip(c);
   vec2 q = vUv - 0.5;
+  vec3 c;
+  if (uZoom > 0.002) {
+    // radial zoom blur for the cuts, jittered to hide banding
+    float j = hash12(vUv * uRes) / 16.0;
+    c = vec3(0.0);
+    for (int i = 0; i < 16; i++) {
+      float k = (float(i) / 16.0 + j) * uZoom * 0.16;
+      c += sceneAt(0.5 + q * (1.0 - k));
+    }
+    c /= 16.0;
+  } else {
+    c = sceneAt(vUv);
+  }
+  c = softClip(c);
   c *= mix(1.0, 1.0 - smoothstep(0.25, 0.85, length(q * vec2(1.0, 1.15))) * 0.85, uVignette);
   c = toSRGB(c);
   c += (hash12(vUv * uRes + fract(uTime * 7.13) * 431.0) - 0.5) * uGrain;

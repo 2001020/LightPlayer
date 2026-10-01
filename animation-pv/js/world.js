@@ -765,6 +765,7 @@
       uGrain: { value: 0.022 },
       uExposure: { value: 1 },
       uCaptionOn: { value: 1 },
+      uZoom: { value: 0 },
       uRes: { value: new T.Vector2(1920, 1080) },
     });
     const pass = (mat, target) => {
@@ -851,6 +852,7 @@
       compMat.uniforms.uBloom.value = 0.9;
       compMat.uniforms.uFade.value = 1;
       compMat.uniforms.uFlash.value = 0;
+      compMat.uniforms.uZoom.value = 0;
       compMat.uniforms.uVignette.value = 0.55;
       compMat.uniforms.uExposure.value = 1;
       brightMat.uniforms.uThreshold.value = 1.0;
