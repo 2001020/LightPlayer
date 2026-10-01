@@ -1,5 +1,6 @@
 // UI text must not use the middle dot (product requirement). Scans the
-// frontend and backend sources, since backend strings reach the UI too.
+// frontend and backend sources, since backend strings reach the UI too, and
+// the promo film in animation-pv/.
 import { describe, expect, it } from "vitest";
 
 const DOT = "·";
@@ -8,6 +9,8 @@ const sources = {
   ...import.meta.glob("/src/**/*.{ts,tsx,css}", { query: "?raw", import: "default", eager: true }),
   ...import.meta.glob("/src-tauri/src/**/*.rs", { query: "?raw", import: "default", eager: true }),
   ...import.meta.glob("/index.html", { query: "?raw", import: "default", eager: true }),
+  // The promo film (captions and the UI drawn in it) follows the same rule.
+  ...import.meta.glob("/animation-pv/**/*.{js,mjs,html,css,md}", { query: "?raw", import: "default", eager: true }),
 } as Record<string, string>;
 
 describe("UI text", () => {

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LightPlayer 宣传片</title>
+    <link rel="icon" href="../assets/icon.svg" />
+    <link rel="stylesheet" href="css/pv.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="pv"></canvas>
+      <div id="cover">
+        <button id="start"><i></i><span></span></button>
+        <div id="hint"></div>
+      </div>
+      <div id="bar">
+        <button id="play">
+          <svg class="playi" viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.4-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5z" /></svg>
+          <svg class="pause" viewBox="0 0 24 24"><path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z" /></svg>
+        </button>
+        <span id="time">0:00</span>
+        <input id="scrub" type="range" min="0" max="100" step="0.01" value="0" />
+        <button id="mute"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" /><path class="wave" d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" /><path class="x" d="M16 9l5 6M21 9l-5 6" /></svg></button>
+        <button id="rec"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><circle class="dot" cx="12" cy="12" r="4.5" /></svg></button>
+        <button id="full"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg></button>
+      </div>
+    </div>
+    <script src="js/vendor/three.min.js"></script>
+    <script src="js/util.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/copy.zh.js"></script>
+    <script src="js/art.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/tiles.js"></script>
+    <script src="js/shaders.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/captions.js"></script>
+    <script src="js/music.js"></script>
+    <script src="js/scenes.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
