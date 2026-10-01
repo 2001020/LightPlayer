@@ -926,7 +926,31 @@ function tick() {
       void api.nowPlayingState(playing, position).catch(() => {});
     }
   }
-  window.setTimeout(() => requestAnimationFrame(tick), 50);
+  scheduleTick();
+}
+
+let tickGen = 0;
+
+/**
+ * Next tick: on the next frame while the window is visible; on a plain timer
+ * while it is hidden or minimised, where frames stop altogether (playback
+ * position, A-B loop and sleep timer must keep running in the background).
+ */
+function scheduleTick() {
+  // Only the newest schedule runs, so there is never more than one loop.
+  const gen = ++tickGen;
+  const run = () => {
+    if (gen !== tickGen) return;
+    tickGen++;
+    tick();
+  };
+  if (document.hidden) window.setTimeout(run, 250);
+  else
+    window.setTimeout(() => {
+      requestAnimationFrame(run);
+      // A frame may never come if the window was hidden meanwhile.
+      window.setTimeout(run, 500);
+    }, 50);
 }
 
 let initialized = false;
@@ -959,7 +983,11 @@ export async function init() {
     usePlayer.setState({ playing: !engine.paused, waiting: !engine.paused && engine.waiting });
     if (isTauri && engine.media) void api.nowPlayingState(!engine.paused, engine.position).catch(() => {});
   };
-  requestAnimationFrame(tick);
+  scheduleTick();
+  document.addEventListener("visibilitychange", () => {
+    // Restart the loop in the right mode straight away.
+    scheduleTick();
+  });
   void initLibrary();
 
   window.addEventListener("beforeunload", () => rememberPosition(true));

@@ -3,7 +3,17 @@
 // preview `DesktopLyricsOverlay` shows the same thing as a floating box.
 
 import { useEffect, useRef, useState } from "react";
-import { DESKTOP_EVENTS, setDesktopLyrics, setDesktopLyricsColor, useDesktopLine, type DesktopLine } from "../core/desktopLyrics";
+import {
+  DESKTOP_EVENTS,
+  EMPTY_STATE,
+  lineAt,
+  setDesktopLyrics,
+  setDesktopLyricsColor,
+  useDesktopState,
+  type DesktopAnchor,
+  type DesktopLine,
+  type DesktopState,
+} from "../core/desktopLyrics";
 import { useSettings } from "../stores/settings";
 import { ColorChoices } from "./ColorChoices";
 import { Icon } from "./Icon";
@@ -12,6 +22,22 @@ const PRESETS = ["#66ccff", "#ffd166", "#ff4d8d", "#13ce66", "#ffffff", "#ff7849
 
 /** Smallest window: room for the colour row and the two buttons. */
 export const DL_MIN = { w: 360, h: 56 } as const;
+
+/** The current line, worked out locally from the lines and the playback anchor. */
+function useLiveLine(state: DesktopState): DesktopLine {
+  const [line, setLine] = useState(() => lineAt(state));
+  useEffect(() => {
+    const update = () =>
+      setLine((prev) => {
+        const next = lineAt(state);
+        return next.key === prev.key && next.text === prev.text && next.color === prev.color ? prev : next;
+      });
+    update();
+    const id = window.setInterval(update, 100);
+    return () => clearInterval(id);
+  }, [state]);
+  return line;
+}
 
 interface ViewProps {
   line: DesktopLine;
@@ -73,7 +99,8 @@ function DesktopLyricsView({ line, onClose, onColor, onMoveStart, onResizeStart,
 
 /** Content of the separate desktop lyrics window. */
 export function DesktopLyricsWindow() {
-  const [line, setLine] = useState<DesktopLine>({ key: "", text: "", color: "#66ccff" });
+  const [state, setState] = useState<DesktopState>(EMPTY_STATE);
+  const line = useLiveLine(state);
   const win = useRef<import("@tauri-apps/api/webviewWindow").WebviewWindow | null>(null);
 
   useEffect(() => {
@@ -85,7 +112,12 @@ export function DesktopLyricsWindow() {
       const { LogicalPosition, LogicalSize } = await import("@tauri-apps/api/dpi");
       const w = getCurrentWebviewWindow();
       win.current = w;
-      off = await w.listen<DesktopLine>(DESKTOP_EVENTS.line, (e) => setLine(e.payload));
+      const offState = await w.listen<DesktopState>(DESKTOP_EVENTS.state, (e) => setState(e.payload));
+      const offAnchor = await w.listen<DesktopAnchor>(DESKTOP_EVENTS.anchor, (e) => setState((s) => ({ ...s, anchor: e.payload })));
+      off = () => {
+        offState();
+        offAnchor();
+      };
       // Restore the last place and size.
       try {
         const saved = JSON.parse(localStorage.getItem("lightplayer-desktop-lyrics-rect") ?? "null");
@@ -153,7 +185,7 @@ export function DesktopLyricsWindow() {
       dragRegion
       onClose={() => void emitMain(DESKTOP_EVENTS.closed, null)}
       onColor={(c) => {
-        setLine((l) => ({ ...l, color: c }));
+        setState((s) => ({ ...s, color: c }));
         void emitMain(DESKTOP_EVENTS.color, c);
       }}
       onResizeStart={resize}
@@ -164,7 +196,7 @@ export function DesktopLyricsWindow() {
 /** Browser preview: the desktop lyrics as a floating box over the page. */
 export function DesktopLyricsOverlay() {
   const enabled = useSettings((s) => s.desktopLyrics.enabled);
-  const line = useDesktopLine();
+  const line = useLiveLine(useDesktopState());
   const [rect, setRect] = useState(() => ({ x: Math.max(16, (window.innerWidth - 640) / 2), y: window.innerHeight - 230, w: 640, h: 96 }));
   if (!enabled) return null;
   const track = (e: React.PointerEvent, apply: (dx: number, dy: number) => void) => {

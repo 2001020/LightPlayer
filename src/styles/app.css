@@ -366,6 +366,8 @@ button:focus:not(:focus-visible) {
   place-items: center;
   width: 34px;
   height: 34px;
+  /* No default button padding: wider icons (the 28px skip icons) stay centred. */
+  padding: 0;
   border-radius: 50%;
   border: none;
   background: transparent;
