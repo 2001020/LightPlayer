@@ -45,7 +45,7 @@ export function ModelManager({ selectable = true }: { selectable?: boolean }) {
                 {m.downloaded && <span className="chip">已下载</span>}
               </div>
               <small>
-                {m.description} · 约 {m.sizeMb >= 1000 ? `${(m.sizeMb / 1024).toFixed(1)} GB` : `${m.sizeMb} MB`}
+                {m.description}，约 {m.sizeMb >= 1000 ? `${(m.sizeMb / 1024).toFixed(1)} GB` : `${m.sizeMb} MB`}
                 {!m.downloaded && m.partialBytes > 0 && !d && `（已下载 ${formatBytes(m.partialBytes)}，可继续）`}
               </small>
               {d && (

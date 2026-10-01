@@ -147,6 +147,55 @@ export interface AsrDone {
   error?: string | null;
 }
 
+export type TrackSource = "folder" | "played" | "added";
+
+export interface LibraryTrack {
+  path: string;
+  kind: MediaKind;
+  size: number;
+  mtime: number;
+  title?: string | null;
+  artist?: string | null;
+  album?: string | null;
+  albumArtist?: string | null;
+  trackNo?: number | null;
+  discNo?: number | null;
+  year?: number | null;
+  duration?: number | null;
+  width?: number | null;
+  height?: number | null;
+  source: TrackSource;
+  addedAt: number;
+  playCount: number;
+  lastPlayed?: number | null;
+}
+
+export interface LibraryFolder {
+  path: string;
+  addedAt: number;
+}
+
+export interface UserPlaylist {
+  id: string;
+  name: string;
+  items: string[];
+  createdAt: number;
+}
+
+export interface LibraryData {
+  folders: LibraryFolder[];
+  tracks: LibraryTrack[];
+  favorites: string[];
+  playlists: UserPlaylist[];
+  excluded: string[];
+}
+
+export interface LibraryProgress {
+  scanning: boolean;
+  done: number;
+  total: number;
+}
+
 export interface MediaControlEvent {
   action: "play" | "pause" | "toggle" | "next" | "previous" | "seekBy" | "seekTo";
   value?: number | null;
@@ -217,8 +266,91 @@ function browserUrl(path: string): string {
   return u;
 }
 
+const mockLib: LibraryData = { folders: [], tracks: [], favorites: [], playlists: [], excluded: [] };
+
+function mockTrack(path: string, source: TrackSource): LibraryTrack | null {
+  const kind = kindOf(path);
+  if (!kind) return null;
+  const name = stem(path);
+  const [artist, title] = name.includes(" - ") ? name.split(" - ", 2) : [null, name];
+  return {
+    path,
+    kind,
+    size: browserFiles.get(path)?.size ?? 0,
+    mtime: 0,
+    title: kind === "audio" ? title : null,
+    artist: kind === "audio" ? artist : null,
+    album: null,
+    duration: null,
+    source,
+    addedAt: Math.floor(Date.now() / 1000),
+    playCount: 0,
+    lastPlayed: null,
+  };
+}
+
+function mockLibrary(cmd: string, args: Record<string, unknown>): unknown {
+  const l = mockLib;
+  const pl = () => l.playlists.find((p) => p.id === args.id);
+  switch (cmd) {
+    case "library_get":
+      return structuredClone(l);
+    case "library_add_paths": {
+      let files = 0;
+      for (const p of args.paths as string[]) {
+        if (l.tracks.some((t) => t.path === p)) continue;
+        const t = mockTrack(p, "added");
+        if (t) {
+          l.tracks.push(t);
+          files++;
+        }
+      }
+      return { folders: 0, files };
+    }
+    case "library_record_play": {
+      let t = l.tracks.find((x) => x.path === args.path);
+      if (!t && args.add) {
+        t = mockTrack(args.path as string, "played") ?? undefined;
+        if (t) l.tracks.push(t);
+      }
+      if (t) {
+        t.playCount++;
+        t.lastPlayed = Math.floor(Date.now() / 1000);
+      }
+      return null;
+    }
+    case "library_remove_tracks": {
+      const set = new Set(args.paths as string[]);
+      l.tracks = l.tracks.filter((t) => !set.has(t.path));
+      l.favorites = l.favorites.filter((p) => !set.has(p));
+      return null;
+    }
+    case "library_set_favorite":
+      l.favorites = l.favorites.filter((p) => p !== args.path);
+      if (args.on) l.favorites.unshift(args.path as string);
+      return null;
+    case "playlist_create": {
+      const id = `pl${Math.random().toString(16).slice(2)}`;
+      l.playlists.push({ id, name: (args.name as string).trim() || "新建歌单", items: [...new Set(args.items as string[])], createdAt: Date.now() / 1000 });
+      return id;
+    }
+    case "playlist_rename":
+      if (pl()) pl()!.name = args.name as string;
+      return null;
+    case "playlist_delete":
+      l.playlists = l.playlists.filter((p) => p.id !== args.id);
+      return null;
+    case "playlist_set_items":
+      if (pl()) pl()!.items = [...new Set(args.items as string[])];
+      return null;
+    default:
+      return null;
+  }
+}
+
 async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const path = (args.path ?? args.mediaPath) as string | undefined;
+  if (cmd.startsWith("library_") || cmd.startsWith("playlist_")) return mockLibrary(cmd, args) as T;
   switch (cmd) {
     case "open_media": {
       const kind = kindOf(path!) ?? "audio";
@@ -306,6 +438,18 @@ export const api = {
     call<void>("now_playing_metadata", m),
   nowPlayingState: (playing: boolean, position?: number) => call<void>("now_playing_state", { playing, position }),
   ffmpegAvailable: () => call<boolean>("ffmpeg_available"),
+  libraryGet: () => call<LibraryData>("library_get"),
+  libraryAddFolder: (path: string) => call<boolean>("library_add_folder", { path }),
+  libraryRemoveFolder: (path: string) => call<void>("library_remove_folder", { path }),
+  libraryRescan: () => call<void>("library_rescan"),
+  libraryAddPaths: (paths: string[]) => call<{ folders: number; files: number }>("library_add_paths", { paths }),
+  libraryRemoveTracks: (paths: string[]) => call<void>("library_remove_tracks", { paths }),
+  libraryRecordPlay: (path: string, add: boolean) => call<void>("library_record_play", { path, add }),
+  librarySetFavorite: (path: string, on: boolean) => call<void>("library_set_favorite", { path, on }),
+  playlistCreate: (name: string, items: string[]) => call<string>("playlist_create", { name, items }),
+  playlistRename: (id: string, name: string) => call<void>("playlist_rename", { id, name }),
+  playlistDelete: (id: string) => call<void>("playlist_delete", { id }),
+  playlistSetItems: (id: string, items: string[]) => call<void>("playlist_set_items", { id, items }),
 };
 
 export function on<T>(event: string, handler: (payload: T) => void): Promise<UnlistenFn> {
@@ -320,6 +464,17 @@ export async function localFileUrl(path: string): Promise<string> {
   if (!isTauri) return browserFiles.has(path) ? browserUrl(path) : path;
   if (serverBaseCache === null) serverBaseCache = await api.serverBase();
   return `${serverBaseCache}/file?p=${encodeURIComponent(path)}`;
+}
+
+/** Thumbnail (album art or video frame) for a library item; null in browser mode. */
+export function thumbUrl(path: string, size = 256): string | null {
+  if (!isTauri || serverBaseCache === null) return null;
+  return `${serverBaseCache}/thumb?p=${encodeURIComponent(path)}&s=${size}`;
+}
+
+/** Loads the media server base so `thumbUrl` can be used synchronously. */
+export async function ensureServerBase(): Promise<void> {
+  if (isTauri && serverBaseCache === null) serverBaseCache = await api.serverBase();
 }
 
 export function detectCaps(): Caps {

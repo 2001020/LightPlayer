@@ -119,6 +119,13 @@ pub fn split_artist_title(stem: &str) -> (Option<String>, String) {
 }
 
 fn folder_cover(path: &Path) -> Option<String> {
+    let p = folder_cover_path(path)?;
+    let bytes = std::fs::read(&p).ok()?;
+    Some(data_url(sniff_mime(&bytes), &bytes))
+}
+
+/// Cover image next to the file: `<stem>.jpg`, `cover.jpg`, `folder.png`…
+pub fn folder_cover_path(path: &Path) -> Option<std::path::PathBuf> {
     let dir = path.parent()?;
     let stem = path.file_stem()?.to_string_lossy().to_lowercase();
     let wanted = [stem.as_str(), "cover", "folder", "front", "album", "albumart"];
@@ -131,13 +138,26 @@ fn folder_cover(path: &Path) -> Option<String> {
                 continue;
             }
             let s = p.file_stem().map(|s| s.to_string_lossy().to_lowercase()).unwrap_or_default();
-            if s == want {
-                let bytes = std::fs::read(&p).ok()?;
-                if bytes.len() > 20 * 1024 * 1024 {
-                    continue;
-                }
-                return Some(data_url(sniff_mime(&bytes), &bytes));
+            let small = e.metadata().map(|m| m.len() <= 20 * 1024 * 1024).unwrap_or(false);
+            if s == want && small {
+                return Some(p);
             }
+        }
+    }
+    None
+}
+
+/// Raw bytes of the embedded front cover, if any.
+pub fn embedded_cover(path: &Path) -> Option<Vec<u8>> {
+    let tagged = lofty::read_from_path(path).ok()?;
+    for tag in tagged.primary_tag().into_iter().chain(tagged.tags().iter()) {
+        let pics = tag.pictures();
+        let pic = pics
+            .iter()
+            .find(|p| p.pic_type() == PictureType::CoverFront)
+            .or_else(|| pics.first());
+        if let Some(pic) = pic {
+            return Some(pic.data().to_vec());
         }
     }
     None

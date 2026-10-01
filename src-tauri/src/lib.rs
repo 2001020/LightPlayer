@@ -1,6 +1,7 @@
 mod asr;
 mod commands;
 mod error;
+mod library;
 mod lyrics;
 mod media;
 mod nowplaying;
@@ -19,6 +20,7 @@ pub struct AppState {
     pub server: server::ServerInfo,
     pub hls: Arc<HlsManager>,
     pub library: lyrics::LyricsLibrary,
+    pub media_lib: Arc<library::LibraryStore>,
     pub cache_dir: PathBuf,
     pub data_dir: PathBuf,
     pub models_dir: PathBuf,
@@ -60,7 +62,7 @@ pub fn run() {
             std::fs::create_dir_all(&cache_dir)?;
             std::fs::create_dir_all(&models_dir)?;
             let hls = Arc::new(HlsManager::new(&cache_dir));
-            let server = tauri::async_runtime::block_on(server::start(hls.clone()))?;
+            let server = tauri::async_runtime::block_on(server::start(hls.clone(), library::thumb::thumbs_dir(&cache_dir)))?;
             let pending: Vec<String> = std::env::args()
                 .skip(1)
                 .filter(|a| !a.starts_with('-') && std::path::Path::new(a).is_file())
@@ -69,6 +71,7 @@ pub fn run() {
                 server,
                 hls,
                 library: lyrics::LyricsLibrary::new(&data_dir),
+                media_lib: Arc::new(library::LibraryStore::load(&data_dir)),
                 cache_dir,
                 data_dir,
                 models_dir,
@@ -105,6 +108,18 @@ pub fn run() {
             commands::now_playing_metadata,
             commands::now_playing_state,
             commands::ffmpeg_available,
+            commands::library_get,
+            commands::library_add_folder,
+            commands::library_remove_folder,
+            commands::library_rescan,
+            commands::library_add_paths,
+            commands::library_remove_tracks,
+            commands::library_record_play,
+            commands::library_set_favorite,
+            commands::playlist_create,
+            commands::playlist_rename,
+            commands::playlist_delete,
+            commands::playlist_set_items,
         ])
         .build(tauri::generate_context!())
         .expect("error while building LightPlayer");

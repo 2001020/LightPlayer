@@ -11,6 +11,7 @@ export function PlaylistPanel() {
   const index = usePlaylist((s) => s.index);
   const playing = usePlayer((s) => s.playing);
   const media = usePlayer((s) => s.media);
+  const source = usePlaylist((s) => s.source);
   const [q, setQ] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -24,7 +25,8 @@ export function PlaylistPanel() {
     el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [index]);
 
-  const kindLabel = media?.kind === "video" ? "个视频" : "首";
+  const mixed = items.some((i) => i.kind === "audio") && items.some((i) => i.kind === "video");
+  const kindLabel = mixed ? "项" : (items[0]?.kind ?? media?.kind) === "video" ? "个视频" : "首";
 
   return (
     <aside className="playlist panel">
@@ -37,6 +39,7 @@ export function PlaylistPanel() {
             <Icon name="chevronRight" size={18} />
           </button>
         </div>
+        <div className="pl-source">{source ? `来自${source}` : "当前文件夹"}</div>
         {items.length > 8 && (
           <div className="search">
             <Icon name="search" size={15} />

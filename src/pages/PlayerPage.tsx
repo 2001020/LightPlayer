@@ -31,9 +31,14 @@ function EmptyState() {
           <br />
           同一文件夹里的同类文件会自动加入播放列表。
         </p>
-        <button className="btn primary large" onClick={C.openWithDialog}>
-          <Icon name="folder" size={18} /> 打开文件 <kbd style={{ background: "transparent", color: "inherit" }}>⌘O</kbd>
-        </button>
+        <div className="empty-actions">
+          <button className="btn primary large" onClick={C.openWithDialog}>
+            <Icon name="folder" size={18} /> 打开文件 <kbd style={{ background: "transparent", color: "inherit" }}>⌘O</kbd>
+          </button>
+          <button className="btn large" onClick={() => useUI.setState({ page: "library" })}>
+            <Icon name="library" size={18} /> 媒体库 <kbd style={{ background: "transparent", color: "inherit" }}>⌘L</kbd>
+          </button>
+        </div>
         {recent.length > 0 && (
           <div className="recent">
             <div className="label">最近播放</div>
@@ -97,7 +102,7 @@ function AudioNowPlaying() {
           <span className="chip">{media.fileName.split(".").pop()?.toUpperCase()}</span>
           {strat && <span className="chip accent">{strat}</span>}
           {status === "loaded" && origin === "ai" && <span className="chip">AI 歌词</span>}
-          {status === "loaded" && origin === "ai_reviewed" && <span className="chip">AI 歌词 · 已校对</span>}
+          {status === "loaded" && origin === "ai_reviewed" && <span className="chip">AI 歌词（已校对）</span>}
         </div>
         <LyricPeek />
       </div>

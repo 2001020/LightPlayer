@@ -204,7 +204,7 @@ export function LyricsEditor() {
       <div className="dialog full">
         <header>
           <h2>
-            歌词编辑器 · {media.meta?.title || media.name}
+            歌词编辑器：{media.meta?.title || media.name}
             {(origin === "ai" || origin === "ai_reviewed") && <span className="chip" style={{ marginLeft: 8 }}>AI 识别结果校对</span>}
           </h2>
           <div className="tabs">

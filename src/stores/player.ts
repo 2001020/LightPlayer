@@ -35,6 +35,8 @@ export interface PlaylistState {
   order: number[];
   history: number[];
   mode: PlayMode;
+  /** Where the queue came from, e.g. "专辑《叶惠美》"; null = the file's folder. */
+  source: string | null;
 }
 
 export const usePlaylist = create<PlaylistState>(() => ({
@@ -43,6 +45,7 @@ export const usePlaylist = create<PlaylistState>(() => ({
   order: [],
   history: [],
   mode: "loop",
+  source: null,
 }));
 
 export type LyricsStatus = "idle" | "loading" | "none" | "loaded" | "error";
@@ -92,8 +95,8 @@ export interface ModelsState {
 
 export const useModels = create<ModelsState>(() => ({ models: [], downloads: {} }));
 
-export type Page = "player" | "lyrics";
-export type Overlay = null | "settings" | "editor" | "videoInfo" | "asrSetup" | "shortcuts";
+export type Page = "player" | "lyrics" | "library";
+export type Overlay = null | "settings" | "editor" | "videoInfo" | "asrSetup" | "shortcuts" | "libraryFolders";
 
 export interface Toast {
   id: number;

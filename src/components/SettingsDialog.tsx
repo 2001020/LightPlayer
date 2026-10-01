@@ -131,6 +131,18 @@ function Playback() {
       <Row label="快进 / 快退按钮步长" hint="也可以用 J / L 键">
         <Seg value={s.jumpStep} options={[[10, "10 秒"], [15, "15 秒"], [30, "30 秒"]]} onChange={(jumpStep) => s.set({ jumpStep })} />
       </Row>
+      <h3>媒体库</h3>
+      <Row label="启动时自动刷新媒体库" hint="检查已添加文件夹中新增、修改或删除的文件">
+        <Switch on={s.libraryAutoRescan} onChange={(libraryAutoRescan) => s.set({ libraryAutoRescan })} />
+      </Row>
+      <Row label="自动记录播放过的文件" hint="不在媒体库文件夹里的文件，播放后也会出现在媒体库中">
+        <Switch on={s.libraryRecordPlays} onChange={(libraryRecordPlays) => s.set({ libraryRecordPlays })} />
+      </Row>
+      <Row label="管理媒体库文件夹">
+        <button className="btn" onClick={() => useUI.setState({ overlay: "libraryFolders" })}>
+          打开
+        </button>
+      </Row>
       <h3>其他</h3>
       <Row label="断点续播" hint="时长超过 10 分钟的视频/有声书会记住上次播放位置">
         <Switch on={s.resume} onChange={(resume) => s.set({ resume })} />
@@ -177,9 +189,11 @@ const SHORTCUTS: [string, string][] = [
   ["M", "静音"],
   ["⌘← / ⌘→", "上一曲 / 下一曲"],
   ["⌘O", "打开文件"],
+  ["⌘L", "媒体库"],
   ["⌘,", "设置"],
   ["Y", "打开歌词页"],
   ["E", "歌词编辑器"],
+  ["⌘+ / ⌘− / ⌘0", "歌词字号放大 / 缩小 / 恢复"],
   ["I", "视频详细信息"],
   ["F", "全屏（视频）"],
   ["S", "视频截图"],
@@ -217,7 +231,7 @@ function About() {
         </div>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700 }}>LightPlayer</div>
-          <div className="muted">版本 0.1.0</div>
+          <div className="muted">版本 0.2.0</div>
         </div>
       </div>
       <p className="note" style={{ marginTop: 16 }}>

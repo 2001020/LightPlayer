@@ -20,7 +20,7 @@ export function AsrSetupDialog() {
       <div className="dialog wide">
         <header>
           <Icon name="sparkles" />
-          <h2>AI 识别歌词 · 选择识别模型</h2>
+          <h2>AI 识别歌词：选择识别模型</h2>
           <button className="icon-btn" onClick={close}>
             <Icon name="close" />
           </button>

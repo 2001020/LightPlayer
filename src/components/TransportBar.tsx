@@ -2,6 +2,7 @@ import * as C from "../core/controller";
 import { formatTime } from "../lib/format";
 import { usePlayer, usePlaylist, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
+import { useLibrary } from "../stores/library";
 import { Icon, SkipIcon, type IconName } from "./Icon";
 import { Popover } from "./Popover";
 import { Slider } from "./Slider";
@@ -157,6 +158,22 @@ function SubtitleMenu() {
   );
 }
 
+function FavButton({ path }: { path: string }) {
+  const fav = useLibrary((s) => s.data.favorites.includes(path));
+  return (
+    <button
+      className={`icon-btn small fav ${fav ? "on" : ""}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        void C.toggleFavorite(path, !fav);
+      }}
+      {...tip(fav ? "取消收藏" : "收藏")}
+    >
+      <Icon name={fav ? "heartFill" : "heart"} size={16} />
+    </button>
+  );
+}
+
 export function TransportBar() {
   const media = usePlayer((s) => s.media);
   const playing = usePlayer((s) => s.playing);
@@ -189,6 +206,7 @@ export function TransportBar() {
             <div className="t">{title}</div>
             {artist && <div className="a">{artist}</div>}
           </div>
+          {media && <FavButton path={media.path} />}
         </div>
 
         <div className="center">

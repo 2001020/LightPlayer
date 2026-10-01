@@ -41,6 +41,8 @@ export interface Settings {
   waveform: boolean;
   waveformStyle: "bars" | "wave";
   playlistOpen: boolean;
+  libraryAutoRescan: boolean;
+  libraryRecordPlays: boolean;
   tapCompensation: number;
   asr: AsrSettings;
   recent: string[];
@@ -83,6 +85,8 @@ export const defaultSettings: Settings = {
   waveform: true,
   waveformStyle: "bars",
   playlistOpen: true,
+  libraryAutoRescan: true,
+  libraryRecordPlays: true,
   tapCompensation: 0.15,
   asr: {
     model: "large-v3-turbo-q5_0",

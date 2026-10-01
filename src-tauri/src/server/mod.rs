@@ -24,6 +24,7 @@ use std::time::Duration;
 pub struct ServerState {
     pub token: String,
     pub hls: Arc<HlsManager>,
+    pub thumbs: PathBuf,
 }
 
 #[derive(Clone)]
@@ -65,13 +66,14 @@ pub fn urlencode(s: &str) -> String {
     out
 }
 
-pub async fn start(hls: Arc<HlsManager>) -> std::io::Result<ServerInfo> {
+pub async fn start(hls: Arc<HlsManager>, thumbs: PathBuf) -> std::io::Result<ServerInfo> {
     let token = format!("{:032x}", rand::random::<u128>());
-    let state = ServerState { token: token.clone(), hls };
+    let state = ServerState { token: token.clone(), hls, thumbs };
     let app = Router::new()
         .route("/{token}/file", get(file_handler))
         .route("/{token}/hls/{id}/{name}", get(hls_handler))
         .route("/{token}/sub", get(subtitle_handler))
+        .route("/{token}/thumb", get(thumb_handler))
         .layer(middleware::from_fn(cors))
         .with_state(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
@@ -121,6 +123,33 @@ async fn file_handler(
         return forbidden();
     }
     range::serve_file(PathBuf::from(q.p), &headers).await
+}
+
+#[derive(Deserialize)]
+struct ThumbQuery {
+    p: String,
+    s: Option<u32>,
+}
+
+/// Library artwork: album cover or a video frame, cached as a small JPEG.
+async fn thumb_handler(
+    State(st): State<ServerState>,
+    AxPath(token): AxPath<String>,
+    Query(q): Query<ThumbQuery>,
+    headers: HeaderMap,
+) -> Response {
+    if token != st.token {
+        return forbidden();
+    }
+    match crate::library::thumb::get(&st.thumbs, std::path::Path::new(&q.p), q.s.unwrap_or(256)).await {
+        Some(file) => {
+            let mut r = range::serve_file(file, &headers).await;
+            r.headers_mut()
+                .insert(header::CACHE_CONTROL, HeaderValue::from_static("max-age=86400"));
+            r
+        }
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
 }
 
 async fn hls_handler(
@@ -234,7 +263,7 @@ mod tests {
     async fn serves_ranges_hls_and_subtitles() {
         let dir = tempfile::tempdir().unwrap();
         let hls = Arc::new(HlsManager::new(dir.path()));
-        let info = start(hls.clone()).await.unwrap();
+        let info = start(hls.clone(), dir.path().join("thumbs")).await.unwrap();
         let client = reqwest::Client::new();
 
         let file = dir.path().join("数据 file.bin");

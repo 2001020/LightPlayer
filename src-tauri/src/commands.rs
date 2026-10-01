@@ -505,3 +505,183 @@ pub fn now_playing_state(state: State<'_, AppState>, playing: bool, position: Op
 pub fn ffmpeg_available() -> bool {
     std::process::Command::new(&tools().ffprobe).arg("-version").output().map(|o| o.status.success()).unwrap_or(false)
 }
+
+// ---------------------------------------------------------------- media library
+
+use crate::library::{self as medialib, Library, LibraryStore, Source};
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryProgress {
+    pub scanning: bool,
+    pub done: usize,
+    pub total: usize,
+}
+
+fn lib_changed(app: &AppHandle) {
+    let _ = app.emit("library://changed", ());
+}
+
+#[tauri::command]
+pub fn library_get(state: State<'_, AppState>) -> Library {
+    state.media_lib.snapshot()
+}
+
+/// Rescans every library folder in the background (incremental).
+fn spawn_rescan(app: AppHandle, store: Arc<LibraryStore>) {
+    if store.scanning.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    std::thread::spawn(move || {
+        let snap = store.snapshot();
+        let roots: Vec<String> = snap.folders.iter().map(|f| f.path.clone()).collect();
+        let known = snap.tracks.into_iter().map(|t| (t.path.clone(), t)).collect();
+        let progress = |done: usize, total: usize| {
+            let _ = app.emit("library://progress", LibraryProgress { scanning: true, done, total });
+        };
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            medialib::scan::scan(&roots, &snap.excluded, &known, &progress)
+        }));
+        match result {
+            Ok(r) => {
+                let total = r.tracks.len();
+                if let Err(e) = store.update(|l| l.merge_scan(&r.roots_ok, r.tracks)) {
+                    log::warn!("library save failed: {e}");
+                }
+                store.scanning.store(false, Ordering::SeqCst);
+                let _ = app.emit("library://progress", LibraryProgress { scanning: false, done: total, total });
+            }
+            Err(_) => {
+                store.scanning.store(false, Ordering::SeqCst);
+                let _ = app.emit("library://progress", LibraryProgress { scanning: false, done: 0, total: 0 });
+            }
+        }
+        lib_changed(&app);
+    });
+}
+
+#[tauri::command]
+pub fn library_rescan(app: AppHandle, state: State<'_, AppState>) {
+    spawn_rescan(app, state.media_lib.clone());
+}
+
+#[tauri::command]
+pub fn library_add_folder(app: AppHandle, state: State<'_, AppState>, path: String) -> AppResult<bool> {
+    if !Path::new(&path).is_dir() {
+        return Err(AppError::msg("文件夹不存在"));
+    }
+    let added = state.media_lib.update(|l| l.add_folder(&path))?;
+    lib_changed(&app);
+    spawn_rescan(app, state.media_lib.clone());
+    Ok(added)
+}
+
+#[tauri::command]
+pub fn library_remove_folder(app: AppHandle, state: State<'_, AppState>, path: String) -> AppResult<()> {
+    state.media_lib.update(|l| l.remove_folder(&path))?;
+    lib_changed(&app);
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddPathsResult {
+    pub folders: usize,
+    pub files: usize,
+}
+
+/// Files and folders dropped onto the library page.
+#[tauri::command]
+pub async fn library_add_paths(app: AppHandle, state: State<'_, AppState>, paths: Vec<String>) -> AppResult<AddPathsResult> {
+    let (files, dirs) = medialib::split_paths(&paths);
+    let tracks = tokio::task::spawn_blocking(move || {
+        files
+            .iter()
+            .filter_map(|p| medialib::scan::read_track(p, Source::Added))
+            .collect::<Vec<_>>()
+    })
+    .await
+    .map_err(|e| AppError::msg(e.to_string()))?;
+    let (folders, added) = state.media_lib.update(|l| {
+        let folders = dirs.iter().filter(|d| l.add_folder(d)).count();
+        (folders, l.add_files(tracks))
+    })?;
+    lib_changed(&app);
+    if !dirs.is_empty() {
+        spawn_rescan(app, state.media_lib.clone());
+    }
+    Ok(AddPathsResult { folders, files: added })
+}
+
+#[tauri::command]
+pub fn library_remove_tracks(app: AppHandle, state: State<'_, AppState>, paths: Vec<String>) -> AppResult<()> {
+    state.media_lib.update(|l| l.remove_tracks(&paths))?;
+    lib_changed(&app);
+    Ok(())
+}
+
+/// Counts a play; files outside the library are recorded as "played".
+#[tauri::command]
+pub async fn library_record_play(app: AppHandle, state: State<'_, AppState>, path: String, add: bool) -> AppResult<()> {
+    let known = state.media_lib.data.lock().unwrap().index_of(&path).is_some();
+    if !known && !add {
+        return Ok(());
+    }
+    let fresh = if known {
+        None
+    } else {
+        let p = PathBuf::from(&path);
+        tokio::task::spawn_blocking(move || medialib::scan::read_track(&p, Source::Played))
+            .await
+            .map_err(|e| AppError::msg(e.to_string()))?
+    };
+    state.media_lib.update(|l| {
+        if let Some(t) = fresh {
+            l.add_files(vec![t]);
+        }
+        l.record_play(&path);
+    })?;
+    lib_changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn library_set_favorite(app: AppHandle, state: State<'_, AppState>, path: String, on: bool) -> AppResult<()> {
+    state.media_lib.update(|l| l.set_favorite(&path, on))?;
+    lib_changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn playlist_create(app: AppHandle, state: State<'_, AppState>, name: String, items: Vec<String>) -> AppResult<String> {
+    let id = state.media_lib.update(|l| l.create_playlist(&name, items))?;
+    lib_changed(&app);
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn playlist_rename(app: AppHandle, state: State<'_, AppState>, id: String, name: String) -> AppResult<()> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err(AppError::msg("歌单名称不能为空"));
+    }
+    state.media_lib.update(|l| l.playlist_mut(&id).map(|p| p.name = name))??;
+    lib_changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn playlist_delete(app: AppHandle, state: State<'_, AppState>, id: String) -> AppResult<()> {
+    state.media_lib.update(|l| l.delete_playlist(&id))?;
+    lib_changed(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn playlist_set_items(app: AppHandle, state: State<'_, AppState>, id: String, items: Vec<String>) -> AppResult<()> {
+    let mut seen = std::collections::HashSet::new();
+    let items: Vec<String> = items.into_iter().filter(|p| seen.insert(p.clone())).collect();
+    state.media_lib.update(|l| l.playlist_mut(&id).map(|p| p.items = items))??;
+    lib_changed(&app);
+    Ok(())
+}

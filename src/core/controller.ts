@@ -21,10 +21,12 @@ import {
   type DownloadProgress,
   type LyricsOrigin,
   type MediaControlEvent,
+  type MediaEntry,
 } from "../lib/ipc";
 import { stem } from "../lib/format";
 import { useLyrics, useModels, usePlayer, usePlaylist, useSubtitles, useUI, toast } from "../stores/player";
 import { useSettings } from "../stores/settings";
+import { initLibrary, libraryAction, useLibrary } from "../stores/library";
 
 let caps: Caps | null = null;
 const LYRIC_EXTS = ["lrc", "srt", "vtt", "txt"];
@@ -58,11 +60,52 @@ export async function openFile(path: string) {
     const kind = kindOf(path) ?? undefined;
     const items = await api.scanPlaylist(path, kind);
     const index = Math.max(0, items.findIndex((i) => i.path === path));
-    usePlaylist.setState({ items, index, order: [], history: [] });
+    usePlaylist.setState({ items, index, order: [], history: [], source: null });
     await playIndex(index);
   } catch (e) {
     toast(`无法打开文件：${errText(e)}`, "error");
   }
+}
+
+/** Plays `entries[index]` with `entries` as the queue (library views). */
+export async function playList(entries: MediaEntry[], index: number, source: string) {
+  if (!entries[index]) return;
+  usePlaylist.setState({ items: entries, index: -1, order: [], history: [], source });
+  const page = useUI.getState().page;
+  // Videos need the player page; music keeps the library open.
+  if (page === "lyrics" || (page === "library" && entries[index].kind === "video")) useUI.setState({ page: "player" });
+  await playIndex(index);
+}
+
+/** Inserts entries right after the current item ("play next"). */
+export function playNext(entries: MediaEntry[]) {
+  insertIntoQueue(entries, true);
+}
+
+/** Appends entries to the end of the queue. */
+export function enqueue(entries: MediaEntry[]) {
+  insertIntoQueue(entries, false);
+}
+
+function insertIntoQueue(entries: MediaEntry[], next: boolean) {
+  if (!entries.length) return;
+  const pl = usePlaylist.getState();
+  if (pl.index < 0 || !usePlayer.getState().media) {
+    void playList(entries, 0, "播放队列");
+    return;
+  }
+  const current = pl.items[pl.index];
+  entries = entries.filter((e) => e.path !== current.path);
+  if (!entries.length) {
+    toast("正在播放这一项");
+    return;
+  }
+  const adding = new Set(entries.map((e) => e.path));
+  const rest = pl.items.filter((it, i) => i === pl.index || !adding.has(it.path));
+  const at = rest.indexOf(current);
+  const items = next ? [...rest.slice(0, at + 1), ...entries, ...rest.slice(at + 1)] : [...rest, ...entries];
+  usePlaylist.setState({ items, index: items.indexOf(current), order: [], history: [], source: pl.source ?? "当前文件夹" });
+  toast(next ? `将在下一首播放${entries.length > 1 ? ` ${entries.length} 个文件` : ""}` : `已加入播放队列`, "success");
 }
 
 export async function openWithDialog() {
@@ -115,6 +158,9 @@ export async function playIndex(index: number, autoplay = true) {
     setupSubtitles();
     void updateNowPlaying();
     void updateDynamicAccent();
+    if (isTauri || media.path.startsWith("browser:")) {
+      void api.libraryRecordPlay(media.path, st.libraryRecordPlays).catch(() => {});
+    }
   } catch (e) {
     usePlayer.setState({ loading: false, error: errText(e) });
     toast(`播放失败：${errText(e)}`, "error", 5000);
@@ -654,6 +700,7 @@ export async function init() {
     if (isTauri && engine.media) void api.nowPlayingState(!engine.paused, engine.position).catch(() => {});
   };
   requestAnimationFrame(tick);
+  void initLibrary();
 
   // The Web Audio graph (app volume + waveform analyser) may only start inside a gesture.
   const gesture = () => engine.enableGraph();
@@ -715,7 +762,8 @@ export async function init() {
         else if (t === "leave") useUI.setState({ dragOver: false });
         else if (t === "drop") {
           useUI.setState({ dragOver: false });
-          void openFiles(event.payload.paths);
+          if (useUI.getState().page === "library") void addToLibrary(event.payload.paths);
+          else void openFiles(event.payload.paths);
         }
       });
     } catch (e) {
@@ -738,9 +786,43 @@ export async function init() {
     window.addEventListener("drop", (e) => {
       e.preventDefault();
       useUI.setState({ dragOver: false });
-      if (e.dataTransfer?.files.length) void openFiles(registerBrowserFiles(e.dataTransfer.files));
+      if (!e.dataTransfer?.files.length) return;
+      const paths = registerBrowserFiles(e.dataTransfer.files);
+      if (useUI.getState().page === "library") void addToLibrary(paths);
+      else void openFiles(paths);
     });
   }
+}
+
+/** Adds dropped files / folders to the media library. */
+export async function addToLibrary(paths: string[]) {
+  const r = await libraryAction(() => api.libraryAddPaths(paths));
+  if (!r) return;
+  const parts = [r.folders ? `${r.folders} 个文件夹` : "", r.files ? `${r.files} 个文件` : ""].filter(Boolean);
+  toast(parts.length ? `已加入媒体库：${parts.join("，")}` : "这些文件已在媒体库中", parts.length ? "success" : "info");
+}
+
+/** Picks folders (Tauri) or files (browser preview) to add to the library. */
+export async function addLibraryFolderWithDialog() {
+  if (!isTauri) {
+    const paths = await pickBrowserFiles();
+    if (paths.length) await addToLibrary(paths);
+    return;
+  }
+  const res = await openDialog({ directory: true, multiple: true, title: "选择要加入媒体库的文件夹" });
+  const dirs = typeof res === "string" ? [res] : res ?? [];
+  for (const d of dirs) await libraryAction(() => api.libraryAddFolder(d));
+  if (dirs.length) toast("已添加文件夹，正在扫描…", "success");
+}
+
+export async function toggleFavorite(path: string, on?: boolean) {
+  const fav = useLibrary.getState().data.favorites.includes(path);
+  const next = on ?? !fav;
+  if (next && !useLibrary.getState().data.tracks.some((t) => t.path === path)) {
+    // Favouriting a file that isn't in the library yet adds it first.
+    await api.libraryAddPaths([path]).catch(() => {});
+  }
+  await libraryAction(() => api.librarySetFavorite(path, next));
 }
 
 export type { Lyrics };

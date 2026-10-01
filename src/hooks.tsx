@@ -96,6 +96,11 @@ export function useKeyboard() {
         void C.openWithDialog();
         return;
       }
+      if (mod && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        if (!ui.fullscreen) useUI.setState({ page: ui.page === "library" ? "player" : "library", overlay: null });
+        return;
+      }
       if (mod && e.key === ",") {
         e.preventDefault();
         useUI.setState({ overlay: "settings" });

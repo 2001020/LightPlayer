@@ -50,9 +50,21 @@ const paths = {
   warning: "M12 3L2 20h20zM12 10v4M12 17h.01",
   target: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   reveal: "M14 3h7v7M10 14L21 3M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5",
+  library: "M5 4h3v16H5zM10.5 4h3v16h-3zM16 5l2.9-.8 3.9 15-2.9.8z",
+  heart: "M12 20s-7-4.4-9.2-8.6C1.3 8.4 3.2 5 6.5 5c2 0 3.5 1.2 5.5 3.2C14 6.2 15.5 5 17.5 5c3.3 0 5.2 3.4 3.7 6.4C19 15.6 12 20 12 20z",
+  heartFill: "M12 20s-7-4.4-9.2-8.6C1.3 8.4 3.2 5 6.5 5c2 0 3.5 1.2 5.5 3.2C14 6.2 15.5 5 17.5 5c3.3 0 5.2 3.4 3.7 6.4C19 15.6 12 20 12 20z",
+  album: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
+  playlist: "M4 6h11M4 11h11M4 16h7M18 13v7M14.5 16.5h7",
+  grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+  refresh: "M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6",
+  folderPlus: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM12 10.5v5M9.5 13h5",
+  queue: "M4 6h12M4 11h12M4 16h6M15 15l5 3-5 3z",
 } satisfies Record<string, string>;
 
-const filled = new Set(["play", "pause", "next", "prev"]);
+const filled = new Set(["play", "pause", "next", "prev", "heartFill"]);
 
 export type IconName = keyof typeof paths;
 
