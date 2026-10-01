@@ -6,7 +6,7 @@
 
 import type { Scene } from "../../core/weather/scene";
 import { cloudKey, cloudTexture, peekCloud } from "./cloudBank";
-import { cloudKindsFor, cloudPalette, type CloudJob } from "./cloudNoise";
+import { cloudDecks, cloudPalette, type CloudJob } from "./cloudNoise";
 
 type Kind = "rain" | "snow" | "hail";
 
@@ -95,21 +95,6 @@ interface Tex {
   readyAt: number;
 }
 
-interface Cloud {
-  /** Two textures of the same shape with different detail, cross-faded slowly. */
-  a: Tex;
-  b: Tex;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  speed: number;
-  alpha: number;
-  flip: boolean;
-  phase: number;
-  period: number;
-}
-
 /** A tileable sheet of stratus across the top of the sky. */
 interface Deck {
   tex: Tex;
@@ -137,7 +122,6 @@ export class WeatherRenderer {
   private far: P[] = [];
   private near: P[] = [];
   private bits: Bit[] = [];
-  private clouds: Cloud[] = [];
   private decks: Deck[] = [];
   /** No animation: draw everything fully faded in. */
   private still = false;
@@ -161,6 +145,7 @@ export class WeatherRenderer {
   }
 
   resize(w: number, h: number, dpr: number) {
+    const [ow, oh] = [this.w, this.h];
     this.w = w;
     this.h = h;
     this.dpr = dpr;
@@ -170,7 +155,61 @@ export class WeatherRenderer {
       ctx.canvas.style.width = `${w}px`;
       ctx.canvas.style.height = `${h}px`;
     }
-    this.build();
+    if (!ow || !oh) this.build();
+    else this.rescale(w / ow, h / oh);
+  }
+
+  /**
+   * Keeps the sky as it is while the window is resized (rebuilding it on
+   * every resize event made everything jump about): positions are stretched
+   * to the new size and the number of drops follows the new area.
+   */
+  private rescale(sx: number, sy: number) {
+    for (const p of [...this.far, ...this.near]) {
+      p.x *= sx;
+      p.y *= sy;
+    }
+    for (const b of this.bits) {
+      b.x *= sx;
+      b.y *= sy;
+      b.floor *= sy;
+    }
+    for (const st of this.stars) {
+      st.x *= sx;
+      st.y *= sy;
+    }
+    for (const f of this.fog) {
+      f.x *= sx;
+      f.y *= sy;
+      f.hgt *= sy;
+    }
+    for (const d of this.decks) {
+      d.y *= sy;
+      d.h *= sy;
+      d.x *= sx;
+      d.w = this.w * 1.3;
+    }
+    const want = this.counts();
+    this.fit(this.far, want.far, false);
+    this.fit(this.near, want.near, true);
+  }
+
+  /** Adds drops (entering from the top) or removes some to reach `want` of each kind. */
+  private fit(list: P[], want: Record<Kind, number>, near: boolean) {
+    for (const kind of ["rain", "snow", "hail"] as const) {
+      let have = list.reduce((n, p) => n + (p.kind === kind ? 1 : 0), 0);
+      for (; have < want[kind]; have++) list.push(this.spawn(kind, near, false));
+      for (let i = list.length - 1; i >= 0 && have > want[kind]; i--) {
+        if (list[i].kind !== kind) continue;
+        list.splice(i, 1);
+        have--;
+      }
+    }
+  }
+
+  /** Draws the current state again without advancing it (resizing clears the canvases). */
+  redraw() {
+    this.frame(0, !this.still);
   }
 
   setScene(scene: Scene) {
@@ -190,8 +229,8 @@ export class WeatherRenderer {
 
   // ---------------------------------------------------------------- setup
 
-  private build() {
-    if (!this.w) return;
+  /** How many drops of each kind the scene wants for the current window size. */
+  private counts(): { far: Record<Kind, number>; near: Record<Kind, number> } {
     const s = this.scene;
     const area = Math.min(2.4, (this.w * this.h) / (1280 * 800));
     const k = s.intensity;
@@ -233,14 +272,23 @@ export class WeatherRenderer {
         break;
     }
     const n = (x: number, cap: number) => Math.min(cap, Math.round(x * area));
+    return {
+      far: { rain: n(rain, 600), snow: n(snow, 450), hail: n(hail, 140) },
+      near: { rain: n(nearRain, 110), snow: n(nearSnow, 90), hail: n(nearHail, 40) },
+    };
+  }
+
+  private build() {
+    if (!this.w) return;
+    const s = this.scene;
+    const k = s.intensity;
+    const want = this.counts();
     this.far = [];
     this.near = [];
-    for (let i = 0; i < n(rain, 600); i++) this.far.push(this.spawn("rain", false, true));
-    for (let i = 0; i < n(snow, 450); i++) this.far.push(this.spawn("snow", false, true));
-    for (let i = 0; i < n(hail, 140); i++) this.far.push(this.spawn("hail", false, true));
-    for (let i = 0; i < n(nearRain, 110); i++) this.near.push(this.spawn("rain", true, true));
-    for (let i = 0; i < n(nearSnow, 90); i++) this.near.push(this.spawn("snow", true, true));
-    for (let i = 0; i < n(nearHail, 40); i++) this.near.push(this.spawn("hail", true, true));
+    for (const kind of ["rain", "snow", "hail"] as const) {
+      for (let i = 0; i < want.far[kind]; i++) this.far.push(this.spawn(kind, false, true));
+      for (let i = 0; i < want.near[kind]; i++) this.near.push(this.spawn(kind, true, true));
+    }
     this.bits = [];
     this.rainRgb = this.night ? "160,178,206" : s.kind === "thunder" || s.kind === "hail" ? "200,210,226" : "226,236,246";
     this.buildClouds();
@@ -279,52 +327,23 @@ export class WeatherRenderer {
 
   private buildClouds() {
     const s = this.scene;
-    this.clouds = [];
     this.decks = [];
     if (s.clouds <= 0.01) return;
-    const { puffs, decks } = cloudKindsFor(s.kind);
     const palette = cloudPalette(s.kind, s.phase);
-    const cb = puffs === "cumulonimbus";
-    const [tw, th] = cb ? [512, 288] : [448, 224];
     const t = this.t;
-    const scaleBase = Math.min(1.7, Math.max(0.75, this.w / 1280));
-    const count = cb ? 3 + Math.round(s.clouds * 3) : Math.max(3, Math.round(s.clouds * (decks ? 8 : 13)));
-    const shapes = 5;
-    for (let i = 0; i < count; i++) {
-      const layer = i % 3;
-      const shape = (i % shapes) + 1 + (cb ? 100 : 0);
-      const job = (detail: number): CloudJob => ({ kind: puffs, palette, shapeSeed: shape, detailSeed: shape * 31 + detail, w: tw, h: th });
-      const w = tw * scaleBase * (0.8 + layer * 0.38) * rand(0.85, 1.2) * (cb ? 1.35 : 1);
-      const h = (w * th) / tw;
-      this.clouds.push({
-        a: texture(job(1), t),
-        b: texture(job(2), t),
-        x: rand(-0.3, 1.05) * this.w,
-        y: rand(-0.12, 0.08 + 0.3 * s.clouds) * this.h - h * 0.2 + (cb ? this.h * 0.05 : 0),
-        w,
-        h,
-        speed: (4 + layer * 6) * (1 + Math.abs(s.wind) * 2.2) * (s.wind < 0 ? -1 : 1),
-        alpha: Math.min(1, (decks ? 0.78 : 0.85) + layer * 0.07) * (this.night ? 0.9 : 1),
-        flip: Math.random() < 0.5,
-        phase: rand(0, Math.PI * 2),
-        period: rand(40, 80),
-      });
-    }
-    // Far clouds first.
-    this.clouds.sort((a, b) => a.w - b.w);
-    for (let d = 0; d < decks; d++) {
-      const job: CloudJob = { kind: "stratus", palette, shapeSeed: 0, detailSeed: 200 + d, w: 768, h: 192 };
-      const light = s.kind === "cloudy" || s.kind === "fog";
+    const drift = (1 + Math.abs(s.wind) * 2) * (s.wind < 0 ? -1 : 1);
+    cloudDecks(s.kind, s.clouds).forEach((d, i) => {
+      const job: CloudJob = { palette, seed: 200 + i, cover: d.cover, w: 768, h: 192 };
       this.decks.push({
         tex: texture(job, t),
         x: rand(0, this.w),
-        y: (d ? 0.06 : -0.08) * this.h,
-        h: this.h * (d ? 0.48 : 0.42) * (cb ? 1.15 : 1),
+        y: d.y * this.h,
+        h: d.h * this.h,
         w: this.w * 1.3,
-        speed: (3 + d * 5) * (1 + Math.abs(s.wind) * 2) * (s.wind < 0 ? -1 : 1),
-        alpha: (d ? 0.8 : 0.95) * (light ? 0.5 : 1),
+        speed: 3 * d.speed * drift,
+        alpha: d.alpha * (this.night ? 0.9 : 1),
       });
-    }
+    });
   }
 
   /** Fade-in factor for a texture (0 until generated). */
@@ -339,44 +358,19 @@ export class WeatherRenderer {
 
   private drawClouds(dt: number, boost = 0) {
     const { bg, w } = this;
-    // The lightning pass (boost) only re-lights the cloud puffs.
-    for (const d of boost ? [] : this.decks) {
+    // The lightning pass (boost) re-lights the bands without moving them.
+    for (const d of this.decks) {
       const k = this.shown(d.tex);
-      d.x = (((d.x + d.speed * dt) % d.w) + d.w) % d.w;
+      if (!boost) d.x = (((d.x + d.speed * dt) % d.w) + d.w) % d.w;
       if (!k || !d.tex.img) continue;
       bg.globalAlpha = (boost || d.alpha) * k;
       // Tileable: two copies side by side cover the window.
       for (let x = d.x - d.w; x < w; x += d.w) bg.drawImage(d.tex.img, x, d.y, d.w, d.h);
     }
-    for (const c of this.clouds) {
-      c.x += c.speed * dt;
-      if (c.speed > 0 && c.x > w + 40) c.x = -c.w - rand(0, 200);
-      if (c.speed < 0 && c.x < -c.w - 40) c.x = w + rand(0, 200);
-      const ka = this.shown(c.a);
-      if (!ka || !c.a.img) continue;
-      const kb = this.shown(c.b);
-      // Slowly morphing: the second texture fades in and out over the first.
-      const m = kb && !boost ? (0.5 + 0.5 * Math.sin((this.t * Math.PI * 2) / c.period + c.phase)) * kb : 0;
-      const alpha = (boost || c.alpha) * ka;
-      this.blit(c.a.img, c, alpha);
-      if (m > 0.01 && c.b.img) this.blit(c.b.img, c, alpha * m);
-    }
     bg.globalAlpha = 1;
   }
 
-  private blit(img: HTMLCanvasElement, c: Cloud, alpha: number) {
-    const { bg } = this;
-    bg.globalAlpha = alpha;
-    if (!c.flip) {
-      bg.drawImage(img, c.x, c.y, c.w, c.h);
-      return;
-    }
-    bg.save();
-    bg.translate(c.x + c.w, c.y);
-    bg.scale(-1, 1);
-    bg.drawImage(img, 0, 0, c.w, c.h);
-    bg.restore();
-  }
+
 
   private buildStars() {
     this.stars = [];

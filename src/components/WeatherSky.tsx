@@ -55,7 +55,15 @@ export function WeatherSky({ scene, motion, paused }: { scene: Scene; motion: bo
     if (!bgRef.current || !fgRef.current || broken) return;
     const r = new WeatherRenderer(bgRef.current, fgRef.current, scene);
     renderer.current = r;
-    const size = () => r.resize(window.innerWidth, window.innerHeight, Math.min(1.5, window.devicePixelRatio || 1));
+    const size = () => {
+      r.resize(window.innerWidth, window.innerHeight, Math.min(1.5, window.devicePixelRatio || 1));
+      // Same frame as the resize: no blank or stretched canvas in between.
+      try {
+        r.redraw();
+      } catch {
+        /* the animation loop reports errors */
+      }
+    };
     size();
     window.addEventListener("resize", size);
     return () => {

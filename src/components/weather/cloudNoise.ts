@@ -1,10 +1,9 @@
-// Procedural cloud textures: domain-warped fractal noise shaped into
-// cumulus, stratus or cumulonimbus forms, lit from the sun's (or moon's)
-// direction. Pure computation (no DOM) so it can run in a worker.
+// Procedural cloud textures: wide, wispy sheets of domain-warped fractal
+// noise (stratus), lit from the sun's (or moon's) direction. Pure computation
+// (no DOM) so it can run in a worker.
 
 import type { DayPhase, SkyKind } from "../../core/weather/scene";
 
-export type CloudKind = "cumulus" | "stratus" | "cumulonimbus";
 type RGB = [number, number, number];
 
 export interface CloudPalette {
@@ -20,12 +19,10 @@ export interface CloudPalette {
 }
 
 export interface CloudJob {
-  kind: CloudKind;
   palette: CloudPalette;
-  /** Overall form (domes, base height). */
-  shapeSeed: number;
-  /** Fine detail; two detail seeds on one shape give a slowly morphing cloud. */
-  detailSeed: number;
+  seed: number;
+  /** 0..1: a few thin wisps at the low end, an unbroken sheet at 1. */
+  cover: number;
   w: number;
   h: number;
 }
@@ -107,88 +104,13 @@ class Noise {
 
 }
 
-interface Puff {
-  x: number;
-  y: number;
-  r: number;
-  /** Extra height: puffs near the middle of the cloud sit higher. */
-  z: number;
-}
-
-/**
- * The cloud as a pile of round puffs at several scales (big ones inside,
- * small ones at the edges), like the cauliflower tops of a cumulus.
- */
-function makePuffs(kind: CloudKind, seed: number, w: number, h: number): { puffs: Puff[]; base: number } {
-  const rnd = mulberry32(seed * 7919 + 13);
-  const r = (a: number, b: number) => a + rnd() * (b - a);
-  const cb = kind === "cumulonimbus";
-  const base = h * (cb ? r(0.8, 0.85) : r(0.74, 0.8));
-  // Outline: a few overlapping ellipses (main body plus towers).
-  const domes = [{ x: r(0.45, 0.55), y: cb ? 0.58 : 0.62, rx: cb ? 0.36 : r(0.3, 0.36), ry: cb ? 0.3 : r(0.17, 0.21) }];
-  const towers = cb ? 4 : 2 + Math.floor(rnd() * 3);
-  for (let i = 0; i < towers; i++) domes.push({ x: r(0.3, 0.7), y: cb ? r(0.32, 0.48) : r(0.42, 0.55), rx: r(0.1, 0.16), ry: cb ? r(0.18, 0.24) : r(0.13, 0.2) });
-  if (cb) domes.push({ x: r(0.45, 0.58), y: r(0.17, 0.22), rx: r(0.3, 0.38), ry: 0.07 }); // anvil
-  const inside = (u: number, v: number) => {
-    let best = -1;
-    for (const d of domes) {
-      const dx = (u - d.x) / d.rx;
-      const dy = (v - d.y) / d.ry;
-      best = Math.max(best, 1 - (dx * dx + dy * dy));
-    }
-    return best;
-  };
-  const puffs: Puff[] = [];
-  const count = cb ? 170 : 130;
-  let tries = 0;
-  while (puffs.length < count && tries++ < count * 30) {
-    const u = r(0.06, 0.94);
-    const v = r(0.06, 0.94);
-    const depth = inside(u, v);
-    // Stay inside the outline so no lone bubbles stick out.
-    if (depth <= 0.08 || v * h > base + 2) continue;
-    const scale = 0.4 + 0.6 * Math.sqrt(depth);
-    const rad = w * (cb ? 0.085 : 0.075) * scale * r(0.65, 1.15);
-    puffs.push({ x: u * w, y: v * h, r: rad, z: depth * w * 0.06 });
-  }
-  // Big puffs first so small ones add detail on top.
-  puffs.sort((a, b) => b.r - a.r);
-  return { puffs, base };
-}
-
-/** Height of the cloud surface (<= 0 outside) for cumulus-type clouds. */
-function puffHeight(job: Omit<CloudJob, "palette">): { H: Float32Array; base: number } {
-  const { w, h } = job;
-  const { puffs, base } = makePuffs(job.kind, job.shapeSeed, w, h);
-  // Smooth union of the puffs (log-sum-exp), so neighbours merge without seams.
-  const k = w * 0.018;
-  const S = new Float32Array(w * h);
-  for (const p of puffs) {
-    const x0 = Math.max(0, Math.floor(p.x - p.r));
-    const x1 = Math.min(w - 1, Math.ceil(p.x + p.r));
-    const y0 = Math.max(0, Math.floor(p.y - p.r));
-    const y1 = Math.min(h - 1, Math.ceil(p.y + p.r));
-    const r2 = p.r * p.r;
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const dx = x - p.x;
-        const dy = y - p.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 >= r2) continue;
-        const z = p.z * (1 - d2 / r2) + Math.sqrt(r2 - d2);
-        S[y * w + x] += Math.exp(z / k);
-      }
-    }
-  }
-  const H = new Float32Array(w * h);
-  for (let i = 0; i < H.length; i++) H[i] = S[i] > 0 ? Math.max(0, k * Math.log(S[i])) : -1;
-  return { H, base };
-}
-
-/** Stratus: a wide sheet of cloud from warped noise, tileable left to right. */
+/** A wide band of cloud from warped noise, tileable left to right. */
 export function stratusDensity(job: Omit<CloudJob, "palette">): Float32Array {
   const { w, h } = job;
-  const noise = new Noise(job.detailSeed);
+  const noise = new Noise(job.seed);
+  // Less cover: the band's body fades and only the noise ridges remain (wisps).
+  const body = 0.78 * (0.35 + 0.65 * job.cover);
+  const cut = 0.22 + (1 - job.cover) * 0.2;
   const F = 6;
   const yScale = (h / w) * F * 2.4;
   const out = new Float32Array(w * h);
@@ -201,13 +123,14 @@ export function stratusDensity(job: Omit<CloudJob, "palette">): Float32Array {
       const wx = noise.fbm(nx + 5.2, ny + 1.3, 3, F);
       const wy = noise.fbm(nx + 1.7, ny + 9.2, 3, F);
       const n = noise.fbm(nx + 0.85 * wx, ny + 0.85 * wy, 5, F);
-      out[y * w + x] = smoothstep(0, 0.55, env * 0.78 + n * 0.62 - 0.22);
+      out[y * w + x] = smoothstep(0, 0.55, env * body + n * 0.62 - cut);
     }
   }
   return out;
 }
 
-function renderStratus(job: CloudJob): Uint8ClampedArray {
+/** RGBA pixels (not premultiplied) for one cloud texture. */
+export function renderCloud(job: CloudJob): Uint8ClampedArray {
   const { w, h, palette: p } = job;
   const dens = stratusDensity(job);
   const px = new Uint8ClampedArray(w * h * 4);
@@ -236,74 +159,6 @@ function renderStratus(job: CloudJob): Uint8ClampedArray {
       px[o + 1] = lerp(p.shadow[1], p.lit[1], t);
       px[o + 2] = lerp(p.shadow[2], p.lit[2], t);
       px[o + 3] = 255 * Math.min(1, d * 1.05) * p.opacity;
-    }
-  }
-  return px;
-}
-
-/** RGBA pixels (not premultiplied) for one cloud texture. */
-export function renderCloud(job: CloudJob): Uint8ClampedArray {
-  if (job.kind === "stratus") return renderStratus(job);
-  const { w, h, palette: p, kind } = job;
-  const { H, base } = puffHeight(job);
-  const noise = new Noise(job.detailSeed);
-  const px = new Uint8ClampedArray(w * h * 4);
-  const F = 6.5;
-  // Soft, worn edges: noise eats into the outline, more where the cloud is thin.
-  const soft = w * 0.035;
-  const [lx0, ly0] = p.light;
-  const lz0 = 0.7;
-  const ll = Math.hypot(lx0, ly0, lz0);
-  const lx = lx0 / ll;
-  const ly = ly0 / ll;
-  const lz = lz0 / ll;
-  const step = w * 0.02;
-  const pl = Math.hypot(lx0, ly0) || 1;
-  const sx = (lx0 / pl) * step;
-  const sy = (ly0 / pl) * step;
-  const hAt = (x: number, y: number) => {
-    const xi = Math.min(w - 1, Math.max(0, Math.round(x)));
-    const yi = Math.min(h - 1, Math.max(0, Math.round(y)));
-    return H[yi * w + xi];
-  };
-  const underK = kind === "cumulonimbus" ? 0.62 : 0.4;
-  const maxH = w * 0.14;
-  for (let y = 0; y < h; y++) {
-    const v = y / h;
-    // Flat, darker base.
-    const baseFade = smoothstep(base + soft * 0.6, base - soft * 0.4, y);
-    const under = 1 - underK * smoothstep(h * 0.3, base, y);
-    for (let x = 0; x < w; x++) {
-      const i = y * w + x;
-      const z = H[i];
-      if (z <= -0.5) continue;
-      const nx = (x / w) * F;
-      const ny = v * F * (h / w);
-      const wx = noise.fbm(nx + 3.1, ny + 7.7, 2, 0);
-      const n = noise.fbm(nx + 0.9 * wx, ny + 0.9 * wx, 5, 0);
-      const erode = Math.max(0, 0.5 + n * 1.7) * soft;
-      const alpha = smoothstep(0, soft, z - erode * 0.9 + soft * 0.25) * baseFade;
-      if (alpha < 0.004) continue;
-      // Normal of the puff surface, with a little noise for texture.
-      const gx = (hAt(x + 1, y) - hAt(x - 1, y)) * 0.5;
-      const gy = (hAt(x, y + 1) - hAt(x, y - 1)) * 0.5;
-      const tex = n * 0.35;
-      const nxv = -gx + tex;
-      const nyv = -gy + tex * 0.5;
-      const nl = Math.hypot(nxv, nyv, 1);
-      const diffuse = Math.max(0, (nxv * lx + nyv * ly + lz) / nl);
-      // Cloud piled up between this point and the light.
-      let depth = 0;
-      for (let k = 1; k <= 4; k++) depth += Math.max(0, hAt(x + sx * k, y + sy * k) - z * 0.6);
-      const shade = Math.exp((-depth / maxH) * p.absorb * 0.5);
-      // Thin edges let light through.
-      const rim = (1 - alpha) * 0.35;
-      const light = Math.min(1, (0.38 + 0.72 * diffuse * shade + rim) * under);
-      const o = i * 4;
-      px[o] = lerp(p.shadow[0], p.lit[0], light);
-      px[o + 1] = lerp(p.shadow[1], p.lit[1], light);
-      px[o + 2] = lerp(p.shadow[2], p.lit[2], light);
-      px[o + 3] = 255 * alpha * p.opacity;
     }
   }
   return px;
@@ -375,21 +230,52 @@ export function cloudPalette(kind: SkyKind, phase: DayPhase): CloudPalette {
   return { lit, shadow, light, absorb, opacity };
 }
 
-export function cloudKindsFor(kind: SkyKind): { puffs: CloudKind; decks: number } {
+export interface DeckLayout {
+  cover: number;
+  /** Top edge and height as fractions of the window height. */
+  y: number;
+  h: number;
+  alpha: number;
+  /** Relative drift speed (nearer bands move faster). */
+  speed: number;
+}
+
+/** The cloud bands for a sky, far (top) to near. `amount` is the scene's cloud cover. */
+export function cloudDecks(kind: SkyKind, amount: number): DeckLayout[] {
+  const a = Math.min(1, Math.max(0, amount));
   switch (kind) {
     case "clear":
-      return { puffs: "cumulus", decks: 0 };
+      return [];
     case "partly":
-      return { puffs: "cumulus", decks: 0 };
+      return [
+        { cover: 0.25 + a * 0.25, y: -0.04, h: 0.3, alpha: 0.75, speed: 1 },
+        { cover: 0.2 + a * 0.25, y: 0.16, h: 0.28, alpha: 0.6, speed: 1.6 },
+      ];
     case "cloudy":
-      return { puffs: "cumulus", decks: 1 };
+      return [
+        { cover: 0.45 + a * 0.2, y: -0.06, h: 0.36, alpha: 0.85, speed: 1 },
+        { cover: 0.4 + a * 0.2, y: 0.1, h: 0.34, alpha: 0.75, speed: 1.5 },
+        { cover: 0.3 + a * 0.2, y: 0.28, h: 0.3, alpha: 0.6, speed: 2.1 },
+      ];
+    case "fog":
+      return [
+        { cover: 0.7, y: -0.06, h: 0.44, alpha: 0.5, speed: 1 },
+        { cover: 0.55, y: 0.18, h: 0.4, alpha: 0.4, speed: 1.6 },
+      ];
     case "heavyRain":
     case "thunder":
     case "hail":
-      return { puffs: "cumulonimbus", decks: 2 };
-    case "fog":
-      return { puffs: "cumulus", decks: 1 };
+      return [
+        { cover: 1, y: -0.1, h: 0.5, alpha: 1, speed: 1 },
+        { cover: 0.9, y: 0.06, h: 0.52, alpha: 0.9, speed: 1.6 },
+        { cover: 0.72, y: 0.26, h: 0.42, alpha: 0.75, speed: 2.3 },
+      ];
     default:
-      return { puffs: "cumulus", decks: 2 };
+      // overcast, drizzle, rain, snow, sleet
+      return [
+        { cover: 0.85 + a * 0.15, y: -0.08, h: 0.44, alpha: 0.95, speed: 1 },
+        { cover: 0.7 + a * 0.15, y: 0.06, h: 0.46, alpha: 0.85, speed: 1.6 },
+        { cover: 0.5 + a * 0.15, y: 0.24, h: 0.38, alpha: 0.7, speed: 2.3 },
+      ];
   }
 }

@@ -10,7 +10,7 @@ const CACHE_LIMIT = 60;
 
 export function cloudKey(j: CloudJob): string {
   const p = j.palette;
-  return [j.kind, p.lit, p.shadow, p.light, p.absorb, p.opacity, j.shapeSeed, j.detailSeed, j.w, j.h].join("|");
+  return [p.lit, p.shadow, p.light, p.absorb, p.opacity, j.seed, j.cover.toFixed(3), j.w, j.h].join("|");
 }
 
 function store(key: string, job: CloudJob, pixels: Uint8ClampedArray) {
