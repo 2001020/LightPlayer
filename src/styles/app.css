@@ -886,8 +886,10 @@ input[type="range"] {
 }
 .track-info {
   min-width: 0;
-  /* A fixed width: lyric lines of different lengths must not move the cover. */
-  width: min(460px, 42vw);
+  /* Sized by the title, artist and album only (the lyric lines are absolutely
+     positioned), so the group stays centred and lyric changes never move it. */
+  min-width: min(260px, 30vw);
+  max-width: min(460px, 42vw);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -928,7 +930,9 @@ input[type="range"] {
 }
 .peek-line {
   position: absolute;
-  inset: 0 0 auto 0;
+  inset: 0 auto auto 0;
+  /* May reach past a short title to the right. */
+  width: min(460px, 42vw);
   will-change: transform, opacity;
 }
 .peek-line.in {
@@ -1437,6 +1441,8 @@ input[type="range"] {
   height: 100%;
   display: grid;
   grid-template-columns: 1fr;
+  /* One row as tall as the host: the lyric list scrolls inside it. */
+  grid-template-rows: minmax(0, 1fr);
   gap: 14px;
   min-height: 0;
 }
@@ -1447,6 +1453,7 @@ input[type="range"] {
 .lyrics-page {
   position: relative;
   min-width: 0;
+  min-height: 0;
   height: 100%;
   display: grid;
   grid-template-rows: auto auto 1fr;
@@ -2212,6 +2219,14 @@ kbd {
   .track-info {
     align-items: center;
     width: min(460px, 100%);
+    max-width: none;
+  }
+  .track-info .lyric-peek {
+    align-self: stretch;
+  }
+  .peek-line {
+    inset: 0 0 auto 0;
+    width: auto;
   }
   .volume {
     width: 96px;
