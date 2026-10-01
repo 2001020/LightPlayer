@@ -13,7 +13,8 @@ on:
         default: ""
 
 concurrency:
-  group: macos-${{ github.ref }}
+  # Release runs get their own group so a later push can't cancel them.
+  group: macos-${{ github.ref }}-${{ inputs.release_tag || 'build' }}
   cancel-in-progress: true
 
 jobs:
