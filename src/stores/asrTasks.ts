@@ -16,6 +16,8 @@ export interface AsrTaskInput {
   kind: MediaKind;
   title?: string | null;
   artist?: string | null;
+  /** Added in private mode: not kept in the history once it succeeds or is cancelled. */
+  private?: boolean;
 }
 
 export interface AsrTask extends AsrTaskInput {
@@ -76,6 +78,9 @@ export function moveUp(tasks: AsrTask[], id: string): AsrTask[] {
 
 /** Marks a task finished and keeps the history bounded. */
 export function finish(tasks: AsrTask[], id: string, patch: Partial<AsrTask>, now = Date.now()): AsrTask[] {
+  const done = tasks.find((t) => t.id === id);
+  // Private tasks leave no trace; a failure stays so it can be retried.
+  if (done?.private && (patch.status === "done" || patch.status === "cancelled")) return tasks.filter((t) => t.id !== id);
   const out = tasks.map((t) => (t.id === id ? { ...t, ...patch, finishedAt: now } : t));
   const finished = out.filter(isFinished).sort((x, y) => (y.finishedAt ?? 0) - (x.finishedAt ?? 0));
   if (finished.length <= HISTORY_LIMIT) return out;

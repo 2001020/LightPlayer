@@ -9,13 +9,15 @@ import { Icon } from "./components/Icon";
 import { LyricsEditor } from "./components/LyricsEditor";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Tooltips, tip } from "./components/Tooltip";
-import { TransportBar, toggleFullscreen } from "./components/TransportBar";
+import { TransportBar } from "./components/TransportBar";
 import { VideoInfoDialog } from "./components/VideoInfoDialog";
+import { WeatherChip } from "./components/WeatherChip";
 import { Background, useFullscreenSync, useIdle, useKeyboard, useTheme } from "./hooks";
 import { LibraryPage } from "./pages/LibraryPage";
 import { LyricsPage } from "./pages/LyricsPage";
 import { PlayerPage } from "./pages/PlayerPage";
 import { usePlayer, useUI } from "./stores/player";
+import { useSettings } from "./stores/settings";
 
 function Toasts() {
   const toasts = useUI((s) => s.toasts);
@@ -39,6 +41,8 @@ export default function App() {
   const fullscreen = useUI((s) => s.fullscreen);
   const dragOver = useUI((s) => s.dragOver);
   const media = usePlayer((s) => s.media);
+  const privateMode = useSettings((s) => s.privateMode);
+  const weatherTheme = useSettings((s) => s.theme === "weather");
   const immersive = fullscreen && media?.kind === "video";
   const idle = useIdle(immersive);
 
@@ -68,6 +72,12 @@ export default function App() {
           </div>
         )}
         <div className="spacer" data-tauri-drag-region />
+        {weatherTheme && <WeatherChip />}
+        {privateMode && (
+          <button className="private-badge" onClick={() => C.setPrivateMode(false)} {...tip("无痕浏览中，打开的文件不会被记录。点击关闭", "⇧⌘N")}>
+            <Icon name="incognito" size={15} /> 无痕
+          </button>
+        )}
         <button
           className={`icon-btn ${page === "library" ? "active" : ""}`}
           onClick={() => useUI.setState({ page: page === "library" ? "player" : "library" })}
@@ -97,9 +107,6 @@ export default function App() {
       {immersive && (
         <div className="immersive-top">
           <div className="name">{media.meta?.title || media.fileName}</div>
-          <button className="icon-btn" onClick={() => void toggleFullscreen(false)} {...tip("退出全屏", "Esc")}>
-            <Icon name="exitFullscreen" />
-          </button>
         </div>
       )}
       <TransportBar />

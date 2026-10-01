@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { WeatherSky } from "./components/WeatherSky";
+import { fallbackScene, previewScene, sceneOf, type Scene } from "./core/weather/scene";
+import { useWeather } from "./stores/weather";
 import * as C from "./core/controller";
 import { engine } from "./core/player/engine";
 import { accentPalette } from "./lib/color";
@@ -25,7 +28,8 @@ export function useTheme() {
   const dynamic = useSettings((s) => s.dynamicAccent);
   const dynamicColor = useUI((s) => s.dynamicAccent);
   const systemDark = useSystemDark();
-  const dark = theme === "dark" || (theme === "system" && systemDark);
+  // The weather theme uses white text on the sky, like the iOS Weather app.
+  const dark = theme === "dark" || theme === "weather" || (theme === "system" && systemDark);
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = dark ? "dark" : "light";
@@ -40,7 +44,53 @@ export function useTheme() {
   return dark;
 }
 
+/** The weather scene to show: a preview, the latest report, or the clock. */
+export function useWeatherScene(): Scene {
+  const report = useWeather((s) => s.report);
+  const preview = useWeather((s) => s.preview);
+  // Re-evaluate the time of day every few minutes.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((x) => x + 1), 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+  return useMemo(() => {
+    void tick;
+    return (preview && previewScene(preview)) || (report ? sceneOf(report) : fallbackScene());
+  }, [report, preview, tick]);
+}
+
+function WeatherBackground() {
+  const scene = useWeatherScene();
+  const motion = useSettings((s) => s.weather.motion);
+  const fullscreen = useUI((s) => s.fullscreen);
+  const video = usePlayer((s) => s.media?.kind === "video");
+  const immersive = fullscreen && video;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.bg = "weather";
+    root.dataset.sky = scene.kind;
+    root.dataset.phase = scene.phase;
+    return () => {
+      delete root.dataset.bg;
+      delete root.dataset.sky;
+      delete root.dataset.phase;
+    };
+  }, [scene.kind, scene.phase]);
+  return (
+    <>
+      <div className="bg-layer" />
+      <WeatherSky scene={scene} motion={motion} paused={immersive} />
+    </>
+  );
+}
+
 export function Background() {
+  const weather = useSettings((s) => s.theme === "weather");
+  return weather ? <WeatherBackground /> : <PictureBackground />;
+}
+
+function PictureBackground() {
   const bg = useSettings((s) => s.background);
   const coverBg = useSettings((s) => s.coverBackground);
   const cover = usePlayer((s) => (s.media?.kind === "audio" ? s.media.meta?.cover ?? null : null));
@@ -105,6 +155,11 @@ export function useKeyboard() {
       if (mod && e.key.toLowerCase() === "l") {
         e.preventDefault();
         if (!ui.fullscreen) useUI.setState({ page: ui.page === "library" ? "player" : "library", overlay: null });
+        return;
+      }
+      if (mod && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        C.setPrivateMode(!s.privateMode);
         return;
       }
       if (mod && e.key === ",") {

@@ -55,4 +55,14 @@ describe("recognition queue", () => {
     expect(tasks).toHaveLength(HISTORY_LIMIT);
     expect(tasks.some((t) => t.path === "f0")).toBe(false);
   });
+
+  it("leaves no history for private tasks unless they failed", () => {
+    const { tasks } = addTasks([], [{ ...input("p"), private: true }, { ...input("q"), private: true }, input("r")]);
+    let out = finish(tasks, tasks[0].id, { status: "done" });
+    expect(out.some((t) => t.path === "p")).toBe(false);
+    out = finish(out, tasks[1].id, { status: "failed", error: "x" });
+    expect(out.find((t) => t.path === "q")?.status).toBe("failed");
+    out = finish(out, tasks[2].id, { status: "done" });
+    expect(out.find((t) => t.path === "r")?.status).toBe("done");
+  });
 });

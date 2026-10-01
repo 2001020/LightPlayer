@@ -35,6 +35,23 @@ function totalDuration(tracks: LibraryTrack[]) {
 /** Joins the non-empty parts of a subtitle with Chinese commas. */
 const parts = (...xs: (string | number | false | null | undefined)[]) => xs.filter(Boolean).join("，");
 
+/** A video keeps playing behind the library; this is the way back to it. */
+function NowPlayingVideo() {
+  const media = usePlayer((s) => (s.media?.kind === "video" ? s.media : null));
+  const playing = usePlayer((s) => s.playing);
+  if (!media) return null;
+  return (
+    <button className="lib-now-video" onClick={() => useUI.setState({ page: "player" })} {...tip("返回视频播放页", "⌘L")}>
+      <Icon name="film" size={17} />
+      <span className="grow">
+        <span className="k">{playing ? "正在播放视频" : "视频已暂停"}</span>
+        <span className="n">{media.meta?.title || media.name}</span>
+      </span>
+      <Icon name="chevronRight" size={15} />
+    </button>
+  );
+}
+
 function Sidebar() {
   const nav = useLibrary((s) => s.nav);
   const playlists = useLibrary((s) => s.data.playlists);
@@ -43,6 +60,7 @@ function Sidebar() {
     nav.view === v || (nav.view === "album" && nav.from === v) || (nav.view === "artist" && v === "artists");
   return (
     <aside className="lib-side">
+      <NowPlayingVideo />
       <div className="lib-nav">
         {NAV.map((n) => (
           <button key={n.view} className={`lib-link ${active(n.view) ? "on" : ""}`} onClick={() => go({ view: n.view })}>
@@ -291,7 +309,7 @@ function ArtistsView({ artists }: { artists: Artist[] }) {
           {shown.map((a) => (
             <div key={a.name} className="lib-card artist" onClick={() => go({ view: "artist", name: a.name })}>
               <div className="avatar" style={{ "--h": hue(a.name) } as React.CSSProperties}>
-                {a.name === UNKNOWN_ARTIST ? <Icon name="user" size={30} /> : initial(a.name)}
+                {a.name === UNKNOWN_ARTIST ? <Icon name="user" size={15} /> : initial(a.name)}
               </div>
               <div className="name" data-tip={a.name}>
                 {a.name}

@@ -68,6 +68,31 @@
   --halo: 0 1px 8px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.4);
 }
 
+/* Weather theme: white text and light glass over an animated sky, in the
+   style of the iOS Weather app. */
+:root[data-bg="weather"] {
+  --bg: #1b2433;
+  --panel: rgba(22, 30, 48, 0.24);
+  --panel-solid: #1f2738;
+  --panel-2: rgba(255, 255, 255, 0.07);
+  --hover: rgba(255, 255, 255, 0.12);
+  --border: rgba(255, 255, 255, 0.16);
+  --text: #ffffff;
+  --text-dim: rgba(255, 255, 255, 0.82);
+  --text-faint: rgba(255, 255, 255, 0.62);
+  --track: rgba(255, 255, 255, 0.26);
+  --shadow: 0 10px 40px rgba(8, 14, 30, 0.35), 0 2px 8px rgba(8, 14, 30, 0.2);
+  --halo: 0 1px 6px rgba(0, 0, 0, 0.32);
+}
+:root[data-bg="weather"][data-sky="clear"][data-phase="day"],
+:root[data-bg="weather"][data-sky="partly"][data-phase="day"],
+:root[data-bg="weather"][data-sky="snow"][data-phase="day"],
+:root[data-bg="weather"][data-sky="fog"][data-phase="day"] {
+  /* Bright skies: a touch more glass so white text stays readable. */
+  --panel: rgba(18, 34, 64, 0.26);
+  --halo: 0 1px 7px rgba(10, 30, 60, 0.45);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -175,16 +200,63 @@ select:focus {
   -webkit-app-region: drag;
   z-index: 5;
 }
+:root[data-bg="weather"] .panel,
+:root[data-bg="weather"] .lib-side {
+  backdrop-filter: blur(10px) saturate(1.35);
+  -webkit-backdrop-filter: blur(10px) saturate(1.35);
+}
+:root[data-bg="weather"] .titlebar,
+:root[data-bg="weather"] .transport,
+:root[data-bg="weather"] .lib-main {
+  text-shadow: var(--halo);
+}
+:root[data-bg="weather"] .titlebar .btn,
+:root[data-bg="weather"] .transport .btn {
+  text-shadow: none;
+}
+.weather-sky {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  transition: opacity 1.2s ease;
+}
+.weather-canvas,
+.weather-dim {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.weather-dim {
+  background: rgba(6, 12, 26, 0.1);
+}
+.weather-fg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+.app.immersive .weather-sky,
+.app.immersive .weather-canvas,
+.app.immersive .weather-dim {
+  display: none;
+}
 :root[data-bg="image"] .titlebar {
   background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 55%, transparent), transparent);
 }
 :root[data-bg="image"] .titlebar .brand,
+:root[data-bg="weather"] .titlebar .brand,
 :root[data-bg="image"] .titlebar .now-title,
+:root[data-bg="weather"] .titlebar .now-title,
 :root[data-bg="image"] .lyrics-head,
-:root[data-bg="image"] .lyric-line {
+:root[data-bg="weather"] .lyrics-head,
+:root[data-bg="image"] .lyric-line,
+:root[data-bg="weather"] .lyric-line {
   text-shadow: var(--halo);
 }
-:root[data-bg="image"] .lyric-line.active.karaoke .w {
+:root[data-bg="image"] .lyric-line.active.karaoke .w,
+:root[data-bg="weather"] .lyric-line.active.karaoke .w {
   text-shadow: none;
 }
 .titlebar .brand {
@@ -696,7 +768,8 @@ input[type="range"] {
   left: 2px;
   z-index: 4;
 }
-:root[data-bg="image"] .back-btn {
+:root[data-bg="image"] .back-btn,
+:root[data-bg="weather"] .back-btn {
   text-shadow: var(--halo);
 }
 /* Over a video the button sits on a dark translucent chip. */
@@ -2053,13 +2126,68 @@ kbd {
   padding: 4px 2px;
 }
 /* Over a picture the sidebar gets the same frosted surface as the content. */
-:root[data-bg="image"] .lib-side {
+:root[data-bg="image"] .lib-side,
+:root[data-bg="weather"] .lib-side {
   padding: 8px 6px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-l);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+.private-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--text) 82%, transparent);
+  color: var(--bg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.private-badge:hover {
+  background: var(--text);
+}
+.lib-now-video {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 4px 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lib-now-video:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.lib-now-video .grow {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.lib-now-video .k {
+  font-size: 11px;
+  opacity: 0.85;
+}
+.lib-now-video .n {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .lib-nav {
   display: flex;
@@ -2488,16 +2616,21 @@ kbd {
   text-align: center;
 }
 .lib-card .avatar {
+  width: 50%;
+  margin: 0 auto;
   aspect-ratio: 1;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 40px;
+  font-size: 20px;
   font-weight: 700;
   color: #fff;
   background: linear-gradient(135deg, hsl(var(--h) 70% 62%), hsl(calc(var(--h) + 40) 70% 48%));
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   transition: transform 0.25s var(--ease);
+}
+.lib-card.artist .name {
+  margin-top: 10px;
 }
 .lib-card.artist:hover .avatar {
   transform: translateY(-2px);
@@ -2867,4 +3000,132 @@ kbd {
 }
 .banner .btn.small + .btn.small {
   margin-left: -4px;
+}
+
+/* ---------------------------------------------------------------- weather */
+.weather-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.weather-chip:hover,
+.weather-chip.active {
+  background: var(--hover);
+}
+.weather-pop {
+  width: 250px;
+  padding: 14px 16px 12px;
+  text-shadow: none;
+}
+.weather-pop .place {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.weather-pop .temp {
+  font-size: 46px;
+  font-weight: 300;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+.weather-pop .cond {
+  font-size: 15px;
+  font-weight: 600;
+}
+.weather-pop .range {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.weather-pop .grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.weather-pop .grid span {
+  color: var(--text-faint);
+}
+.weather-pop .grid b {
+  font-weight: 600;
+  text-align: right;
+}
+.weather-pop .updated {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.weather-pop .acts {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.city-search {
+  position: relative;
+  width: 240px;
+}
+.city-search input {
+  width: 100%;
+}
+.city-hits {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.city-hits .muted {
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+.city-hit {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.city-hit:hover {
+  background: var(--hover);
+}
+.city-hit span {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+/* Lyrics over a moving sky need a little more weight. */
+:root[data-bg="weather"] .lyric-line {
+  color: color-mix(in srgb, var(--text) 66%, transparent);
+}
+:root[data-bg="weather"] .lyric-line.near {
+  color: color-mix(in srgb, var(--text) 80%, transparent);
 }

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, isTauri, localFileUrl, pickBrowserFiles } from "../lib/ipc";
+import * as C from "../core/controller";
+import { describeCode, PREVIEWS } from "../core/weather/scene";
+import { refreshWeather } from "../core/weather/service";
+import { api, isTauri, localFileUrl, pickBrowserFiles, type CityHit } from "../lib/ipc";
+import { useWeather } from "../stores/weather";
 import { useUI, type UIState } from "../stores/player";
 import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZE_MIN } from "../stores/settings";
 import { Icon, type IconName } from "./Icon";
@@ -44,8 +48,118 @@ function Seg<T extends string | number>({ value, options, onChange }: { value: T
   );
 }
 
+function CitySearch({ onPick }: { onPick: (c: CityHit) => void }) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<CityHit[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    const query = q.trim();
+    if (!query) {
+      setHits(null);
+      return;
+    }
+    let live = true;
+    const t = window.setTimeout(() => {
+      setBusy(true);
+      api
+        .weatherSearch(query)
+        .then((h) => live && (setHits(h), setErr(null)))
+        .catch((e) => live && setErr(String(e)))
+        .finally(() => live && setBusy(false));
+    }, 350);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [q]);
+  return (
+    <div className="city-search">
+      <input type="text" placeholder="输入城市名，例如 杭州" value={q} onChange={(e) => setQ(e.target.value)} />
+      {(busy || err || hits) && (
+        <div className="city-hits">
+          {busy && <div className="muted">正在搜索…</div>}
+          {err && <div className="muted">搜索失败：{err}</div>}
+          {!busy && hits && !hits.length && <div className="muted">没有找到这个城市</div>}
+          {!busy &&
+            hits?.map((h) => (
+              <button
+                key={`${h.lat},${h.lon}`}
+                className="city-hit"
+                onClick={() => {
+                  onPick(h);
+                  setQ("");
+                }}
+              >
+                <b>{h.name}</b>
+                <span>{h.region}</span>
+              </button>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WeatherOptions() {
+  const w = useSettings((s) => s.weather);
+  const setWeather = useSettings((s) => s.setWeather);
+  const report = useWeather((s) => s.report);
+  const place = useWeather((s) => s.place);
+  const status = useWeather((s) => s.status);
+  const error = useWeather((s) => s.error);
+  const preview = useWeather((s) => s.preview);
+  const busy = status === "locating" || status === "loading";
+  const time = (sec: number) => new Date(sec * 1000).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  let state: string;
+  if (status === "locating") state = "正在定位…";
+  else if (status === "loading") state = "正在获取天气…";
+  else if (status === "error") state = `获取失败：${error}`;
+  else if (report) state = `${report.place}，${describeCode(report.code).label}，${Math.round(report.temperature)}°，更新于 ${time(report.fetchedAt)}`;
+  else state = "还没有天气数据";
+  const autoNote =
+    w.source === "auto" && place
+      ? place.source === "gps"
+        ? "已使用系统定位"
+        : `${place.note ? `${place.note}，` : ""}已改用网络大致位置。可在 系统设置 > 隐私与安全性 > 定位服务 中允许 LightPlayer`
+      : null;
+  return (
+    <>
+      <h3>天气</h3>
+      <Row label="位置" hint={w.source === "city" ? (w.city ? `已选择：${w.city.name}` : "请搜索并选择一个城市") : autoNote ?? "使用系统定位服务；无法定位时改用网络大致位置"}>
+        <Seg value={w.source} options={[["auto", "自动定位"], ["city", "指定城市"]]} onChange={(source) => setWeather({ source })} />
+      </Row>
+      {w.source === "city" && (
+        <Row label="搜索城市">
+          <CitySearch onPick={(c) => setWeather({ city: { name: c.name, lat: c.lat, lon: c.lon } })} />
+        </Row>
+      )}
+      <Row label="当前天气" hint={state}>
+        <button className="btn" disabled={busy} onClick={() => void refreshWeather(true)}>
+          <Icon name="refresh" size={14} /> 刷新
+        </button>
+      </Row>
+      <Row label="动态效果" hint="雨、雪、冰雹、云和闪电的动画，雨雪会落在播放栏等界面元素上；关闭后只显示静态天空">
+        <Switch on={w.motion} onChange={(motion) => setWeather({ motion })} />
+      </Row>
+      <Row label="效果预览" hint="临时查看其他天气的效果，不会保存">
+        <select value={preview ?? ""} onChange={(e) => useWeather.setState({ preview: e.target.value || null })}>
+          <option value="">实时天气</option>
+          {PREVIEWS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <p className="note">天气数据来自 Open-Meteo，地名来自 BigDataCloud，都无需账号；位置只用于查询天气，不会保存到别处。</p>
+    </>
+  );
+}
+
 function Appearance() {
   const s = useSettings();
+  const weather = s.theme === "weather";
   const [preview, setPreview] = useState<string | null>(null);
   useEffect(() => {
     if (s.background.path) localFileUrl(s.background.path).then(setPreview);
@@ -70,7 +184,11 @@ function Appearance() {
     <>
       <h3>主题</h3>
       <Row label="外观模式">
-        <Seg value={s.theme} options={[["system", "跟随系统"], ["light", "浅色"], ["dark", "深色"]]} onChange={(theme) => s.set({ theme })} />
+        <Seg
+          value={s.theme}
+          options={[["system", "跟随系统"], ["light", "浅色"], ["dark", "深色"], ["weather", "天气"]]}
+          onChange={(theme) => s.set({ theme })}
+        />
       </Row>
       <Row label="主题色" hint="用于按钮、进度条、高亮歌词等">
         <div className="swatches">
@@ -84,7 +202,10 @@ function Appearance() {
         <Switch on={s.dynamicAccent} onChange={(dynamicAccent) => s.set({ dynamicAccent })} />
       </Row>
 
+      {weather && <WeatherOptions />}
+
       <h3>背景</h3>
+      {weather && <p className="note">天气主题下由实时天气效果作为背景，以下设置在切换回其他主题后生效。</p>}
       <Row label="自定义背景图片" hint="图片会复制到应用数据目录">
         <div className="bg-preview" style={preview ? { backgroundImage: `url("${preview}")` } : undefined} />
         <button className="btn" onClick={pickBackground}>
@@ -143,6 +264,14 @@ function Playback() {
         <Switch on={s.trayShowTitle} onChange={(trayShowTitle) => s.set({ trayShowTitle })} />
       </Row>
 
+      <h3>隐私</h3>
+      <Row
+        label="无痕浏览模式"
+        hint="开启后，打开的文件不会出现在最近播放中，不记录播放次数和播放位置，也不会自动加入媒体库。也可以按 ⇧⌘N 或在菜单栏图标中切换"
+      >
+        <Switch on={s.privateMode} onChange={(on) => C.setPrivateMode(on)} />
+      </Row>
+
       <h3>其他</h3>
       <Row label="断点续播" hint="时长超过 10 分钟的视频/有声书会记住上次播放位置">
         <Switch on={s.resume} onChange={(resume) => s.set({ resume })} />
@@ -191,6 +320,7 @@ const SHORTCUTS: [string, string][] = [
   ["⌘O", "打开文件"],
   ["⌘L", "媒体库"],
   ["⌘,", "设置"],
+  ["⇧⌘N", "开启 / 关闭无痕浏览"],
   ["Y", "打开歌词页"],
   ["E", "歌词编辑器"],
   ["⌘+ / ⌘− / ⌘0", "歌词字号放大 / 缩小 / 恢复"],

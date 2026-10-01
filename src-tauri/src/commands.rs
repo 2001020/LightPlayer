@@ -486,8 +486,25 @@ pub fn now_playing_state(state: State<'_, AppState>, playing: bool, position: Op
 
 /// "Run in background" (closing the window hides it) and the menu bar title.
 #[tauri::command]
-pub fn set_background_prefs(state: State<'_, AppState>, run_in_background: bool, show_title: bool) {
-    state.tray.set_prefs(run_in_background, show_title);
+pub fn set_background_prefs(state: State<'_, AppState>, run_in_background: bool, show_title: bool, private_mode: bool) {
+    state.tray.set_prefs(run_in_background, show_title, private_mode);
+}
+
+// ---------------------------------------------------------------- weather theme
+
+#[tauri::command]
+pub async fn weather_locate(app: AppHandle) -> AppResult<crate::weather::Place> {
+    crate::weather::locate(&app).await
+}
+
+#[tauri::command]
+pub async fn weather_fetch(lat: f64, lon: f64, name: Option<String>) -> AppResult<crate::weather::WeatherReport> {
+    crate::weather::fetch(lat, lon, name).await
+}
+
+#[tauri::command]
+pub async fn weather_search(query: String) -> AppResult<Vec<crate::weather::CityHit>> {
+    crate::weather::search(&query).await
 }
 
 #[tauri::command]

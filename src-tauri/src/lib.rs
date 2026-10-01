@@ -8,6 +8,9 @@ mod nowplaying;
 mod server;
 mod tools;
 mod tray;
+mod weather;
+#[cfg(target_os = "macos")]
+mod location_macos;
 
 use media::probe::Probe;
 use media::transcode::HlsManager;
@@ -129,6 +132,9 @@ pub fn run() {
             commands::now_playing_metadata,
             commands::now_playing_state,
             commands::set_background_prefs,
+            commands::weather_locate,
+            commands::weather_fetch,
+            commands::weather_search,
             commands::ffmpeg_available,
             commands::library_get,
             commands::library_add_folder,

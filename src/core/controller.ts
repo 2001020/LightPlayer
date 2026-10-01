@@ -2,6 +2,7 @@
 
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { engine } from "./player/engine";
+import { startWeather } from "./weather/service";
 import { parseLyrics, serializeLrc, type Lyrics, type LyricLine } from "./lyrics/lrc";
 import { nextIndex, nextMode, prevIndex } from "./playlist/queue";
 import {
@@ -88,10 +89,16 @@ export async function openFile(path: string) {
 /** Plays `entries[index]` with `entries` as the queue (library views). */
 export async function playList(entries: MediaEntry[], index: number, source: string) {
   if (!entries[index]) return;
-  usePlaylist.setState({ items: entries, index: -1, order: [], history: [], source });
   const page = useUI.getState().page;
   // Videos need the player page; music keeps the library open.
   if (page === "lyrics" || (page === "library" && entries[index].kind === "video")) useUI.setState({ page: "player" });
+  // Picking what is already playing just adopts the new queue and keeps going.
+  if (engine.media && usePlayer.getState().media?.path === entries[index].path) {
+    usePlaylist.setState({ items: entries, index, order: [], history: [], source });
+    if (engine.paused) void engine.play();
+    return;
+  }
+  usePlaylist.setState({ items: entries, index: -1, order: [], history: [], source });
   await playIndex(index);
 }
 
@@ -169,14 +176,14 @@ export async function playIndex(index: number, autoplay = true) {
       toast(`已从上次位置 ${Math.floor(saved / 60)}:${String(Math.floor(saved % 60)).padStart(2, "0")} 继续播放`);
     }
     usePlayer.setState({ media, loading: false, duration: dur, position: startAt });
-    useSettings.getState().addRecent(media.path);
+    if (!st.privateMode) useSettings.getState().addRecent(media.path);
     if (media.kind === "video" && useUI.getState().page === "lyrics") useUI.setState({ page: "player" });
     await engine.load(media, startAt, autoplay);
     void loadLyrics(media.path);
     setupSubtitles();
     void updateNowPlaying();
     void updateDynamicAccent();
-    if (isTauri || media.path.startsWith("browser:")) {
+    if (!st.privateMode && (isTauri || media.path.startsWith("browser:"))) {
       void api.libraryRecordPlay(media.path, st.libraryRecordPlays).catch(() => {});
     }
   } catch (e) {
@@ -603,7 +610,8 @@ export async function recognize(inputs: AsrTaskInput[], opts: { skipSetup?: bool
   }
   const st = useAsrTasks.getState();
   const busy = st.tasks.some((t) => t.status === "running" || t.status === "queued");
-  const r = addTasks(st.tasks, inputs);
+  const priv = settings().privateMode;
+  const r = addTasks(st.tasks, priv ? inputs.map((i) => ({ ...i, private: true })) : inputs);
   useAsrTasks.setState({ tasks: r.tasks, pendingSetup: null, setupRerun: false });
   if (!r.added.length) toast(inputs.length > 1 ? "这些文件已在识别队列中" : "已在识别队列中");
   else if (r.added.length > 1) toast(`已加入 ${r.added.length} 个识别任务${r.skipped ? `（${r.skipped} 个已在队列中）` : ""}`, "success");
@@ -774,6 +782,13 @@ function onModelDownload(p: DownloadProgress) {
 
 // ------------------------------------------------------------------ misc
 
+/** Private browsing: nothing opened from now on is remembered. */
+export function setPrivateMode(on: boolean) {
+  if (settings().privateMode === on) return;
+  useSettings.getState().set({ privateMode: on });
+  toast(on ? "已开启无痕浏览，不会记录打开的文件" : "已关闭无痕浏览", on ? "success" : "info");
+}
+
 async function updateNowPlaying() {
   const m = engine.media;
   if (!m || !isTauri) return;
@@ -800,7 +815,7 @@ async function updateDynamicAccent() {
 
 function rememberPosition(final = false) {
   const m = engine.media;
-  if (!m) return;
+  if (!m || settings().privateMode) return;
   const d = engine.duration;
   if (!d || d < 600) return; // only long media (videos, audiobooks, podcasts)
   const t = engine.position;
@@ -861,7 +876,7 @@ export async function init() {
   engine.onEnded = () => {
     const s = usePlayer.getState().sleep;
     const m = engine.media;
-    if (m) useSettings.getState().savePosition(m.path, null);
+    if (m && !settings().privateMode) useSettings.getState().savePosition(m.path, null);
     if (s.endOfTrack) {
       usePlayer.setState({ sleep: { until: null, endOfTrack: false } });
       toast("睡眠定时：已暂停");
@@ -882,13 +897,16 @@ export async function init() {
 
   window.addEventListener("beforeunload", () => rememberPosition(true));
 
-  // Menu bar icon and "keep running when the window is closed".
-  const syncBackground = (s: { runInBackground: boolean; trayShowTitle: boolean }) =>
-    void api.setBackgroundPrefs(s.runInBackground, s.trayShowTitle).catch(() => {});
+  // Menu bar icon, "keep running when the window is closed" and private mode.
+  const syncBackground = (s: { runInBackground: boolean; trayShowTitle: boolean; privateMode: boolean }) =>
+    void api.setBackgroundPrefs(s.runInBackground, s.trayShowTitle, s.privateMode).catch(() => {});
   syncBackground(st);
   useSettings.subscribe((s, prev) => {
-    if (s.runInBackground !== prev.runInBackground || s.trayShowTitle !== prev.trayShowTitle) syncBackground(s);
+    if (s.runInBackground !== prev.runInBackground || s.trayShowTitle !== prev.trayShowTitle || s.privateMode !== prev.privateMode)
+      syncBackground(s);
   });
+
+  startWeather();
 
   await on<AsrProgressEvent>("asr://progress", onAsrProgress);
   await on<AsrDone>("asr://done", onAsrDone);
@@ -919,6 +937,9 @@ export async function init() {
           break;
         case "seekTo":
           seek(e.value ?? 0);
+          break;
+        case "privateMode":
+          setPrivateMode(!!e.value);
           break;
       }
     });

@@ -9,7 +9,7 @@ use serde::Serialize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::image::Image;
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::{AppHandle, Emitter, Manager, Wry};
 
@@ -23,6 +23,7 @@ pub struct Tray {
     icon: TrayIcon,
     now: MenuItem<Wry>,
     toggle: MenuItem<Wry>,
+    private: CheckMenuItem<Wry>,
     title: Mutex<String>,
 }
 
@@ -39,11 +40,12 @@ impl TrayState {
         TrayState { tray: Mutex::new(None), background: AtomicBool::new(true), show_title: AtomicBool::new(false) }
     }
 
-    pub fn set_prefs(&self, background: bool, show_title: bool) {
+    pub fn set_prefs(&self, background: bool, show_title: bool, private_mode: bool) {
         self.background.store(background, Ordering::SeqCst);
         self.show_title.store(show_title, Ordering::SeqCst);
         if let Some(t) = self.tray.lock().unwrap().as_ref() {
             t.apply_title(show_title);
+            let _ = t.private.set_checked(private_mode);
         }
     }
 
@@ -98,6 +100,9 @@ pub fn create(app: &AppHandle) -> tauri::Result<Tray> {
     let toggle = MenuItem::with_id(app, "lp-toggle", "播放", true, None::<&str>)?;
     let prev = MenuItem::with_id(app, "lp-prev", "上一首", true, None::<&str>)?;
     let next = MenuItem::with_id(app, "lp-next", "下一首", true, None::<&str>)?;
+    let private = CheckMenuItem::with_id(app, "lp-private", "无痕浏览模式", true, false, None::<&str>)?;
+    // Cloned into the menu handler so it never needs the tray lock.
+    let private_item = private.clone();
     let show = MenuItem::with_id(app, "lp-show", "显示 LightPlayer", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "lp-quit", "退出 LightPlayer", true, None::<&str>)?;
     let menu = Menu::with_items(
@@ -109,6 +114,8 @@ pub fn create(app: &AppHandle) -> tauri::Result<Tray> {
             &prev,
             &next,
             &PredefinedMenuItem::separator(app)?,
+            &private,
+            &PredefinedMenuItem::separator(app)?,
             &show,
             &quit,
         ],
@@ -119,14 +126,19 @@ pub fn create(app: &AppHandle) -> tauri::Result<Tray> {
         .tooltip("LightPlayer")
         .menu(&menu)
         .show_menu_on_left_click(true)
-        .on_menu_event(|app, event| match event.id().as_ref() {
+        .on_menu_event(move |app, event| match event.id().as_ref() {
             "lp-toggle" => control(app, "toggle"),
             "lp-prev" => control(app, "previous"),
             "lp-next" => control(app, "next"),
+            "lp-private" => {
+                // The item has already flipped its own check mark.
+                let on = private_item.is_checked().unwrap_or(false);
+                let _ = app.emit("media-control", ControlEvent { action: "privateMode".into(), value: Some(if on { 1.0 } else { 0.0 }) });
+            }
             "lp-show" => show_main(app),
             "lp-quit" => app.exit(0),
             _ => {}
         })
         .build(app)?;
-    Ok(Tray { icon, now, toggle, title: Mutex::new(String::new()) })
+    Ok(Tray { icon, now, toggle, private, title: Mutex::new(String::new()) })
 }

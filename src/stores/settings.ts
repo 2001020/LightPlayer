@@ -2,7 +2,15 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { PlayMode } from "../core/playlist/queue";
 
-export type ThemeMode = "system" | "light" | "dark";
+export type ThemeMode = "system" | "light" | "dark" | "weather";
+
+export interface WeatherSettings {
+  /** "auto": the system location service (or the network as a fallback). */
+  source: "auto" | "city";
+  city: { name: string; lat: number; lon: number } | null;
+  /** Animated rain, snow, clouds and lightning. */
+  motion: boolean;
+}
 
 export interface AsrSettings {
   model: string;
@@ -27,6 +35,7 @@ export interface Settings {
   dynamicAccent: boolean;
   background: BackgroundSettings;
   coverBackground: boolean;
+  weather: WeatherSettings;
   seekStep: number;
   jumpStep: number;
   resume: boolean;
@@ -45,6 +54,8 @@ export interface Settings {
   runInBackground: boolean;
   /** Show the song title next to the menu bar icon. */
   trayShowTitle: boolean;
+  /** Private browsing: opened files leave no history (recent list, plays, positions). */
+  privateMode: boolean;
   tapCompensation: number;
   asr: AsrSettings;
   recent: string[];
@@ -56,6 +67,7 @@ interface SettingsStore extends Settings {
   set: (p: Partial<Settings>) => void;
   setAsr: (p: Partial<AsrSettings>) => void;
   setBackground: (p: Partial<BackgroundSettings>) => void;
+  setWeather: (p: Partial<WeatherSettings>) => void;
   addRecent: (path: string) => void;
   savePosition: (path: string, t: number | null) => void;
   setLyricOffset: (path: string, offset: number) => void;
@@ -73,6 +85,7 @@ export const defaultSettings: Settings = {
   dynamicAccent: false,
   background: { path: null, blur: 16, dim: 0.35, fit: "cover" },
   coverBackground: true,
+  weather: { source: "auto", city: null, motion: true },
   seekStep: 5,
   jumpStep: 15,
   resume: true,
@@ -89,6 +102,7 @@ export const defaultSettings: Settings = {
   libraryRecordPlays: true,
   runInBackground: true,
   trayShowTitle: false,
+  privateMode: false,
   tapCompensation: 0.15,
   asr: {
     model: "large-v3-turbo-q5_0",
@@ -111,6 +125,7 @@ export const useSettings = create<SettingsStore>()(
       set: (p) => set(p),
       setAsr: (p) => set((s) => ({ asr: { ...s.asr, ...p } })),
       setBackground: (p) => set((s) => ({ background: { ...s.background, ...p } })),
+      setWeather: (p) => set((s) => ({ weather: { ...s.weather, ...p } })),
       addRecent: (path) =>
         set((s) => ({ recent: [path, ...s.recent.filter((r) => r !== path)].slice(0, 12) })),
       savePosition: (path, t) =>
@@ -132,7 +147,7 @@ export const useSettings = create<SettingsStore>()(
     }),
     {
       name: "lightplayer-settings",
-      version: 4,
+      version: 5,
       migrate: (persisted, version) => {
         const p = (persisted ?? {}) as Partial<Settings> & { waveform?: unknown; waveformStyle?: unknown };
         // v2: default accent changed from purple to light blue.
@@ -161,6 +176,7 @@ export const useSettings = create<SettingsStore>()(
           ...p,
           asr: { ...current.asr, ...(p.asr ?? {}) },
           background: { ...current.background, ...(p.background ?? {}) },
+          weather: { ...current.weather, ...(p.weather ?? {}) },
         };
       },
     },

@@ -206,8 +206,11 @@ export function TransportBar() {
       <div className="controls">
         <div
           className="mini"
-          onClick={() => media?.kind === "audio" && useUI.setState({ page: page === "lyrics" ? "player" : "lyrics" })}
-          {...(media?.kind === "audio" ? tip("打开歌词", "Y") : {})}
+          onClick={() => {
+            if (media?.kind === "audio") useUI.setState({ page: page === "lyrics" ? "player" : "lyrics" });
+            else if (media && page !== "player") useUI.setState({ page: "player" });
+          }}
+          {...(media?.kind === "audio" ? tip("打开歌词", "Y") : media && page !== "player" ? tip("返回视频播放页") : {})}
         >
           <div className="thumb">
             {media?.meta?.cover ? <img src={media.meta.cover} alt="" /> : <Icon name={isVideo ? "film" : "music"} />}

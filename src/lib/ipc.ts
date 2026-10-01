@@ -196,8 +196,46 @@ export interface LibraryProgress {
   total: number;
 }
 
+export interface WeatherPlace {
+  lat: number;
+  lon: number;
+  source: "gps" | "ip";
+  name?: string | null;
+  /** Why the precise position was not used. */
+  note?: string | null;
+}
+
+export interface WeatherReport {
+  place: string;
+  lat: number;
+  lon: number;
+  /** WMO weather interpretation code. */
+  code: number;
+  temperature: number;
+  apparent: number;
+  humidity: number;
+  isDay: boolean;
+  cloudCover: number;
+  precipitation: number;
+  windSpeed: number;
+  windDirection: number;
+  high?: number | null;
+  low?: number | null;
+  /** Unix seconds. */
+  sunrise?: number | null;
+  sunset?: number | null;
+  fetchedAt: number;
+}
+
+export interface CityHit {
+  name: string;
+  region: string;
+  lat: number;
+  lon: number;
+}
+
 export interface MediaControlEvent {
-  action: "play" | "pause" | "toggle" | "next" | "previous" | "seekBy" | "seekTo";
+  action: "play" | "pause" | "toggle" | "next" | "previous" | "seekBy" | "seekTo" | "privateMode";
   value?: number | null;
 }
 
@@ -436,6 +474,43 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       return "" as T;
     case "ffmpeg_available":
       return true as T;
+    case "weather_locate":
+      return { lat: 31.23, lon: 121.47, source: "ip", name: "Shanghai", note: "此系统不支持定位服务" } as T;
+    case "weather_fetch": {
+      const now = Math.floor(Date.now() / 1000);
+      const day = new Date();
+      day.setHours(0, 0, 0, 0);
+      const midnight = Math.floor(day.getTime() / 1000);
+      return {
+        place: (args.name as string | undefined) || "上海",
+        lat: args.lat,
+        lon: args.lon,
+        code: 2,
+        temperature: 23.4,
+        apparent: 24.8,
+        humidity: 68,
+        isDay: true,
+        cloudCover: 55,
+        precipitation: 0,
+        windSpeed: 11,
+        windDirection: 120,
+        high: 26,
+        low: 19,
+        sunrise: midnight + 6 * 3600,
+        sunset: midnight + 18 * 3600,
+        fetchedAt: now,
+      } as T;
+    }
+    case "weather_search": {
+      const q = String(args.query ?? "").trim();
+      const all: CityHit[] = [
+        { name: "北京", region: "中国", lat: 39.91, lon: 116.4 },
+        { name: "杭州市", region: "浙江省，中国", lat: 30.29, lon: 120.16 },
+        { name: "哈尔滨", region: "黑龙江省，中国", lat: 45.75, lon: 126.65 },
+        { name: "伦敦", region: "英格兰，英国", lat: 51.51, lon: -0.13 },
+      ];
+      return all.filter((c) => q && (c.name.includes(q) || c.region.includes(q))) as T;
+    }
     case "get_video_info":
       return { fileName: path, fileSize: browserFiles.get(path!)?.size ?? 0, container: "—", subtitleCount: 0 } as T;
     default:
@@ -474,7 +549,11 @@ export const api = {
     call<void>("now_playing_metadata", m),
   nowPlayingState: (playing: boolean, position?: number) => call<void>("now_playing_state", { playing, position }),
   ffmpegAvailable: () => call<boolean>("ffmpeg_available"),
-  setBackgroundPrefs: (runInBackground: boolean, showTitle: boolean) => call<void>("set_background_prefs", { runInBackground, showTitle }),
+  setBackgroundPrefs: (runInBackground: boolean, showTitle: boolean, privateMode: boolean) =>
+    call<void>("set_background_prefs", { runInBackground, showTitle, privateMode }),
+  weatherLocate: () => call<WeatherPlace>("weather_locate"),
+  weatherFetch: (lat: number, lon: number, name?: string | null) => call<WeatherReport>("weather_fetch", { lat, lon, name: name ?? null }),
+  weatherSearch: (query: string) => call<CityHit[]>("weather_search", { query }),
   libraryGet: () => call<LibraryData>("library_get"),
   libraryAddFolder: (path: string) => call<boolean>("library_add_folder", { path }),
   libraryRemoveFolder: (path: string) => call<void>("library_remove_folder", { path }),
