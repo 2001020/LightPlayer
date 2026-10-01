@@ -82,7 +82,7 @@ function AudioNowPlaying() {
           <img src={meta.cover} alt="" draggable={false} />
         ) : (
           <div className="placeholder">
-            <Icon name="music" size={96} />
+            <Icon name="music" size={72} />
           </div>
         )}
         <div className="hint">点击查看歌词</div>

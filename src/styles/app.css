@@ -715,9 +715,9 @@ input[type="range"] {
 }
 .cover {
   position: relative;
-  width: min(42vh, 38vw, 420px);
+  width: min(32vh, 28vw, 300px);
   aspect-ratio: 1;
-  border-radius: 20px;
+  border-radius: 16px;
   overflow: hidden;
   flex: none;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.15);
@@ -1947,7 +1947,7 @@ kbd {
     gap: 18px;
   }
   .cover {
-    width: min(36vh, 60vw);
+    width: min(28vh, 50vw, 260px);
   }
   .track-info {
     align-items: center;
