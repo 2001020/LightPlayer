@@ -532,6 +532,8 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
 
 export const api = {
   openMedia: (path: string, caps: Caps, precise = false) => call<OpenedMedia>("open_media", { path, caps, precise }),
+  /** URL of an exact-seeking copy of an MP3/FLAC (null when the file seeks exactly). */
+  exactAudio: (path: string) => call<string | null>("exact_audio", { path }),
   requestStream: (path: string, start: number, transcode: boolean) =>
     call<{ url: string; baseOffset: number }>("request_stream", { path, start, transcode }),
   stopStreams: () => call<void>("stop_streams"),

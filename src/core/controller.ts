@@ -132,8 +132,43 @@ async function checkTiming(media: OpenedMedia) {
   }
 }
 
+/** Files the user switched back to plain playback: no exact copy for them. */
+const plainPaths = new Set<string>();
+/** The exact-seeking copy being prepared for the current file. */
+let exactJob: { path: string; seekedEarly: boolean } | null = null;
+
+/**
+ * WebKit seeks MP3 and FLAC by estimate: after a jump (clicking a lyric line,
+ * the progress bar, ±15 s) it reports the requested time but plays from
+ * somewhere a little earlier or later, so the lyrics run ahead or behind. A
+ * decoded copy is prepared in the background and every jump plays from it.
+ */
+async function prepareExact(media: OpenedMedia) {
+  if (plainPaths.has(media.path)) return;
+  const current = () => engine.media?.path === media.path && engine.media.strategy === "direct";
+  // Not for tracks skipped straight away.
+  await sleep(1500);
+  if (!current()) return;
+  const job = { path: media.path, seekedEarly: false };
+  exactJob = job;
+  try {
+    const url = await api.exactAudio(media.path);
+    if (!url || exactJob !== job || !current()) return;
+    engine.exact = { path: media.path, url };
+    // A jump already made on the original landed off: line the audio up with
+    // the position shown.
+    if (job.seekedEarly) await engine.seek(engine.position);
+  } catch (e) {
+    console.warn("exact copy", e);
+  } finally {
+    if (exactJob === job) exactJob = null;
+  }
+}
+
 /** Plays a file through an exact-timing ffmpeg copy (or back to direct playback). */
 export async function setPreciseTiming(path: string, on: boolean, auto = false) {
+  if (on) plainPaths.delete(path);
+  else plainPaths.add(path);
   const list = settings().precisePaths.filter((p) => p !== path);
   useSettings.getState().set({ precisePaths: on ? [path, ...list].slice(0, 300) : list });
   const pl = usePlaylist.getState();
@@ -249,7 +284,10 @@ export async function playIndex(index: number, autoplay = true, reload?: { live:
     }
     void updateNowPlaying();
     void updateDynamicAccent();
-    if (media.kind === "audio" && media.strategy === "direct") void checkTiming(media);
+    if (media.kind === "audio" && media.strategy === "direct") {
+      void checkTiming(media);
+      void prepareExact(media);
+    }
     if (!reload && !st.privateMode && (isTauri || media.path.startsWith("browser:"))) {
       void api.libraryRecordPlay(media.path, st.libraryRecordPlays).catch(() => {});
     }
@@ -300,6 +338,7 @@ export async function prev() {
 }
 
 export function seek(t: number) {
+  if (exactJob && exactJob.path === engine.media?.path) exactJob.seekedEarly = true;
   void engine.seek(t);
   usePlayer.setState({ position: t });
 }

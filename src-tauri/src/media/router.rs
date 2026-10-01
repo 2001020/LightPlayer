@@ -66,6 +66,14 @@ pub fn odd_timing(path: &std::path::Path, probe: &Probe) -> bool {
     std::fs::File::open(path).and_then(|mut f| f.read_exact(&mut head)).is_ok() && &head == b"ID3"
 }
 
+/// Formats WebKit on macOS seeks by estimate (from the byte size, with no exact
+/// index): after a jump the reported time and the audio heard disagree, by a
+/// different amount every time. WAV/AIFF and MP4 seek exactly.
+pub fn seeks_by_estimate(probe: &Probe) -> bool {
+    let fmt = probe.format.format_name.as_str();
+    has(fmt, "mp3") || has(fmt, "flac") || has(fmt, "ogg")
+}
+
 pub fn decide(kind: MediaKind, probe: &Probe, ext: &str, caps: &Caps) -> Strategy {
     let fmt = probe.format.format_name.as_str();
     let video = probe.video();
@@ -151,6 +159,14 @@ mod tests {
         assert_eq!(decide(MediaKind::Audio, &wma, "wma", &caps), Strategy::AudioTranscode);
         let wav = probe("wav", &a("pcm_s16le"));
         assert_eq!(decide(MediaKind::Audio, &wav, "wav", &caps), Strategy::Direct);
+    }
+
+    #[test]
+    fn estimate_seeking_formats() {
+        assert!(seeks_by_estimate(&probe("mp3", &a("mp3"))));
+        assert!(seeks_by_estimate(&probe("flac", &a("flac"))));
+        assert!(!seeks_by_estimate(&probe("wav", &a("pcm_s16le"))));
+        assert!(!seeks_by_estimate(&probe("mov,mp4,m4a,3gp,3g2,mj2", &a("aac"))));
     }
 
     #[test]

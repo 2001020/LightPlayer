@@ -124,6 +124,23 @@ fn find_subtitles(state: &AppState, path: &Path, probe: &Probe) -> Vec<SubtitleT
     out
 }
 
+/// An exact-seeking copy of an audio file that WebKit only seeks by estimate
+/// (MP3, FLAC); `None` when the file already seeks exactly. The player
+/// switches to it on the next jump, so the lyrics match the audio afterwards.
+#[tauri::command]
+pub async fn exact_audio(state: State<'_, AppState>, path: String) -> AppResult<Option<String>> {
+    let p = PathBuf::from(&path);
+    if !p.is_file() {
+        return Err(AppError::msg("文件不存在"));
+    }
+    let probe = cached_probe(&state, &p).await?;
+    if media_kind(&p, Some(&probe)) != MediaKind::Audio || !router::seeks_by_estimate(&probe) {
+        return Ok(None);
+    }
+    let out = transcode::audio_to_cache(&p, &probe, &state.cache_dir).await?;
+    Ok(Some(state.server.file_url(&out)))
+}
+
 #[tauri::command]
 pub async fn open_media(state: State<'_, AppState>, path: String, caps: Caps, precise: Option<bool>) -> AppResult<OpenedMedia> {
     let p = PathBuf::from(&path);

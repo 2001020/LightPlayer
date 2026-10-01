@@ -44,7 +44,10 @@ pub async fn audio_to_cache(path: &Path, probe: &Probe, cache_dir: &Path) -> App
         let _ = filetime_touch(&out);
         return Ok(out);
     }
-    let tmp = dir.join(format!("{}.part.{ext}", file_key(path)));
+    // Unique per call: the background copy and a "precise timing" switch can
+    // convert the same file at once.
+    let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let tmp = dir.join(format!("{}.part{nonce}.{ext}", file_key(path)));
     let mut cmd = command(&tools().ffmpeg);
     cmd.args(["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i"])
         .arg(path)
@@ -66,6 +69,10 @@ pub async fn audio_to_cache(path: &Path, probe: &Probe, cache_dir: &Path) -> App
             "音频转换失败：{}",
             String::from_utf8_lossy(&res.stderr).trim()
         )));
+    }
+    if out.is_file() {
+        let _ = tokio::fs::remove_file(&tmp).await;
+        return Ok(out);
     }
     tokio::fs::rename(&tmp, &out).await?;
     prune_dir(&dir, AUDIO_CACHE_LIMIT);

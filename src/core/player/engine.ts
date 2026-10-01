@@ -21,6 +21,11 @@ export class PlayerEngine {
   muted = false;
   rate = 1;
   restarting = false;
+  /**
+   * An exact-seeking copy of the current file (MP3/FLAC, which WebKit seeks by
+   * estimate): the next jump switches to it instead of seeking the original.
+   */
+  exact: { path: string; url: string } | null = null;
 
   onEnded: Handler = () => {};
   onChange: Handler = () => {};
@@ -29,6 +34,8 @@ export class PlayerEngine {
   private hls: Hls | null = null;
   private loadToken = 0;
   private fadeTimer: number | null = null;
+  /** Position to report while a new source loads and before it has seeked. */
+  private pendingPos: number | null = null;
 
   constructor() {
     this.audio = document.createElement("audio");
@@ -70,6 +77,7 @@ export class PlayerEngine {
   }
 
   get position(): number {
+    if (this.pendingPos !== null) return this.pendingPos;
     return this.baseOffset + (this.el.currentTime || 0);
   }
 
@@ -140,6 +148,10 @@ export class PlayerEngine {
   async load(media: OpenedMedia, startAt = 0, autoplay = true): Promise<void> {
     const token = ++this.loadToken;
     this.cancelFade();
+    this.pendingPos = null;
+    // A new source supersedes any restart in progress.
+    this.restarting = false;
+    if (this.exact && this.exact.path !== media.path) this.exact = null;
     const prevEl = this.media ? this.el : null;
     this.media = media;
     if (prevEl && prevEl !== this.el) this.detach(prevEl);
@@ -157,8 +169,12 @@ export class PlayerEngine {
     el.playbackRate = this.rate;
     this.applyVolume();
     if (!this.isHls && startAt > 0) {
+      this.pendingPos = startAt;
       const seekTo = () => {
-        el.currentTime = startAt;
+        if (token !== this.loadToken) return;
+        // A jump made while loading replaces the start position.
+        el.currentTime = this.pendingPos ?? startAt;
+        this.pendingPos = null;
       };
       if (el.readyState >= 1) seekTo();
       else el.addEventListener("loadedmetadata", seekTo, { once: true });
@@ -176,6 +192,8 @@ export class PlayerEngine {
     this.detach(this.audio);
     this.detach(this.video);
     this.media = null;
+    this.exact = null;
+    this.pendingPos = null;
     this.baseOffset = 0;
     this.onChange();
   }
@@ -202,7 +220,18 @@ export class PlayerEngine {
     if (!this.media) return;
     const dur = this.duration;
     t = Math.max(0, dur ? Math.min(t, dur - 0.05) : t);
+    const exact = this.exact;
+    if (exact && exact.path === this.media.path && this.media.strategy === "direct") {
+      await this.switchTo(exact.url, t);
+      return;
+    }
     if (!this.isHls) {
+      if (this.pendingPos !== null && this.el.readyState < 1) {
+        this.pendingPos = t;
+        this.onChange();
+        return;
+      }
+      this.pendingPos = null;
       this.el.currentTime = t;
       this.onChange();
       return;
@@ -229,6 +258,24 @@ export class PlayerEngine {
       this.onError(String(e));
     } finally {
       if (token === this.loadToken) {
+        this.restarting = false;
+        this.onChange();
+      }
+    }
+  }
+
+  /** Continues the same file from `t` in another (exactly seeking) source. */
+  private async switchTo(url: string, t: number) {
+    const media: OpenedMedia = { ...this.media!, url, strategy: "audioTranscode" };
+    const playing = !this.el.paused;
+    this.exact = null;
+    const loading = this.load(media, t, playing);
+    this.restarting = true;
+    this.onChange();
+    try {
+      await loading;
+    } finally {
+      if (this.media === media) {
         this.restarting = false;
         this.onChange();
       }
