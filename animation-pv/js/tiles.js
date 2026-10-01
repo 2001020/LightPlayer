@@ -77,7 +77,7 @@
           ctx.save();
           ctx.translate(ax + aw - 190, ay + 46);
           ctx.scale(2, 2);
-          const label = ui === null ? "" : copy.ui.privateBadge;
+          const label = copy.ui.privateBadge;
           const w = 10 + 15 + 5 + P.measure(ctx, label, 12, 600) + 10;
           P.fillRR(ctx, 95 - w, 0, w, 26, 13, "rgba(242, 242, 245, 0.82)");
           I.center(ctx, "incognito", 95 - w + 17.5, 13, 15, "#111115");
