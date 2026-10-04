@@ -196,6 +196,9 @@ function Appearance() {
           onChange={(theme) => s.set({ theme })}
         />
       </Row>
+      <Row label="播放器样式" hint="Flow：仿早年 Coverflow 的封面墙，左右翻看播放列表">
+        <Seg value={s.playerStyle} options={[["classic", "经典"], ["flow", "Flow"]]} onChange={(playerStyle) => s.set({ playerStyle })} />
+      </Row>
       <Row label="主题色" hint="用于按钮、进度条、高亮歌词等">
         <div className="swatches">
           {ACCENT_PRESETS.map((c) => (

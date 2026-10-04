@@ -6,6 +6,7 @@ import { Icon } from "../components/Icon";
 import { PlaylistPanel, togglePlaylist, usePlaylistLayout, usePlaylistShown } from "../components/PlaylistPanel";
 import { tip } from "../components/Tooltip";
 import { toggleFullscreen } from "../components/TransportBar";
+import { CoverFlow } from "../components/CoverFlow";
 import { basename } from "../lib/format";
 import { useLyrics, usePlayer, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
@@ -206,6 +207,20 @@ function BackButton() {
   );
 }
 
+function StyleToggle() {
+  const style = useSettings((s) => s.playerStyle);
+  const flow = style === "flow";
+  return (
+    <button
+      className="btn ghost style-toggle"
+      onClick={() => useSettings.getState().set({ playerStyle: flow ? "classic" : "flow" })}
+      {...tip(flow ? "切换到经典样式" : "切换到 Flow 样式（封面墙）")}
+    >
+      <Icon name={flow ? "music" : "flow"} size={17} /> {flow ? "经典" : "Flow"}
+    </button>
+  );
+}
+
 function PlaylistHandle() {
   return (
     <button
@@ -226,6 +241,7 @@ export function PlayerPage() {
   const layout = usePlaylistLayout();
   const shown = usePlaylistShown();
   const showList = !!media && shown && layout === "side";
+  const style = useSettings((s) => s.playerStyle);
   return (
     <div className={`player-page ${showList ? "with-list" : ""}`}>
       <div className={`stage ${media?.kind === "video" ? "is-video" : ""}`}>
@@ -236,7 +252,8 @@ export function PlayerPage() {
             <div className="spinner dark" />
           </div>
         )}
-        {media?.kind === "audio" && <AudioNowPlaying />}
+        {media?.kind === "audio" && <StyleToggle />}
+        {media?.kind === "audio" && (style === "flow" ? <CoverFlow peek={<LyricPeek />} /> : <AudioNowPlaying />)}
         {media?.kind === "video" && <VideoStage />}
         {media && !shown && <PlaylistHandle />}
       </div>

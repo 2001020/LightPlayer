@@ -71,6 +71,8 @@ export interface Settings {
   runInBackground: boolean;
   /** Experimental NetEase Cloud Music section (off by default). */
   netease: { enabled: boolean; quality: NeteaseQuality };
+  /** Audio player look: one cover, or the play queue as a Cover Flow. */
+  playerStyle: "classic" | "flow";
   /** Height (px) the user gave the local playlists in the library sidebar; null: as tall as they are. */
   sidebarPlaylistsHeight: number | null;
   /** A video keeps playing when its window is closed to the background. */
@@ -135,6 +137,7 @@ export const defaultSettings: Settings = {
   videoInBackground: false,
   netease: { enabled: false, quality: "exhigh" },
   sidebarPlaylistsHeight: null,
+  playerStyle: "classic",
   autoNextAudio: true,
   autoNextVideo: false,
   trayShowTitle: false,

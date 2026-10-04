@@ -485,13 +485,19 @@ let mockAssoc = false;
 let mockNetease = false;
 let mockWebCancelled = false;
 let mockQrPolls = 0;
+/** A generated gradient album cover for the preview's online songs. */
+const mockCover = (i: number) => {
+  const h = (i * 47) % 360;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h},70%,62%)"/><stop offset="1" stop-color="hsl(${(h + 50) % 360},65%,32%)"/></linearGradient></defs><rect width="100" height="100" fill="url(#g)"/><circle cx="72" cy="30" r="18" fill="rgba(255,255,255,.25)"/><text x="10" y="88" font-family="sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,.9)">${i + 1}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
 const mockSongs = (seed: string, n: number): NeteaseSong[] =>
   Array.from({ length: n }, (_, i) => ({
     id: Math.abs([...seed].reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % 100000 * 100 + i,
     name: `${seed}示例歌曲 ${i + 1}`,
     artists: [["示例歌手", "演示乐队", "预览艺人"][i % 3]],
     album: `${seed}专辑`,
-    cover: null,
+    cover: mockCover(i),
     duration: 180 + ((i * 37) % 120),
     vip: i % 4 === 1,
     unavailable: i % 9 === 7,
@@ -539,7 +545,7 @@ function mockCloudMedia(path: string, level: string): OpenedMedia {
     url: silence,
     baseOffset: 0,
     duration: 60,
-    meta: { title: `歌曲${id}`, artist: `歌手${id % 7}` },
+    meta: { title: `歌曲${id}`, artist: `歌手${id % 7}`, cover: cloudCovers.get(path) ?? null },
     subtitles: [],
     quality: { level: got, kbps },
   };
@@ -836,7 +842,8 @@ export function remoteUrl(url: string): string | null {
 export function thumbUrl(path: string, size = 256): string | null {
   if (isCloudPath(path)) {
     const cover = cloudCovers.get(path);
-    return cover ? remoteUrl(`${cover}?param=${size}y${size}`) : null;
+    if (!cover) return null;
+    return cover.startsWith("data:") ? cover : remoteUrl(`${cover}?param=${size}y${size}`);
   }
   if (!isTauri || serverBaseCache === null) return null;
   return `${serverBaseCache}/thumb?p=${encodeURIComponent(path)}&s=${size}`;
