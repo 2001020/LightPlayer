@@ -258,8 +258,7 @@ jobs:
           $tail = ($out | Select-Object -Last 25) -join "%0A"
           if ($code -ne 0) { Write-Output "::error title=Speech recognition::$tail"; exit 1 }
           Write-Output "::notice title=Speech recognition::$(($out | Select-String '^\[0' | Select-Object -First 3) -join ' ')"
-      - name: Rust unit tests (Windows, informational)
-        continue-on-error: true
+      - name: Rust unit tests (Windows)
         working-directory: src-tauri
         env:
           LIGHTPLAYER_FFMPEG_DIR: ${{ github.workspace }}/src-tauri/target/x86_64-pc-windows-msvc/release
@@ -269,7 +268,7 @@ jobs:
           $code = $LASTEXITCODE
           $out
           $sum = ($out | Select-String 'test result|FAILED|panicked' | Select-Object -First 30) -join "%0A"
-          if ($code -ne 0) { Write-Output "::warning title=Rust tests on Windows::$sum"; exit 1 }
+          if ($code -ne 0) { Write-Output "::error title=Rust tests on Windows::$sum"; exit 1 }
           Write-Output "::notice title=Rust tests on Windows::$sum"
 
   release:

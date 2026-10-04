@@ -245,8 +245,8 @@ impl HlsManager {
             "-hls_flags", "independent_segments+temp_file",
             "-hls_segment_filename",
         ]);
-        cmd.arg(dir.join("seg_%05d.m4s"));
-        cmd.arg(dir.join("index.m3u8"));
+        cmd.arg(hls_output(&dir.join("seg_%05d.m4s")));
+        cmd.arg(hls_output(&dir.join("index.m3u8")));
         cmd.stdout(std::process::Stdio::null());
         cmd.stderr(std::process::Stdio::piped());
 
@@ -277,6 +277,18 @@ impl HlsManager {
             Session { dir, child: Some(child), stderr: stderr_buf },
         );
         Ok(HlsStart { id, base_offset })
+    }
+}
+
+/// An HLS output path for ffmpeg. Its HLS muxer finds the folder for
+/// `init.mp4` by the last `/` only, so on Windows a `\\` path would put that
+/// file in the working directory; Windows accepts `/` as well.
+fn hls_output(p: &Path) -> String {
+    let s = p.to_string_lossy();
+    if cfg!(windows) {
+        s.replace('\\', "/")
+    } else {
+        s.into_owned()
     }
 }
 
