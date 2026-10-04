@@ -142,7 +142,10 @@ fn find_subtitles(state: &AppState, path: &Path, probe: &Probe) -> Vec<SubtitleT
 /// (MP3, FLAC); `None` when the file already seeks exactly. The player
 /// switches to it on the next jump, so the lyrics match the audio afterwards.
 #[tauri::command]
-pub async fn exact_audio(state: State<'_, AppState>, path: String) -> AppResult<Option<String>> {
+pub async fn exact_audio(state: State<'_, AppState>, path: String, quality: Option<String>) -> AppResult<Option<String>> {
+    if let Some(id) = netease::song_id(&path) {
+        return exact_netease(&state, id, quality.as_deref().unwrap_or("exhigh")).await;
+    }
     let p = PathBuf::from(&path);
     if !p.is_file() {
         return Err(AppError::msg("文件不存在"));
@@ -153,6 +156,57 @@ pub async fn exact_audio(state: State<'_, AppState>, path: String) -> AppResult<
     }
     let out = transcode::audio_to_cache(&p, &probe, &state.cache_dir).await?;
     Ok(Some(state.server.file_url(&out)))
+}
+
+/// Online songs kept as exact-seeking copies: the recent few only (playback
+/// cache, not a download store).
+const NETEASE_COPIES: usize = 3;
+
+/// The exact-seeking copy of an online song at `level`: the stream is fetched
+/// and decoded to PCM; `None` for a preview clip.
+async fn exact_netease(state: &AppState, id: u64, level: &str) -> AppResult<Option<String>> {
+    let dir = state.cache_dir.join("audio");
+    tokio::fs::create_dir_all(&dir).await?;
+    let level: String = level.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    let out = dir.join(format!("netease-{id}-{level}.wav"));
+    if out.is_file() {
+        let _ = transcode::filetime_touch(&out);
+        return Ok(Some(state.server.file_url(&out)));
+    }
+    let stream = state.netease.stream(id, &level).await?;
+    if stream.trial {
+        return Ok(None);
+    }
+    let nonce = rand::random::<u32>();
+    let src = dir.join(format!("netease-{id}-{level}.{nonce:08x}.download"));
+    let res = async {
+        state.netease.fetch_stream(&stream.url, &src).await?;
+        let probe = probe::probe(&src).await?;
+        transcode::decode_wav(&src, &probe, &out).await
+    }
+    .await;
+    let _ = tokio::fs::remove_file(&src).await;
+    res?;
+    prune_netease_copies(&dir, &out);
+    Ok(Some(state.server.file_url(&out)))
+}
+
+/// Keeps the newest few online-song copies (and always `current`).
+fn prune_netease_copies(dir: &Path, current: &Path) {
+    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let mut copies: Vec<(std::time::SystemTime, PathBuf)> = rd
+        .flatten()
+        .filter(|e| {
+            let n = e.file_name().to_string_lossy().into_owned();
+            n.starts_with("netease-") && n.ends_with(".wav") && !n.contains(".part")
+        })
+        .filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path())))
+        .filter(|(_, p)| p != current)
+        .collect();
+    copies.sort_by(|a, b| b.0.cmp(&a.0));
+    for (_, p) in copies.into_iter().skip(NETEASE_COPIES - 1) {
+        let _ = std::fs::remove_file(p);
+    }
 }
 
 #[tauri::command]
@@ -1016,4 +1070,27 @@ pub async fn netease_daily(state: State<'_, AppState>) -> AppResult<Vec<netease:
 #[tauri::command]
 pub async fn netease_search(state: State<'_, AppState>, query: String) -> AppResult<Vec<netease::Song>> {
     state.netease.search(&query).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keeps_only_recent_online_copies() {
+        let dir = tempfile::tempdir().unwrap();
+        let d = dir.path();
+        let names = ["netease-1-exhigh.wav", "netease-2-exhigh.wav", "netease-3-lossless.wav", "netease-4-hires.wav", "abc.wav"];
+        for (i, n) in names.iter().enumerate() {
+            let p = d.join(n);
+            std::fs::write(&p, b"x").unwrap();
+            let t = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000 + i as u64 * 10);
+            std::fs::File::options().append(true).open(&p).unwrap().set_modified(t).unwrap();
+        }
+        // The current one is the oldest file but stays; of the rest, the newest two.
+        prune_netease_copies(d, &d.join("netease-1-exhigh.wav"));
+        let mut left: Vec<String> = std::fs::read_dir(d).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        left.sort();
+        assert_eq!(left, ["abc.wav", "netease-1-exhigh.wav", "netease-3-lossless.wav", "netease-4-hires.wav"]);
+    }
 }

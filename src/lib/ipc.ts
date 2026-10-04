@@ -658,6 +658,11 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       ] as T;
     case "netease_playlist":
       return mockSongs(`歌单${args.id}`, Number(args.id) === 11 ? 24 : 12) as T;
+    case "exact_audio":
+      // Online songs: a decoded copy, ready a moment later.
+      if (!isCloudPath(path)) return null as T;
+      await new Promise((r) => setTimeout(r, 800));
+      return mockCloudMedia(path!, String(args.quality ?? "exhigh")).url as T;
     case "cache_size":
       return mockCacheBytes as T;
     case "cache_clear": {
@@ -740,7 +745,7 @@ export const api = {
   /** Deletes the cache files except those behind `keep` (URLs in use); returns the bytes freed. */
   cacheClear: (keep: string[]) => call<number>("cache_clear", { keep }),
   /** URL of an exact-seeking copy of an MP3/FLAC (null when the file seeks exactly). */
-  exactAudio: (path: string) => call<string | null>("exact_audio", { path }),
+  exactAudio: (path: string, quality?: string) => call<string | null>("exact_audio", { path, quality }),
   requestStream: (path: string, start: number, transcode: boolean) =>
     call<{ url: string; baseOffset: number }>("request_stream", { path, start, transcode }),
   stopStreams: () => call<void>("stop_streams"),

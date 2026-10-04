@@ -201,7 +201,8 @@ function QualitySlider({ value, onChange }: { value: number; onChange: (i: numbe
 function QualityMenu() {
   const quality = useSettings((s) => s.netease.quality);
   const got = usePlayer((s) => s.media?.quality);
-  const loading = usePlayer((s) => s.loading);
+  const switching = usePlayer((s) => s.qualitySwitch !== null);
+  const loading = usePlayer((s) => s.loading) || switching;
   const index = Math.max(0, NETEASE_QUALITIES.findIndex(([q]) => q === quality));
   const label = NETEASE_QUALITIES[index][1];
   const lower = !!got?.level && (LEVEL_RANK[got.level] ?? 9) < (LEVEL_RANK[quality] ?? 0);
@@ -219,7 +220,7 @@ function QualityMenu() {
           <QualitySlider value={index} onChange={(i) => void C.setNeteaseQuality(NETEASE_QUALITIES[i][0])} />
           <div className="q-now">
             {loading ? (
-              "正在切换…"
+              "正在准备新音质，当前播放不会中断…"
             ) : got?.level || got?.kbps ? (
               <>
                 当前播放：{LEVEL_NAMES[got.level ?? ""] ?? got.level ?? ""}

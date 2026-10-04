@@ -146,6 +146,8 @@ let exactJob: { path: string; seekedEarly: boolean } | null = null;
  */
 async function prepareExact(media: OpenedMedia) {
   if (plainPaths.has(media.path)) return;
+  // Online songs: a copy of the stream at the chosen quality.
+  const quality = isCloudPath(media.path) ? settings().netease.quality : undefined;
   const current = () => engine.media?.path === media.path && engine.media.strategy === "direct";
   // Not for tracks skipped straight away.
   await sleep(1500);
@@ -153,8 +155,9 @@ async function prepareExact(media: OpenedMedia) {
   const job = { path: media.path, seekedEarly: false };
   exactJob = job;
   try {
-    const url = await api.exactAudio(media.path);
+    const url = await api.exactAudio(media.path, quality);
     if (!url || exactJob !== job || !current()) return;
+    if (quality && (settings().netease.quality !== quality || usePlayer.getState().qualitySwitch)) return;
     engine.exact = { path: media.path, url };
     // A jump already made on the original landed off: line the audio up with
     // the position shown.
@@ -181,15 +184,40 @@ export async function setPreciseTiming(path: string, on: boolean, auto = false) 
   if (!on) toast("已恢复普通播放");
 }
 
-/** Picks the NetEase stream quality and reloads the online song playing now, from where it is. */
+let qualityJob = 0;
+
+/**
+ * Picks the NetEase stream quality. The song playing now keeps going while the
+ * new stream is fetched and decoded, then playback moves over at exactly the
+ * same spot (jumping inside a remote stream lands off, the lyrics would not match).
+ */
 export async function setNeteaseQuality(quality: NeteaseQuality) {
   const s = useSettings.getState();
   if (s.netease.quality === quality) return;
   s.set({ netease: { ...s.netease, quality } });
-  const pl = usePlaylist.getState();
   const path = usePlayer.getState().media?.path;
-  if (!isCloudPath(path) || pl.items[pl.index]?.path !== path) return;
-  await playIndex(pl.index, !engine.paused, { live: true });
+  if (!path || !isCloudPath(path) || engine.media?.path !== path) return;
+  const job = ++qualityJob;
+  usePlayer.setState({ qualitySwitch: quality });
+  try {
+    caps ??= detectCaps();
+    const [media, exact] = await Promise.all([
+      api.openMedia(path, caps, false, quality),
+      // No copy for a preview clip, or when it fails: play the stream itself.
+      api.exactAudio(path, quality).catch((e) => (console.warn("exact copy", e), null)),
+    ]);
+    if (job !== qualityJob || usePlayer.getState().media?.path !== path || engine.media?.path !== path) return;
+    engine.exact = exact ? { path, url: exact } : null;
+    const play = !engine.paused;
+    const at = engine.position;
+    usePlayer.setState({ media, duration: media.duration ?? usePlayer.getState().duration });
+    await engine.load(exact ? { ...media, url: exact, strategy: "audioTranscode" } : media, at, play);
+    if (media.notice) toast(media.notice, "info", 6000);
+  } catch (e) {
+    if (job === qualityJob) toast(`切换音质失败：${errText(e)}`, "error", 5000);
+  } finally {
+    if (job === qualityJob) usePlayer.setState({ qualitySwitch: null });
+  }
 }
 
 /** Deletes the cache files the player is not using right now; returns the bytes freed. */
@@ -305,8 +333,8 @@ export async function playIndex(index: number, autoplay = true, reload?: { live:
     void updateNowPlaying();
     void updateDynamicAccent();
     if (media.notice && !reload) toast(media.notice, "info", 6000);
-    if (media.kind === "audio" && media.strategy === "direct" && !cloud) {
-      void checkTiming(media);
+    if (media.kind === "audio" && media.strategy === "direct") {
+      if (!cloud) void checkTiming(media);
       void prepareExact(media);
     }
     if (!reload && !st.privateMode && !cloud && (isTauri || media.path.startsWith("browser:"))) {

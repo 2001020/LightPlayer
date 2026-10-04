@@ -577,6 +577,32 @@ impl Netease {
         Err(AppError::msg(msg))
     }
 
+    /// Saves a stream to `dest`, for decoding into the exact-seeking copy the
+    /// player switches to (WebKit lands off when jumping in a remote stream).
+    pub async fn fetch_stream(&self, url: &str, dest: &Path) -> AppResult<()> {
+        use tokio::io::AsyncWriteExt;
+        if !allowed_remote(url) {
+            return Err(AppError::msg("不支持的音频地址"));
+        }
+        let mut resp = self.http.get(url).header("Referer", BASE).send().await?;
+        if !resp.status().is_success() {
+            return Err(AppError::msg(format!("下载音频失败：HTTP {}", resp.status().as_u16())));
+        }
+        let mut f = tokio::fs::File::create(dest).await?;
+        let mut total = 0u64;
+        while let Some(chunk) = resp.chunk().await? {
+            total += chunk.len() as u64;
+            if total > 1 << 30 {
+                drop(f);
+                let _ = tokio::fs::remove_file(dest).await;
+                return Err(AppError::msg("音频文件过大"));
+            }
+            f.write_all(&chunk).await?;
+        }
+        f.flush().await?;
+        Ok(())
+    }
+
     /// LRC with the translation lines (same timestamps) appended.
     pub async fn lyrics(&self, id: u64) -> AppResult<Option<String>> {
         let resp = self
@@ -631,6 +657,44 @@ mod tests {
     fn eapi_matches_reference() {
         let p = eapi("/api/song/enhance/player/url/v1", r#"{"ids":"[1]","level":"exhigh"}"#);
         assert_eq!(p, include_str!("../tests/netease_eapi.txt").trim());
+    }
+
+    #[tokio::test]
+    async fn fetches_and_decodes_a_stream_exactly() {
+        use std::io::{Read, Write};
+        let dir = tempfile::tempdir().unwrap();
+        let mp3 = dir.path().join("s.mp3");
+        let ok = crate::tools::command(&crate::tools::tools().ffmpeg)
+            .args(["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=3", "-c:a", "libmp3lame", "-b:a", "320k"])
+            .arg(&mp3)
+            .status()
+            .await
+            .is_ok_and(|s| s.success());
+        if !ok {
+            return; // No ffmpeg with an MP3 encoder here.
+        }
+        let body = std::fs::read(&mp3).unwrap();
+        // A one-request HTTP server standing in for the CDN.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let served = body.clone();
+        std::thread::spawn(move || {
+            let (mut c, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 2048];
+            let _ = c.read(&mut buf);
+            let _ = write!(c, "HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", served.len());
+            let _ = c.write_all(&served);
+        });
+        let ne = Netease::new(dir.path());
+        let got = dir.path().join("got.download");
+        ne.fetch_stream(&format!("http://127.0.0.1:{port}/a.mp3"), &got).await.unwrap();
+        assert_eq!(std::fs::read(&got).unwrap(), body);
+        let probe = crate::media::probe::probe(&got).await.unwrap();
+        let wav = dir.path().join("out.wav");
+        crate::media::transcode::decode_wav(&got, &probe, &wav).await.unwrap();
+        let p = crate::media::probe::probe(&wav).await.unwrap();
+        assert!((p.duration().unwrap() - 3.0).abs() < 0.1, "{:?}", p.duration());
+        assert!(ne.fetch_stream("https://example.com/a.mp3", &got).await.is_err());
     }
 
     #[test]

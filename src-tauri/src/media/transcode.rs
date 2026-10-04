@@ -44,13 +44,22 @@ pub async fn audio_to_cache(path: &Path, probe: &Probe, cache_dir: &Path) -> App
         let _ = filetime_touch(&out);
         return Ok(out);
     }
+    decode_wav(path, probe, &out).await?;
+    prune_dir(&dir, AUDIO_CACHE_LIMIT);
+    Ok(out)
+}
+
+/// Decodes the first audio stream of `input` into a PCM WAV at `out`.
+pub async fn decode_wav(input: &Path, probe: &Probe, out: &Path) -> AppResult<()> {
+    let dir = out.parent().unwrap_or(Path::new("."));
+    let stem = out.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
     // Unique per call: the background copy and a "precise timing" switch can
     // convert the same file at once.
     let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    let tmp = dir.join(format!("{}.part{nonce}.{ext}", file_key(path)));
+    let tmp = dir.join(format!("{stem}.part{nonce}.wav"));
     let mut cmd = command(&tools().ffmpeg);
     cmd.args(["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i"])
-        .arg(path)
+        .arg(input)
         .args(["-map", "0:a:0", "-vn", "-sn", "-map_metadata", "-1"]);
     let a = probe.audio();
     let sr = a.and_then(|a| a.sample_rate).unwrap_or(44100.0);
@@ -72,14 +81,13 @@ pub async fn audio_to_cache(path: &Path, probe: &Probe, cache_dir: &Path) -> App
     }
     if out.is_file() {
         let _ = tokio::fs::remove_file(&tmp).await;
-        return Ok(out);
+        return Ok(());
     }
-    tokio::fs::rename(&tmp, &out).await?;
-    prune_dir(&dir, AUDIO_CACHE_LIMIT);
-    Ok(out)
+    tokio::fs::rename(&tmp, out).await?;
+    Ok(())
 }
 
-fn filetime_touch(p: &Path) -> std::io::Result<()> {
+pub fn filetime_touch(p: &Path) -> std::io::Result<()> {
     let f = std::fs::OpenOptions::new().append(true).open(p)?;
     f.set_modified(std::time::SystemTime::now())
 }

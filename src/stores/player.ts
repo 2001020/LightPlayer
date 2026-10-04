@@ -14,6 +14,8 @@ export interface PlayerState {
   error: string | null;
   abLoop: { a: number | null; b: number | null };
   sleep: { until: number | null; endOfTrack: boolean };
+  /** The NetEase quality being prepared while the current stream keeps playing. */
+  qualitySwitch: string | null;
 }
 
 export const usePlayer = create<PlayerState>(() => ({
@@ -27,6 +29,7 @@ export const usePlayer = create<PlayerState>(() => ({
   error: null,
   abLoop: { a: null, b: null },
   sleep: { until: null, endOfTrack: false },
+  qualitySwitch: null,
 }));
 
 export interface PlaylistState {

@@ -3564,6 +3564,40 @@ html.desktop-lyrics #root {
   font-family: ui-monospace, Menlo, monospace;
   font-size: 12px;
 }
+/* With a height set for the local playlists, NetEase takes the rest. */
+.ne-side.split {
+  flex: 1 1 0;
+}
+/* Drag handle between the local playlists and the NetEase section. */
+.lib-split {
+  flex: none;
+  position: relative;
+  height: 12px;
+  margin: 2px 0 -4px;
+  cursor: row-resize;
+  touch-action: none;
+}
+.lib-split::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 4px;
+  margin: -2px 0 0 -18px;
+  border-radius: 2px;
+  background: var(--track);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.lib-side:hover .lib-split::after {
+  opacity: 1;
+}
+.lib-split:hover::after,
+.lib-split.dragging::after {
+  opacity: 1;
+  background: var(--accent);
+}
 /* Stream quality (NetEase songs only), in the transport bar. */
 .icon-btn.q-btn {
   width: auto;

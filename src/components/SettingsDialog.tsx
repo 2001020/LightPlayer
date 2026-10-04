@@ -376,7 +376,7 @@ function NeteaseSettings() {
               </button>
             )}
           </Row>
-          <Row label="音质" hint="无损和 Hi-Res 需要会员。选择无损或 Hi-Res 时，拖动进度后歌词可能和歌声稍有偏差">
+          <Row label="音质" hint="无损和 Hi-Res 需要会员。播放时也可以在播放栏中切换">
             <Seg<NeteaseQuality>
               value={ne.quality}
               options={NETEASE_QUALITIES}

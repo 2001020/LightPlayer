@@ -1,7 +1,7 @@
 // Media library: folders scanned recursively, played / dropped files,
 // favourites and user playlists, browsed by song, album, artist or video.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import * as C from "../core/controller";
 import {
   deletePlaylist,
@@ -67,6 +67,9 @@ function Sidebar() {
   const nav = useLibrary((s) => s.nav);
   const playlists = useLibrary((s) => s.data.playlists);
   const progress = useLibrary((s) => s.progress);
+  const split = useSettings((s) => s.sidebarPlaylistsHeight);
+  const neOn = useSettings((s) => s.netease.enabled);
+  const localRef = useRef<HTMLDivElement>(null);
   const active = (v: string) =>
     nav.view === v || (nav.view === "album" && nav.from === v) || (nav.view === "artist" && v === "artists");
   return (
@@ -91,7 +94,7 @@ function Sidebar() {
           </button>
         </div>
       </div>
-      <div className="lib-nav lib-playlists">
+      <div ref={localRef} className="lib-nav lib-playlists" style={neOn && split !== null ? { flex: `0 1 ${split}px` } : undefined}>
         {playlists.map((p) => (
           <button
             key={p.id}
@@ -112,7 +115,7 @@ function Sidebar() {
           </div>
         )}
       </div>
-      <NeteaseSidebar />
+      <NeteaseSidebar localRef={localRef} />
       <div className="lib-side-foot">
         {progress && (
           <div className="lib-scan">
@@ -136,9 +139,61 @@ function Sidebar() {
   );
 }
 
+/**
+ * Drag handle between the local playlists and the NetEase section: sets how
+ * tall the local part is (double-click: back to fitting its content).
+ */
+function SidebarSplitter({ localRef, neRef }: { localRef: RefObject<HTMLDivElement | null>; neRef: RefObject<HTMLDivElement | null> }) {
+  const [dragging, setDragging] = useState(false);
+  const set = (h: number | null) => useSettings.getState().set({ sidebarPlaylistsHeight: h });
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    const local = localRef.current;
+    const ne = neRef.current;
+    if (!local || !ne || e.button !== 0) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const y0 = e.clientY;
+    const h0 = local.offsetHeight;
+    const before = local.style.flex;
+    // Both parts keep at least one row.
+    const max = h0 + ne.offsetHeight - 40;
+    const at = (y: number) => Math.round(Math.min(max, Math.max(40, h0 + y - y0)));
+    setDragging(true);
+    const move = (ev: PointerEvent) => {
+      local.style.flex = `0 1 ${at(ev.clientY)}px`;
+      ne.style.flex = "1 1 0";
+    };
+    const up = (ev: PointerEvent) => {
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      el.removeEventListener("pointercancel", up);
+      setDragging(false);
+      ne.style.flex = "";
+      if (Math.abs(ev.clientY - y0) > 2) set(at(ev.clientY));
+      else local.style.flex = before;
+    };
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+  };
+  return (
+    <div
+      className={`lib-split ${dragging ? "dragging" : ""}`}
+      role="separator"
+      aria-orientation="horizontal"
+      onPointerDown={down}
+      onDoubleClick={() => set(null)}
+      {...tip("拖动调整两部分的高度，双击恢复自动")}
+    />
+  );
+}
+
 /** The experimental NetEase Cloud Music section of the sidebar. */
-function NeteaseSidebar() {
+function NeteaseSidebar({ localRef }: { localRef: RefObject<HTMLDivElement | null> }) {
   const enabled = useSettings((s) => s.netease.enabled);
+  const split = useSettings((s) => s.sidebarPlaylistsHeight);
+  const neRef = useRef<HTMLDivElement>(null);
   const account = useNetease((s) => s.account);
   const playlists = useNetease((s) => s.playlists);
   const nav = useLibrary((s) => s.nav);
@@ -149,6 +204,7 @@ function NeteaseSidebar() {
   const on = (list: string) => (nav.view === "netease" && nav.list === list ? "on" : "");
   return (
     <>
+      <SidebarSplitter localRef={localRef} neRef={neRef} />
       <div className="lib-group">
         <span>
           网易云音乐 <em className="ne-exp">试验</em>
@@ -161,7 +217,7 @@ function NeteaseSidebar() {
           </div>
         )}
       </div>
-      <div className="lib-nav lib-playlists ne-side">
+      <div ref={neRef} className={`lib-nav lib-playlists ne-side ${split !== null ? "split" : ""}`}>
         {account === null && (
           <div className="lib-hint">
             登录后可以播放你的歌单和每日推荐。
