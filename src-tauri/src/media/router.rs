@@ -6,7 +6,7 @@ use super::probe::Probe;
 use serde::{Deserialize, Serialize};
 
 /// Decoding capabilities reported by the WebView (`canPlayType`).
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Caps {
     pub hevc: bool,
@@ -15,6 +15,16 @@ pub struct Caps {
     pub flac: bool,
     pub opus: bool,
     pub vorbis: bool,
+    /// WebKit plays these; WebView2 (Windows) does not.
+    pub alac: bool,
+    pub aiff: bool,
+    pub ac3: bool,
+}
+
+impl Default for Caps {
+    fn default() -> Self {
+        Caps { hevc: false, av1: false, vp9: false, flac: false, opus: false, vorbis: false, alac: true, aiff: true, ac3: true }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -51,8 +61,13 @@ fn video_codec_ok(codec: &str, pix_fmt: Option<&str>, caps: &Caps) -> bool {
     }
 }
 
-fn mp4_audio_ok(codec: &str) -> bool {
-    matches!(codec, "aac" | "mp3" | "alac" | "ac3" | "eac3")
+fn mp4_audio_ok(codec: &str, caps: &Caps) -> bool {
+    match codec {
+        "aac" | "mp3" => true,
+        "alac" => caps.alac,
+        "ac3" | "eac3" => caps.ac3,
+        _ => false,
+    }
 }
 
 /// Files WebKit plays with a drifting clock: FLAC with an ID3 tag in front of
@@ -83,9 +98,11 @@ pub fn decide(kind: MediaKind, probe: &Probe, ext: &str, caps: &Caps) -> Strateg
         let direct = if has(fmt, "mp3") {
             audio_codec == "mp3"
         } else if is_mp4_family(fmt) {
-            matches!(audio_codec, "aac" | "alac" | "mp3")
-        } else if has(fmt, "wav") || has(fmt, "aiff") {
+            matches!(audio_codec, "aac" | "mp3") || (audio_codec == "alac" && caps.alac)
+        } else if has(fmt, "wav") {
             audio_codec.starts_with("pcm_")
+        } else if has(fmt, "aiff") {
+            caps.aiff && audio_codec.starts_with("pcm_")
         } else if has(fmt, "flac") {
             caps.flac
         } else if has(fmt, "ogg") {
@@ -105,7 +122,7 @@ pub fn decide(kind: MediaKind, probe: &Probe, ext: &str, caps: &Caps) -> Strateg
 
     // WebKit only plays HEVC in MP4 when tagged `hvc1` (not `hev1`); remux fixes the tag.
     let tag_ok = vcodec != "hevc" || v.codec_tag_string.as_deref() == Some("hvc1");
-    if is_mp4_family(fmt) && vok && tag_ok && (no_audio || mp4_audio_ok(audio_codec)) && ext != "3gp" {
+    if is_mp4_family(fmt) && vok && tag_ok && (no_audio || mp4_audio_ok(audio_codec, caps)) && ext != "3gp" {
         return Strategy::Direct;
     }
     if has(fmt, "webm")
@@ -159,6 +176,22 @@ mod tests {
         assert_eq!(decide(MediaKind::Audio, &wma, "wma", &caps), Strategy::AudioTranscode);
         let wav = probe("wav", &a("pcm_s16le"));
         assert_eq!(decide(MediaKind::Audio, &wav, "wav", &caps), Strategy::Direct);
+    }
+
+    #[test]
+    fn webview2_routes() {
+        // WebView2 on Windows: no ALAC, AIFF or AC-3.
+        let caps = Caps { flac: true, alac: false, aiff: false, ac3: false, ..Default::default() };
+        let alac = probe("mov,mp4,m4a,3gp,3g2,mj2", &a("alac"));
+        assert_eq!(decide(MediaKind::Audio, &alac, "m4a", &caps), Strategy::AudioTranscode);
+        let aac = probe("mov,mp4,m4a,3gp,3g2,mj2", &a("aac"));
+        assert_eq!(decide(MediaKind::Audio, &aac, "m4a", &caps), Strategy::Direct);
+        let aiff = probe("aiff", &a("pcm_s16be"));
+        assert_eq!(decide(MediaKind::Audio, &aiff, "aiff", &caps), Strategy::AudioTranscode);
+        assert_eq!(decide(MediaKind::Audio, &aiff, "aiff", &Caps::default()), Strategy::Direct);
+        let ac3 = probe("mov,mp4,m4a,3gp,3g2,mj2", &format!("{H264},{}", a("ac3")));
+        assert_eq!(decide(MediaKind::Video, &ac3, "mp4", &caps), Strategy::HlsRemux);
+        assert_eq!(decide(MediaKind::Video, &ac3, "mp4", &Caps::default()), Strategy::Direct);
     }
 
     #[test]

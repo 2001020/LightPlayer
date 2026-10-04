@@ -12,6 +12,7 @@ import { openMenu, sep, type MenuItem } from "../../components/ContextMenu";
 import { promptText } from "../../components/Prompt";
 import { engine } from "../player/engine";
 import { toEntry, trackTitle, type Album } from "./views";
+import { FILE_MANAGER, TRASH } from "../../lib/platform";
 
 /** Plays `tracks[index]` with the whole list as the queue. */
 export function playTracks(tracks: LibraryTrack[], index: number, source: string) {
@@ -129,7 +130,7 @@ export function openTrackMenu(e: React.MouseEvent, t: LibraryTrack, ctx: TrackMe
         ]
       : []),
     sep,
-    { label: "在访达中显示", icon: "reveal", disabled: !isTauri, onClick: () => void reveal(t.path) },
+    { label: `在${FILE_MANAGER}中显示`, icon: "reveal", disabled: !isTauri, onClick: () => void reveal(t.path) },
   ];
   if (ctx.playlistId) {
     const id = ctx.playlistId;
@@ -172,7 +173,7 @@ export async function removeAlbum(a: Album) {
 
 /** Moves an album's files to the Trash and drops them from the library. */
 export async function trashAlbum(a: Album) {
-  const ok = await confirmDialog(`把专辑《${a.title}》的 ${a.tracks.length} 个文件移到废纸篓？\n可以在访达的废纸篓中恢复。`);
+  const ok = await confirmDialog(`把专辑《${a.title}》的 ${a.tracks.length} 个文件移到${TRASH}？\n可以在${TRASH}中恢复。`);
   if (!ok) return;
   const paths = a.tracks.map((t) => t.path);
   const playing = usePlayer.getState().media?.path;
@@ -183,8 +184,8 @@ export async function trashAlbum(a: Album) {
   }
   const r = await libraryAction(() => api.libraryTrashTracks(paths));
   if (!r) return;
-  if (r.failed.length) toast(`${r.trashed.length} 个文件已移到废纸篓，${r.failed.length} 个失败：${r.error ?? "未知错误"}`, "error", 6000);
-  else toast(`已把《${a.title}》移到废纸篓`, "success");
+  if (r.failed.length) toast(`${r.trashed.length} 个文件已移到${TRASH}，${r.failed.length} 个失败：${r.error ?? "未知错误"}`, "error", 6000);
+  else toast(`已把《${a.title}》移到${TRASH}`, "success");
 }
 
 /** Right-click menu for an album card. */
@@ -209,10 +210,10 @@ export function openAlbumMenu(e: React.MouseEvent, a: Album, open: () => void) {
       ],
     },
     { label: "打开专辑", icon: "album", onClick: open },
-    { label: "在访达中显示", icon: "reveal", disabled: !isTauri, onClick: () => void reveal(paths[0]) },
+    { label: `在${FILE_MANAGER}中显示`, icon: "reveal", disabled: !isTauri, onClick: () => void reveal(paths[0]) },
     sep,
     { label: "从媒体库移除专辑", icon: "minus", danger: true, onClick: () => void removeAlbum(a) },
-    { label: "移到废纸篓", icon: "trash", danger: true, onClick: () => void trashAlbum(a) },
+    { label: `移到${TRASH}`, icon: "trash", danger: true, onClick: () => void trashAlbum(a) },
   ]);
 }
 

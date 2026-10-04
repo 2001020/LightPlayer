@@ -9,6 +9,7 @@ import { localFileUrl } from "./lib/ipc";
 import { usePlayer, useUI } from "./stores/player";
 import { clampLyricSize, useSettings } from "./stores/settings";
 import { lastFullscreenToggle, toggleFullscreen } from "./components/TransportBar";
+import { isWindows } from "./lib/platform";
 
 function useSystemDark() {
   const [dark, setDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -139,6 +140,19 @@ function isTyping(e: KeyboardEvent) {
   return t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable;
 }
 
+/**
+ * WebView2 keeps some browser shortcuts (reload, print, find, view source,
+ * developer tools); none of them makes sense in the app.
+ */
+function blocksBrowserKey(e: KeyboardEvent, mod: boolean): boolean {
+  if (!isWindows) return false;
+  const k = e.key.toLowerCase();
+  if (e.key === "F5" || e.key === "F7" || e.key === "F12") return true;
+  if (!mod || e.altKey) return false;
+  if (e.shiftKey) return k === "i" || k === "j" || k === "c" || k === "r";
+  return k === "r" || k === "p" || k === "f" || k === "g" || k === "u" || k === "j" || k === "s" || k === "h";
+}
+
 /** Global keyboard shortcuts (disabled while the lyrics editor is open). */
 export function useKeyboard() {
   useEffect(() => {
@@ -147,6 +161,10 @@ export function useKeyboard() {
       const s = useSettings.getState();
       const media = usePlayer.getState().media;
       const mod = e.metaKey || e.ctrlKey;
+      if (blocksBrowserKey(e, mod)) {
+        e.preventDefault();
+        return;
+      }
       if (mod && e.key.toLowerCase() === "o") {
         e.preventDefault();
         void C.openWithDialog();

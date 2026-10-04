@@ -9,6 +9,7 @@ import { useUI } from "../stores/player";
 import { Icon } from "./Icon";
 import { tip } from "./Tooltip";
 import { Thumb } from "./TrackTable";
+import { FILE_MANAGER } from "../lib/platform";
 
 export const ASR_STAGES: Record<AsrTask["stage"], string> = {
   preparing: "准备中…",
@@ -86,7 +87,7 @@ function TaskRow({ task, first }: { task: AsrTask; first?: boolean }) {
           </button>
         )}
         {task.status !== "running" && task.status !== "queued" && isTauri && (
-          <button className="icon-btn small" onClick={() => void reveal(task.path)} {...tip("在访达中显示")}>
+          <button className="icon-btn small" onClick={() => void reveal(task.path)} {...tip(`在${FILE_MANAGER}中显示`)}>
             <Icon name="reveal" size={16} />
           </button>
         )}

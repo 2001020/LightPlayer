@@ -3,12 +3,13 @@
 // components only need the attributes.
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { keys } from "../lib/platform";
 
 const DELAY = 1000;
 
 /** Attributes for a delayed tooltip plus an accessible name. */
 export function tip(text: string, kbd?: string): { "data-tip": string; "data-kbd"?: string; "aria-label": string } {
-  return kbd ? { "data-tip": text, "data-kbd": kbd, "aria-label": text } : { "data-tip": text, "aria-label": text };
+  return kbd ? { "data-tip": text, "data-kbd": keys(kbd), "aria-label": text } : { "data-tip": text, "aria-label": text };
 }
 
 interface Tip {

@@ -106,7 +106,7 @@ mod tests {
     use super::*;
 
     fn ffmpeg(args: &[&str]) -> bool {
-        std::process::Command::new(&tools().ffmpeg)
+        crate::tools::std_command(&tools().ffmpeg)
             .args(["-hide_banner", "-loglevel", "error", "-y"])
             .args(args)
             .status()
@@ -115,7 +115,7 @@ mod tests {
     }
 
     fn jpeg_size(p: &Path) -> Option<(u32, u32)> {
-        let out = std::process::Command::new(&tools().ffprobe)
+        let out = crate::tools::std_command(&tools().ffprobe)
             .args(["-v", "quiet", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0"])
             .arg(p)
             .output()

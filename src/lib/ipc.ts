@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { stem } from "./format";
+import { isWindows } from "./platform";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -17,6 +18,9 @@ export interface Caps {
   flac: boolean;
   opus: boolean;
   vorbis: boolean;
+  alac: boolean;
+  aiff: boolean;
+  ac3: boolean;
 }
 
 export interface AudioMeta {
@@ -865,5 +869,10 @@ export function detectCaps(): Caps {
     flac: ok(a.canPlayType("audio/flac")) || ok(a.canPlayType("audio/x-flac")),
     opus: ok(a.canPlayType('audio/ogg; codecs="opus"')),
     vorbis: ok(a.canPlayType('audio/ogg; codecs="vorbis"')),
+    // macOS (WebKit) keeps playing these directly as before; WebView2 says
+    // what it can decode.
+    alac: !isWindows || ok(a.canPlayType('audio/mp4; codecs="alac"')),
+    aiff: !isWindows || ok(a.canPlayType("audio/aiff")) || ok(a.canPlayType("audio/x-aiff")),
+    ac3: !isWindows || ok(v.canPlayType('video/mp4; codecs="ac-3"')),
   };
 }

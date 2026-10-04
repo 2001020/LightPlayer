@@ -1,4 +1,4 @@
-name: Build macOS app
+name: Build macOS & Windows apps
 
 on:
   push:
@@ -143,12 +143,121 @@ jobs:
           cd src-tauri
           cargo test --release --target aarch64-apple-darwin asr_smoke -- --ignored --nocapture
 
+  build-windows:
+    name: Build installer (Windows x64)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      # Build whisper.cpp for a fixed instruction set (AVX2), not the runner's
+      # CPU, so the app runs on any recent x64 PC.
+      GGML_NATIVE: "OFF"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Fetch ffmpeg sidecars
+        shell: bash
+        run: bash scripts/fetch-ffmpeg.sh x86_64-pc-windows-msvc
+      - name: Build installer
+        run: pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
+      - name: Smoke test bundled ffmpeg and package the portable version
+        shell: pwsh
+        run: |
+          $rel = "src-tauri/target/x86_64-pc-windows-msvc/release"
+          Get-ChildItem "$rel/bundle/nsis"
+          & "$rel/ffprobe.exe" -hide_banner -version | Select-Object -First 1
+          if ($LASTEXITCODE -ne 0) { throw "ffprobe failed" }
+          $dir = "$env:RUNNER_TEMP/portable/LightPlayer"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Copy-Item "$rel/lightplayer.exe" "$dir/LightPlayer.exe"
+          Copy-Item "$rel/ffmpeg.exe", "$rel/ffprobe.exe" $dir
+          Compress-Archive -Path $dir -DestinationPath "$env:RUNNER_TEMP/LightPlayer-portable.zip" -Force
+          Get-Item "$env:RUNNER_TEMP/LightPlayer-portable.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LightPlayer-Windows-x64-setup
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LightPlayer-Windows-x64-portable
+          path: ${{ runner.temp }}/LightPlayer-portable.zip
+          if-no-files-found: error
+      - name: UI screenshot (best effort)
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $rel = "$PWD/src-tauri/target/x86_64-pc-windows-msvc/release"
+          $shots = "$env:RUNNER_TEMP/shots-windows"
+          New-Item -ItemType Directory -Force $shots | Out-Null
+          & "$rel/ffmpeg.exe" -loglevel error -y -f lavfi -i testsrc2=size=1280x720:rate=30 `
+            -f lavfi -i sine=frequency=440 -t 20 -c:v libx264 -pix_fmt yuv420p -c:a aac "$env:RUNNER_TEMP/test.mp4"
+          $p = Start-Process "$rel/lightplayer.exe" -ArgumentList "`"$env:RUNNER_TEMP/test.mp4`"" -PassThru
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("$shots/$name.png")
+          }
+          Start-Sleep 12
+          Shot "window"
+          Start-Sleep 4
+          Shot "window-later"
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Get-ChildItem $shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-screenshots-windows
+          path: ${{ runner.temp }}/shots-windows
+          if-no-files-found: ignore
+      - name: Speech recognition smoke test (CPU)
+        shell: pwsh
+        env:
+          LP_ASR_MODEL_DIR: ${{ runner.temp }}/models
+          LP_ASR_AUDIO: ${{ runner.temp }}/speech.wav
+        run: |
+          New-Item -ItemType Directory -Force $env:LP_ASR_MODEL_DIR | Out-Null
+          curl.exe -fL --retry 3 -o "$env:LP_ASR_MODEL_DIR/ggml-tiny.bin" https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+          curl.exe -fL --retry 3 -o "$env:LP_ASR_MODEL_DIR/ggml-silero-v5.1.2.bin" https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin
+          Add-Type -AssemblyName System.Speech
+          $tts = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $tts.SetOutputToWaveFile($env:LP_ASR_AUDIO)
+          $tts.Speak("Welcome to the light player. This music player can recognise song lyrics on your computer.")
+          $tts.Dispose()
+          $env:LIGHTPLAYER_FFMPEG_DIR = "$PWD/src-tauri/target/x86_64-pc-windows-msvc/release"
+          cd src-tauri
+          cargo test --release --target x86_64-pc-windows-msvc asr_smoke -- --ignored --nocapture
+          if ($LASTEXITCODE -ne 0) { throw "speech recognition smoke test failed" }
+      - name: Rust unit tests (Windows, informational)
+        continue-on-error: true
+        working-directory: src-tauri
+        env:
+          LIGHTPLAYER_FFMPEG_DIR: ${{ github.workspace }}/src-tauri/target/x86_64-pc-windows-msvc/release
+        run: cargo test --release --target x86_64-pc-windows-msvc
+
   release:
     name: Publish GitHub release
     # Runs for pushed v* tags, or for a manual run with a release tag (the
     # release then creates the tag on the built commit).
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
-    needs: build
+    needs: [build, build-windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -164,12 +273,22 @@ jobs:
         with:
           name: LightPlayer-macOS-arm64-app
           path: dist-release
+      - uses: actions/download-artifact@v4
+        with:
+          name: LightPlayer-Windows-x64-setup
+          path: dist-release
+      - uses: actions/download-artifact@v4
+        with:
+          name: LightPlayer-Windows-x64-portable
+          path: dist-release
       - name: Prepare release files
         run: |
           cd dist-release
           ver="${TAG#v}"
           mv LightPlayer.app.zip "LightPlayer_${ver}_aarch64.app.zip"
+          mv LightPlayer-portable.zip "LightPlayer_${ver}_x64_portable.zip"
           ls -la
+          test -f "LightPlayer_${ver}_x64-setup.exe"
       - name: Replace an existing release
         if: github.event_name == 'workflow_dispatch' && inputs.replace
         env:
@@ -192,4 +311,5 @@ jobs:
           files: |
             dist-release/*.dmg
             dist-release/*.zip
+            dist-release/*.exe
           fail_on_unmatched_files: true

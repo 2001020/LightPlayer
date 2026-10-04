@@ -10,6 +10,7 @@ import { CoverFlow } from "../components/CoverFlow";
 import { basename } from "../lib/format";
 import { useLyrics, usePlayer, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
+import { keys } from "../lib/platform";
 
 const STRATEGY_LABEL: Record<string, string> = {
   direct: "",
@@ -34,10 +35,10 @@ function EmptyState() {
         </p>
         <div className="empty-actions">
           <button className="btn primary large" onClick={C.openWithDialog}>
-            <Icon name="folder" size={18} /> 打开文件 <kbd style={{ background: "transparent", color: "inherit" }}>⌘O</kbd>
+            <Icon name="folder" size={18} /> 打开文件 <kbd style={{ background: "transparent", color: "inherit" }}>{keys("⌘O")}</kbd>
           </button>
           <button className="btn large" onClick={() => useUI.setState({ page: "library" })}>
-            <Icon name="library" size={18} /> 媒体库 <kbd style={{ background: "transparent", color: "inherit" }}>⌘L</kbd>
+            <Icon name="library" size={18} /> 媒体库 <kbd style={{ background: "transparent", color: "inherit" }}>{keys("⌘L")}</kbd>
           </button>
         </div>
         {recent.length > 0 && (

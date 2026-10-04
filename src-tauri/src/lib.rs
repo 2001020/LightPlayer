@@ -45,10 +45,11 @@ pub struct AppState {
 
 /// Files macOS asks to open before `setup` has run: launching the app by
 /// double-clicking a file delivers it ahead of `applicationDidFinishLaunching`.
+/// (Windows passes them on the command line instead.)
 static EARLY_OPEN: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 /// Queues files to open, or forwards them right away once the UI is ready.
-#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "macos", target_os = "windows")), allow(dead_code))]
 fn open_paths(app: &tauri::AppHandle, paths: Vec<String>) {
     if paths.is_empty() {
         return;
@@ -69,8 +70,30 @@ fn open_paths(app: &tauri::AppHandle, paths: Vec<String>) {
     pending.extend(paths);
 }
 
+/// The files among command line arguments (relative ones resolved against `cwd`).
+fn file_args(args: impl IntoIterator<Item = String>, cwd: &std::path::Path) -> Vec<String> {
+    args.into_iter()
+        .filter(|a| !a.starts_with('-'))
+        .map(|a| cwd.join(a))
+        .filter(|p| p.is_file())
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect()
+}
+
 pub fn run() {
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Double-clicking a file while LightPlayer runs starts a second process on
+    // Windows: hand its files to the running one instead.
+    #[cfg(target_os = "windows")]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+        let paths = file_args(argv.into_iter().skip(1), std::path::Path::new(&cwd));
+        if paths.is_empty() {
+            tray::show_main(app);
+        } else {
+            open_paths(app, paths);
+        }
+    }));
+    let app = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -82,10 +105,8 @@ pub fn run() {
             std::fs::create_dir_all(&models_dir)?;
             let hls = Arc::new(HlsManager::new(&cache_dir));
             let server = tauri::async_runtime::block_on(server::start(hls.clone(), library::thumb::thumbs_dir(&cache_dir)))?;
-            let mut pending: Vec<String> = std::env::args()
-                .skip(1)
-                .filter(|a| !a.starts_with('-') && std::path::Path::new(a).is_file())
-                .collect();
+            let cwd = std::env::current_dir().unwrap_or_default();
+            let mut pending = file_args(std::env::args().skip(1), &cwd);
             pending.append(&mut EARLY_OPEN.lock().unwrap());
             app.manage(AppState {
                 server,

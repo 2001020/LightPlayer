@@ -120,12 +120,27 @@ pub fn create(app: &AppHandle) -> tauri::Result<Tray> {
             &quit,
         ],
     )?;
-    let icon = TrayIconBuilder::with_id("main")
+    // macOS: a monochrome template icon in the menu bar, menu on click.
+    // Windows: the app icon in the notification area; a click brings the
+    // window back and the menu opens with a right click.
+    #[cfg(not(target_os = "windows"))]
+    let builder = TrayIconBuilder::with_id("main")
         .icon(Image::from_bytes(include_bytes!("../icons/tray-template.png"))?)
         .icon_as_template(true)
+        .show_menu_on_left_click(true);
+    #[cfg(target_os = "windows")]
+    let builder = TrayIconBuilder::with_id("main")
+        .icon(Image::from_bytes(include_bytes!("../icons/32x32.png"))?)
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| {
+            use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                show_main(tray.app_handle());
+            }
+        });
+    let icon = builder
         .tooltip("LightPlayer")
         .menu(&menu)
-        .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "lp-toggle" => control(app, "toggle"),
             "lp-prev" => control(app, "previous"),

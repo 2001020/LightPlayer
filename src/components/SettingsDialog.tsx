@@ -13,6 +13,7 @@ import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZ
 import { ColorChoices } from "./ColorChoices";
 import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
+import { isWindows, keys, TRAY } from "../lib/platform";
 
 type Tab = UIState["settingsTab"];
 
@@ -127,12 +128,14 @@ function WeatherOptions() {
     w.source === "auto" && place
       ? place.source === "gps"
         ? "已使用系统定位"
-        : `${place.note ? `${place.note}，` : ""}已改用网络大致位置。可在 系统设置 > 隐私与安全性 > 定位服务 中允许 LightPlayer`
+        : isWindows
+          ? "已使用网络大致位置，不准确时可以指定城市"
+          : `${place.note ? `${place.note}，` : ""}已改用网络大致位置。可在 系统设置 > 隐私与安全性 > 定位服务 中允许 LightPlayer`
       : null;
   return (
     <>
       <h3>天气</h3>
-      <Row label="位置" hint={w.source === "city" ? (w.city ? `已选择：${w.city.name}` : "请搜索并选择一个城市") : autoNote ?? "使用系统定位服务；无法定位时改用网络大致位置"}>
+      <Row label="位置" hint={w.source === "city" ? (w.city ? `已选择：${w.city.name}` : "请搜索并选择一个城市") : autoNote ?? (isWindows ? "使用网络大致位置" : "使用系统定位服务；无法定位时改用网络大致位置")}>
         <Seg value={w.source} options={[["auto", "自动定位"], ["city", "指定城市"]]} onChange={(source) => setWeather({ source })} />
       </Row>
       {w.source === "city" && (
@@ -242,12 +245,13 @@ function Appearance() {
   );
 }
 
-/** "Open with LightPlayer by default" for audio and video (macOS). */
+/** "Open with LightPlayer by default" for audio and video (macOS; Windows only links to its settings). */
 function DefaultPlayer() {
   const [st, setSt] = useState<FileAssociations | null>(null);
   const [busy, setBusy] = useState(false);
   const refresh = () => void api.fileAssociations().then((r) => setSt(r ?? null), () => setSt(null));
   useEffect(refresh, []);
+  if (isWindows && isTauri) return <WindowsDefaultApps />;
   if (!st?.supported) return null;
   const count = (k: FileAssociations["audio"]) => `${k.ours.length}/${k.ours.length + k.others.length}`;
   const done = !st.audio.others.length && !st.video.others.length;
@@ -273,6 +277,31 @@ function DefaultPlayer() {
       >
         <button className="btn" disabled={busy} onClick={() => void apply()}>
           {busy ? "正在设置…" : done ? "重新设置" : "一键设置"}
+        </button>
+      </Row>
+    </>
+  );
+}
+
+/** Windows lets only the user pick default apps, in its own settings. */
+function WindowsDefaultApps() {
+  const open = async () => {
+    try {
+      const { openUrl } = await import("@tauri-apps/plugin-opener");
+      await openUrl("ms-settings:defaultapps");
+    } catch (e) {
+      toast(`无法打开系统设置：${String(e)}`, "error");
+    }
+  };
+  return (
+    <>
+      <h3>文件关联</h3>
+      <Row
+        label="设为默认播放器"
+        hint="Windows 只允许在系统设置中更改默认应用：在“默认应用”中搜索 LightPlayer，或在文件上右键选择“打开方式 > 选择其他应用”并勾选“始终使用此应用”"
+      >
+        <button className="btn" onClick={() => void open()}>
+          打开系统设置
         </button>
       </Row>
     </>
@@ -310,21 +339,27 @@ function Playback() {
         </button>
       </Row>
       <DefaultPlayer />
-      <h3>后台与菜单栏</h3>
-      <Row label="关闭窗口后继续在后台播放" hint="点窗口左上角的红色按钮只会隐藏窗口；用顶部菜单栏图标或程序坞可以重新打开，从菜单栏图标选择“退出”才会完全退出">
+      <h3>{isWindows ? "后台与通知区域" : "后台与菜单栏"}</h3>
+      <Row label="关闭窗口后继续在后台播放" hint={
+          isWindows
+            ? "点窗口右上角的关闭按钮只会隐藏窗口；单击任务栏右侧通知区域中的 LightPlayer 图标可以重新打开，右键图标选择“退出”才会完全退出"
+            : "点窗口左上角的红色按钮只会隐藏窗口；用顶部菜单栏图标或程序坞可以重新打开，从菜单栏图标选择“退出”才会完全退出"
+        }>
         <Switch on={s.runInBackground} onChange={(runInBackground) => s.set({ runInBackground })} />
       </Row>
       <Row label="关闭窗口后视频也继续播放" hint="默认关闭窗口时暂停视频，音乐照常在后台播放">
         <Switch on={s.videoInBackground} onChange={(videoInBackground) => s.set({ videoInBackground })} />
       </Row>
-      <Row label="在菜单栏图标旁显示歌名">
-        <Switch on={s.trayShowTitle} onChange={(trayShowTitle) => s.set({ trayShowTitle })} />
-      </Row>
+      {!isWindows && (
+        <Row label="在菜单栏图标旁显示歌名">
+          <Switch on={s.trayShowTitle} onChange={(trayShowTitle) => s.set({ trayShowTitle })} />
+        </Row>
+      )}
 
       <h3>隐私</h3>
       <Row
         label="无痕浏览模式"
-        hint="开启后，打开的文件不会出现在最近播放中，不记录播放次数和播放位置，也不会自动加入媒体库。也可以按 ⇧⌘N 或在菜单栏图标中切换"
+        hint={`开启后，打开的文件不会出现在最近播放中，不记录播放次数和播放位置，也不会自动加入媒体库。也可以按 ${keys("⇧⌘N")} 或在${TRAY}中切换`}
       >
         <Switch on={s.privateMode} onChange={(on) => C.setPrivateMode(on)} />
       </Row>
@@ -448,7 +483,7 @@ function Shortcuts() {
     <div className="kbd-list">
       {SHORTCUTS.map(([k, d]) => (
         <div key={k} style={{ display: "contents" }}>
-          <kbd>{k}</kbd>
+          <kbd>{keys(k)}</kbd>
           <span>{d}</span>
         </div>
       ))}

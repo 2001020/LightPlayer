@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------- tokens */
 :root {
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Helvetica Neue",
-    "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --radius-s: 8px;
   --radius: 12px;
@@ -3895,4 +3895,46 @@ html.desktop-lyrics #root {
   content: "";
   flex: 1;
   border-top: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------- Windows */
+/* No traffic lights on the left; minimize / maximize / close on the right. */
+:root[data-platform="windows"] .titlebar {
+  padding: 0 0 0 16px;
+}
+.win-controls {
+  display: flex;
+  align-self: stretch;
+  margin-left: 4px;
+  -webkit-app-region: no-drag;
+}
+.win-btn {
+  width: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: default;
+}
+.win-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.win-btn:hover {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+.win-btn:active {
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+}
+.win-btn.close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+.win-btn.close:active {
+  background: #b22a1b;
+  color: #fff;
 }

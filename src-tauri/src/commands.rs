@@ -606,9 +606,11 @@ pub fn now_playing_metadata(
 ) {
     let cover_url = cover.and_then(|c| {
         use base64::Engine;
-        let (_, b64) = c.split_once("base64,")?;
+        let (head, b64) = c.split_once("base64,")?;
         let bytes = base64::engine::general_purpose::STANDARD.decode(b64).ok()?;
-        let p = state.cache_dir.join(format!("nowplaying-{}.img", rand::random::<u32>()));
+        // Windows loads the artwork by its file type.
+        let ext = if head.contains("image/png") { "png" } else { "jpg" };
+        let p = state.cache_dir.join(format!("nowplaying-{}.{ext}", rand::random::<u32>()));
         // Remove stale artwork files.
         if let Ok(rd) = std::fs::read_dir(&state.cache_dir) {
             for e in rd.flatten() {
@@ -662,7 +664,7 @@ pub async fn weather_search(query: String) -> AppResult<Vec<crate::weather::City
 
 #[tauri::command]
 pub fn ffmpeg_available() -> bool {
-    std::process::Command::new(&tools().ffprobe).arg("-version").output().map(|o| o.status.success()).unwrap_or(false)
+    crate::tools::std_command(&tools().ffprobe).arg("-version").output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 // ---------------------------------------------------------------- media library

@@ -7,6 +7,7 @@ import { useSettings } from "../stores/settings";
 import { openMenu } from "./ContextMenu";
 import { Icon } from "./Icon";
 import { tip } from "./Tooltip";
+import { FILE_MANAGER } from "../lib/platform";
 
 /** Below these widths the list floats over the page instead of taking a column. */
 const SIDE_MIN = { player: 900, lyrics: 1180 } as const;
@@ -129,7 +130,7 @@ export function PlaylistPanel({ floating = false }: { floating?: boolean }) {
         disabled: i === index || i === index + 1,
         onClick: () => C.moveQueueItem(i, i < index ? index : index + 1),
       },
-      { label: "在访达中显示", icon: "reveal", disabled: !isTauri || isCloudPath(it.path), onClick: () => void reveal(it.path) },
+      { label: `在${FILE_MANAGER}中显示`, icon: "reveal", disabled: !isTauri || isCloudPath(it.path), onClick: () => void reveal(it.path) },
       { label: "从播放列表移除", icon: "minus", danger: true, disabled: items.length <= 1, onClick: () => void C.removeQueueItem(i) },
     ]);
   };

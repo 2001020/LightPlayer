@@ -300,7 +300,7 @@ mod tests {
     use crate::media::transcode::HlsMode;
 
     fn ffmpeg(args: &[&str]) -> bool {
-        std::process::Command::new(&tools().ffmpeg)
+        crate::tools::std_command(&tools().ffmpeg)
             .args(["-hide_banner", "-loglevel", "error", "-y"])
             .args(args)
             .status()

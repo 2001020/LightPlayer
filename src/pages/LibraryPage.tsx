@@ -23,6 +23,7 @@ import { useLibrary, type LibraryNav } from "../stores/library";
 import { loadNeteaseList, refreshNetease, searchNetease, useNetease } from "../stores/netease";
 import { usePlayer, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
+import { TRASH } from "../lib/platform";
 
 const NAV: { view: "songs" | "albums" | "artists" | "videos" | "favorites" | "recent"; label: string; icon: IconName }[] = [
   { view: "songs", label: "歌曲", icon: "music" },
@@ -414,7 +415,7 @@ function AlbumDetail({ album, from }: { album: Album | undefined; from: "albums"
             <button className="btn" onClick={() => shuffleTracks(album.tracks, source)}>
               <Icon name="shuffle" size={15} /> 随机播放
             </button>
-            <button className="icon-btn" onClick={(e) => openAlbumMenu(e, album, () => {})} {...tip("更多：移除专辑、移到废纸篓等")}>
+            <button className="icon-btn" onClick={(e) => openAlbumMenu(e, album, () => {})} {...tip(`更多：移除专辑、移到${TRASH}等`)}>
               <Icon name="more" />
             </button>
           </div>

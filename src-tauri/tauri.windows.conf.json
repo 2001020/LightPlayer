@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "LightPlayer",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 720,
+        "minHeight": 520,
+        "decorations": false,
+        "shadow": true,
+        "dragDropEnabled": true,
+        "backgroundThrottling": "disabled"
+      }
+    ]
+  },
+  "bundle": {
+    "externalBin": ["binaries/ffmpeg", "binaries/ffprobe"],
+    "fileAssociations": [
+      {
+        "ext": ["mp3", "flac", "wav", "m4a", "aac", "ogg", "opus", "ape", "wma", "aiff", "aif", "alac", "wv", "dsf", "dff", "tta", "mka"],
+        "name": "Audio",
+        "description": "Audio",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["mp4", "m4v", "mov", "mkv", "avi", "webm", "flv", "wmv", "m2ts", "mpg", "mpeg", "3gp", "rmvb", "rm", "vob", "ogv"],
+        "name": "Video",
+        "description": "Video",
+        "role": "Viewer"
+      }
+    ],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["SimpChinese"],
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}

@@ -16,6 +16,7 @@ import { Tooltips, tip } from "./components/Tooltip";
 import { TransportBar } from "./components/TransportBar";
 import { VideoInfoDialog } from "./components/VideoInfoDialog";
 import { WeatherChip } from "./components/WeatherChip";
+import { WindowControls } from "./components/WindowControls";
 import { Background, useFullscreenSync, useIdle, useKeyboard, useTheme } from "./hooks";
 import { LibraryPage } from "./pages/LibraryPage";
 import { LyricsPage } from "./pages/LyricsPage";
@@ -100,6 +101,7 @@ export default function App() {
         <button className="icon-btn" onClick={() => useUI.setState({ overlay: "settings" })} {...tip("设置", "⌘,")}>
           <Icon name="settings" />
         </button>
+        <WindowControls />
       </header>
       <main className="main">
         {showLyrics ? (

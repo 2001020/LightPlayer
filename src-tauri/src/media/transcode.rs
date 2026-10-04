@@ -310,11 +310,11 @@ mod tests {
     use crate::media::router::{decide, Caps, Strategy};
 
     fn ffmpeg_ok() -> bool {
-        std::process::Command::new(&tools().ffmpeg).arg("-version").output().is_ok()
+        crate::tools::std_command(&tools().ffmpeg).arg("-version").output().is_ok()
     }
 
     fn gen(args: &[&str], out: &Path) {
-        let st = std::process::Command::new(&tools().ffmpeg)
+        let st = crate::tools::std_command(&tools().ffmpeg)
             .args(["-hide_banner", "-loglevel", "error", "-y"])
             .args(args)
             .arg(out)

@@ -1,5 +1,5 @@
-//! System media controls: macOS Now Playing / media keys (and Windows SMTC in
-//! the future) via souvlaki. Events are forwarded to the WebView as
+//! System media controls: macOS Now Playing / media keys and the Windows
+//! media overlay (SMTC) via souvlaki. Events are forwarded to the WebView as
 //! `media-control` events.
 
 use serde::Serialize;
@@ -22,13 +22,25 @@ mod imp {
 
     pub struct NowPlaying(Mutex<Option<MediaControls>>);
 
-    // MediaControls on macOS is a unit struct wrapping global MPRemoteCommandCenter state.
+    // MediaControls on macOS is a unit struct wrapping global MPRemoteCommandCenter
+    // state; on Windows it wraps the SMTC of the main window.
     unsafe impl Send for NowPlaying {}
     unsafe impl Sync for NowPlaying {}
 
     impl NowPlaying {
         pub fn new(app: &AppHandle) -> Self {
-            let config = PlatformConfig { display_name: "LightPlayer", dbus_name: "lightplayer", hwnd: None };
+            // Windows ties the media controls to a window.
+            #[cfg(target_os = "windows")]
+            let hwnd = {
+                use tauri::Manager;
+                match app.get_webview_window("main").map(|w| w.hwnd()) {
+                    Some(Ok(h)) => Some(h.0),
+                    _ => return NowPlaying(Mutex::new(None)),
+                }
+            };
+            #[cfg(not(target_os = "windows"))]
+            let hwnd = None;
+            let config = PlatformConfig { display_name: "LightPlayer", dbus_name: "lightplayer", hwnd };
             let controls = MediaControls::new(config).ok().and_then(|mut c| {
                 let app = app.clone();
                 c.attach(move |e| {
