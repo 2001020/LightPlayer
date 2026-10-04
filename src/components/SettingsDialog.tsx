@@ -371,7 +371,7 @@ function NeteaseSettings() {
               </button>
             ) : (
               <button className="btn primary" onClick={() => useUI.setState({ overlay: "neteaseLogin" })}>
-                扫码登录
+                登录
               </button>
             )}
           </Row>

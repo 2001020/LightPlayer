@@ -25,6 +25,7 @@ pub const PREFIX: &str = "netease:";
 
 const BASE: &str = "https://music.163.com";
 const UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const PC_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/3.0.18.203152";
 
 // ------------------------------------------------------------------ weapi
 
@@ -49,6 +50,19 @@ pub fn weapi(json: &str, secret: &[u8; 16]) -> (String, String) {
     let n = BigUint::parse_bytes(MODULUS.as_bytes(), 16).expect("modulus");
     let c = BigUint::from_bytes_be(&rev).modpow(&BigUint::from(0x10001u32), &n);
     (params, format!("{:0>256}", c.to_str_radix(16)))
+}
+
+const EAPI_KEY: &[u8; 16] = b"e82ckenh8dichen8";
+
+/// `params` for an eapi request (the desktop client's protocol): `path` is
+/// the `/api/...` path, `json` the request body.
+pub fn eapi(path: &str, json: &str) -> String {
+    use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyInit};
+    use md5::{Digest, Md5};
+    let digest = hex::encode(Md5::digest(format!("nobody{path}use{json}md5forencrypt").as_bytes()));
+    let data = format!("{path}-36cd479b6b5-{json}-36cd479b6b5-{digest}");
+    let ct = ecb::Encryptor::<aes::Aes128>::new(EAPI_KEY.into()).encrypt_padded_vec_mut::<Pkcs7>(data.as_bytes());
+    hex::encode_upper(ct)
 }
 
 fn random_secret() -> [u8; 16] {
@@ -120,6 +134,39 @@ pub struct Stream {
     pub url: String,
     /// Only a preview clip (VIP song on a non-VIP account).
     pub trial: bool,
+    /// Why only a preview, for the user.
+    pub notice: Option<String>,
+}
+
+/// One entry of a song/enhance/player/url answer.
+fn stream_entry(v: &Value) -> Option<(String, bool)> {
+    if v["code"].as_i64() != Some(200) {
+        return None;
+    }
+    let d = &v["data"][0];
+    https(d["url"].as_str()).map(|u| (u, d["freeTrialInfo"].is_object()))
+}
+
+/// Why NetEase gave no (full) stream, from its answer and the account.
+pub fn explain(d: &Value, signed_in: bool, vip: Option<bool>) -> String {
+    let code = d["code"].as_i64().unwrap_or(0);
+    let fee = d["fee"].as_i64().unwrap_or(-1);
+    let why = if !signed_in {
+        "需要登录网易云音乐才能播放这首歌".to_string()
+    } else if fee == 4 {
+        "这首歌属于付费专辑，需要在网易云音乐单独购买".to_string()
+    } else if fee == 1 && vip == Some(false) {
+        "这首歌需要网易云音乐会员，当前账号不是会员".to_string()
+    } else if fee == 1 && vip == Some(true) {
+        "账号是会员，但网易云音乐没有给出完整的播放地址（可能是地区版权限制或风控）".to_string()
+    } else if fee == 1 {
+        "这首歌需要网易云音乐会员".to_string()
+    } else if code == 404 || code == -110 {
+        "网易云音乐暂无这首歌的版权，或在当前网络所在的地区不能播放".to_string()
+    } else {
+        "这首歌暂时无法播放".to_string()
+    };
+    format!("{why}（网易云返回 code={code}，fee={fee}）")
 }
 
 fn s(v: &Value) -> String {
@@ -194,6 +241,8 @@ pub struct Netease {
     http: reqwest::Client,
     file: PathBuf,
     session: Mutex<Session>,
+    /// VIP state of the signed-in account, once known.
+    vip: Mutex<Option<bool>>,
     /// Songs seen in lists, for playing them without another lookup.
     songs: Mutex<HashMap<u64, Song>>,
 }
@@ -211,7 +260,7 @@ impl Netease {
             .user_agent(UA)
             .build()
             .expect("http client");
-        Netease { http, file, session: Mutex::new(session), songs: Mutex::new(HashMap::new()) }
+        Netease { http, file, session: Mutex::new(session), vip: Mutex::new(None), songs: Mutex::new(HashMap::new()) }
     }
 
     pub fn signed_in(&self) -> bool {
@@ -286,6 +335,49 @@ impl Netease {
         serde_json::from_slice(&body).map_err(|_| AppError::msg(format!("网易云音乐返回了无法识别的内容（HTTP {status}）")))
     }
 
+    /// A request the way the desktop client makes it (eapi). Used for stream
+    /// URLs, where it is more reliable for VIP songs and higher qualities.
+    async fn call_eapi(&self, path: &str, mut data: Value) -> AppResult<Value> {
+        let header = {
+            let s = self.session.lock().unwrap();
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+            let mut h = BTreeMap::new();
+            h.insert("osver", "Microsoft-Windows-10-Professional-build-22631-64bit".to_string());
+            h.insert("deviceId", s.device.clone());
+            h.insert("os", "pc".to_string());
+            h.insert("appver", "3.0.18.203152".to_string());
+            h.insert("versioncode", "140".to_string());
+            h.insert("mobilename", String::new());
+            h.insert("buildver", now.as_secs().to_string());
+            h.insert("resolution", "1920x1080".to_string());
+            h.insert("__csrf", s.cookies.get("__csrf").cloned().unwrap_or_default());
+            h.insert("channel", "netease".to_string());
+            h.insert("requestId", format!("{}_{:04}", now.as_millis(), rand::random::<u16>() % 1000));
+            if let Some(u) = s.cookies.get("MUSIC_U") {
+                h.insert("MUSIC_U", u.clone());
+            }
+            h
+        };
+        let cookie = header
+            .iter()
+            .map(|(k, v)| format!("{}={}", crate::server::urlencode(k), crate::server::urlencode(v)))
+            .collect::<Vec<_>>()
+            .join("; ");
+        data["header"] = serde_json::to_value(&header)?;
+        let params = eapi(path, &data.to_string());
+        let resp = self
+            .http
+            .post(format!("https://interface.music.163.com/eapi/{}", path.trim_start_matches("/api/")))
+            .header("User-Agent", PC_UA)
+            .header("Cookie", cookie)
+            .form(&[("params", params)])
+            .send()
+            .await?;
+        let status = resp.status();
+        let body = resp.bytes().await?;
+        serde_json::from_slice(&body).map_err(|_| AppError::msg(format!("网易云音乐电脑端接口返回了无法识别的内容（HTTP {status}）")))
+    }
+
     fn remember(&self, songs: &[Song]) {
         let mut map = self.songs.lock().unwrap();
         for s in songs {
@@ -357,16 +449,14 @@ impl Netease {
         let v = ok(self.call("nuser/account/get", json!({})).await?)?;
         let p = &v["profile"];
         let Some(id) = p["userId"].as_u64() else { return Ok(None) };
-        Ok(Some(Account {
-            id,
-            nickname: s(&p["nickname"]),
-            avatar: https(p["avatarUrl"].as_str()),
-            vip: v["account"]["vipType"].as_i64().unwrap_or(0) > 0,
-        }))
+        let vip = v["account"]["vipType"].as_i64().unwrap_or(0) > 0 || p["vipType"].as_i64().unwrap_or(0) > 0;
+        *self.vip.lock().unwrap() = Some(vip);
+        Ok(Some(Account { id, nickname: s(&p["nickname"]), avatar: https(p["avatarUrl"].as_str()), vip }))
     }
 
     pub fn logout(&self) {
         self.session.lock().unwrap().cookies.clear();
+        *self.vip.lock().unwrap() = None;
         self.save();
     }
 
@@ -442,17 +532,37 @@ impl Netease {
         self.song_details(&[id]).await?.into_iter().next().ok_or_else(|| AppError::msg("找不到这首歌"))
     }
 
-    /// `level`: standard / higher / exhigh / lossless / hires.
+    /// `level`: standard / higher / exhigh / lossless / hires. Asks the
+    /// desktop client's endpoint first and the web one if that gives no full
+    /// song; a preview clip is the last resort.
     pub async fn stream(&self, id: u64, level: &str) -> AppResult<Stream> {
-        let v = ok(self
-            .call("song/enhance/player/url/v1", json!({ "ids": format!("[{id}]"), "level": level, "encodeType": "flac" }))
-            .await?)?;
-        let d = &v["data"][0];
-        match https(d["url"].as_str()) {
-            Some(url) => Ok(Stream { url, trial: d["freeTrialInfo"].is_object() }),
-            None if !self.signed_in() => Err(AppError::msg("需要登录网易云音乐才能播放这首歌")),
-            None => Err(AppError::msg("这首歌暂时无法播放（可能需要会员、需要购买或已下架）")),
+        let data = json!({ "ids": format!("[{id}]"), "level": level, "encodeType": "flac" });
+        let pc = self.call_eapi("/api/song/enhance/player/url/v1", data.clone()).await;
+        let pc_entry = pc.as_ref().ok().and_then(stream_entry);
+        if let Some((url, false)) = &pc_entry {
+            return Ok(Stream { url: url.clone(), trial: false, notice: None });
         }
+        let web = self.call("song/enhance/player/url/v1", data).await;
+        let web_entry = web.as_ref().ok().and_then(stream_entry);
+        if let Some((url, false)) = &web_entry {
+            return Ok(Stream { url: url.clone(), trial: false, notice: None });
+        }
+        let answer = pc.as_ref().ok().filter(|v| v["code"].as_i64() == Some(200)).or(web.as_ref().ok()).map(|v| v["data"][0].clone()).unwrap_or(Value::Null);
+        let vip = *self.vip.lock().unwrap();
+        if let Some((url, _)) = pc_entry.or(web_entry) {
+            let why = explain(&answer, self.signed_in(), vip);
+            return Ok(Stream { url, trial: true, notice: Some(format!("只能试听片段：{why}")) });
+        }
+        // Neither gave anything: say why, including a failed request.
+        let mut msg = explain(&answer, self.signed_in(), vip);
+        for (name, r) in [("电脑端接口", &pc), ("网页接口", &web)] {
+            match r {
+                Err(e) => msg.push_str(&format!("；{name}：{e}")),
+                Ok(v) if v["code"].as_i64() != Some(200) => msg.push_str(&format!("；{name}：{}", api_error(v))),
+                _ => {}
+            }
+        }
+        Err(AppError::msg(msg))
     }
 
     /// LRC with the translation lines (same timestamps) appended.
@@ -503,6 +613,23 @@ mod tests {
         assert_eq!(params, include_str!("../tests/netease_params.txt").trim());
         assert_eq!(key, include_str!("../tests/netease_enckey.txt").trim());
         assert_eq!(key.len(), 256);
+    }
+
+    #[test]
+    fn eapi_matches_reference() {
+        let p = eapi("/api/song/enhance/player/url/v1", r#"{"ids":"[1]","level":"exhigh"}"#);
+        assert_eq!(p, include_str!("../tests/netease_eapi.txt").trim());
+    }
+
+    #[test]
+    fn explains_missing_streams() {
+        let d = |code: i64, fee: i64| json!({ "code": code, "fee": fee });
+        assert!(explain(&d(200, 4), true, Some(true)).contains("付费专辑"));
+        assert!(explain(&d(200, 1), true, Some(false)).contains("不是会员"));
+        assert!(explain(&d(200, 1), true, Some(true)).contains("账号是会员"));
+        assert!(explain(&d(404, 0), true, None).contains("版权"));
+        assert!(explain(&d(200, 1), false, None).contains("登录"));
+        assert!(explain(&d(404, 8), true, None).ends_with("（网易云返回 code=404，fee=8）"));
     }
 
     #[test]

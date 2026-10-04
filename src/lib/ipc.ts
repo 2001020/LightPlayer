@@ -481,6 +481,7 @@ let mockAssoc = false;
 
 // Browser preview of the NetEase section: a pretend account and lists.
 let mockNetease = false;
+let mockWebCancelled = false;
 let mockQrPolls = 0;
 const mockSongs = (seed: string, n: number): NeteaseSong[] =>
   Array.from({ length: n }, (_, i) => ({
@@ -586,6 +587,17 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       if (code === 803) mockNetease = true;
       return { code, message: "" } as T;
     }
+    case "netease_web_login":
+      await new Promise((r) => setTimeout(r, 1500));
+      if (mockWebCancelled) {
+        mockWebCancelled = false;
+        return null as T;
+      }
+      mockNetease = true;
+      return { id: 1, nickname: "预览用户", avatar: null, vip: true } as T;
+    case "netease_web_login_cancel":
+      mockWebCancelled = true;
+      return undefined as T;
     case "netease_login_cookie":
       mockNetease = true;
       return { id: 1, nickname: "预览用户", avatar: null, vip: false } as T;
@@ -663,6 +675,9 @@ export const api = {
   neteaseQrStart: () => call<NeteaseQr>("netease_qr_start"),
   neteaseQrCheck: (key: string) => call<NeteaseQrState>("netease_qr_check", { key }),
   neteaseLoginCookie: (cookie: string) => call<NeteaseAccount>("netease_login_cookie", { cookie }),
+  /** Resolves once signed in on the web page, or null when its window was closed. */
+  neteaseWebLogin: () => call<NeteaseAccount | null>("netease_web_login"),
+  neteaseWebLoginCancel: () => call<void>("netease_web_login_cancel"),
   neteaseLogout: () => call<void>("netease_logout"),
   neteasePlaylists: () => call<NeteasePlaylist[]>("netease_playlists"),
   neteasePlaylist: (id: number) => call<NeteaseSong[]>("netease_playlist", { id }),

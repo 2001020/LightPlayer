@@ -160,6 +160,8 @@ pub fn run() {
             commands::netease_qr_start,
             commands::netease_qr_check,
             commands::netease_login_cookie,
+            commands::netease_web_login,
+            commands::netease_web_login_cancel,
             commands::netease_logout,
             commands::netease_playlists,
             commands::netease_playlist,

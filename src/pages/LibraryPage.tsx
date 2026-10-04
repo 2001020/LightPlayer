@@ -166,7 +166,7 @@ function NeteaseSidebar() {
           <div className="lib-hint">
             登录后可以播放你的歌单和每日推荐。
             <button className="link" onClick={() => useUI.setState({ overlay: "neteaseLogin" })}>
-              扫码登录
+              登录
             </button>
           </div>
         )}
@@ -500,7 +500,7 @@ function NeteaseView({ list }: { list: string }) {
         text="登录后可以播放你的歌单、我喜欢的音乐和每日推荐"
         action={
           <button className="btn primary" onClick={() => useUI.setState({ overlay: "neteaseLogin" })}>
-            扫码登录
+            登录
           </button>
         }
       />

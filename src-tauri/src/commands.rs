@@ -874,7 +874,7 @@ async fn open_netease(state: &AppState, path: String, id: u64, quality: &str) ->
             embedded_lyrics: None,
         }),
         subtitles: vec![],
-        notice: stream.trial.then(|| "这首歌需要网易云音乐会员，只能试听片段".to_string()),
+        notice: stream.notice,
         path,
     })
 }
@@ -903,6 +903,66 @@ pub async fn netease_qr_check(state: State<'_, AppState>, key: String) -> AppRes
 #[tauri::command]
 pub async fn netease_login_cookie(state: State<'_, AppState>, cookie: String) -> AppResult<netease::Account> {
     state.netease.set_cookie(&cookie).await
+}
+
+const NETEASE_LOGIN_WINDOW: &str = "netease-login";
+
+/// Opens music.163.com in its own window (no access to the app) and waits
+/// until the user has signed in there, then takes over the sign-in cookies.
+/// `None` when the window was closed first.
+#[tauri::command]
+pub async fn netease_web_login(app: AppHandle, state: State<'_, AppState>) -> AppResult<Option<netease::Account>> {
+    web_login(&app, &state.netease, "https://music.163.com/".parse().unwrap()).await
+}
+
+pub async fn web_login(app: &AppHandle, ne: &netease::Netease, url: tauri::Url) -> AppResult<Option<netease::Account>> {
+    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+    if let Some(old) = app.get_webview_window(NETEASE_LOGIN_WINDOW) {
+        let _ = old.close();
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    }
+    WebviewWindowBuilder::new(app, NETEASE_LOGIN_WINDOW, WebviewUrl::External(url.clone()))
+        .title("登录网易云音乐（点右上角“登录”，登录成功后这个窗口会自动关闭）")
+        .inner_size(1060.0, 740.0)
+        .min_inner_size(720.0, 520.0)
+        .center()
+        // A plain Safari, so the site serves its normal page.
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15")
+        // Its own throwaway cookie store: nothing stays behind in the app's web data.
+        .incognito(true)
+        .build()
+        .map_err(|e| AppError::msg(format!("无法打开登录窗口：{e}")))?;
+    let started = std::time::Instant::now();
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let Some(w) = app.get_webview_window(NETEASE_LOGIN_WINDOW) else { return Ok(None) };
+        if started.elapsed() > std::time::Duration::from_secs(15 * 60) {
+            let _ = w.close();
+            return Ok(None);
+        }
+        let Ok(cookies) = w.cookies_for_url(url.clone()) else { continue };
+        if !cookies.iter().any(|c| c.name() == "MUSIC_U" && !c.value().is_empty()) {
+            continue;
+        }
+        let text = cookies
+            .iter()
+            .filter(|c| matches!(c.name(), "MUSIC_U" | "__csrf" | "NMTID" | "MUSIC_A_T" | "MUSIC_R_T"))
+            .map(|c| format!("{}={}", c.name(), c.value()))
+            .collect::<Vec<_>>()
+            .join("; ");
+        let account = ne.set_cookie(&text).await;
+        let _ = w.close();
+        return account.map(Some);
+    }
+}
+
+/// Closes the web sign-in window (the login dialog was closed).
+#[tauri::command]
+pub fn netease_web_login_cancel(app: AppHandle) {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window(NETEASE_LOGIN_WINDOW) {
+        let _ = w.close();
+    }
 }
 
 #[tauri::command]
