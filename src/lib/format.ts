@@ -36,3 +36,23 @@ export function stem(p: string): string {
   const i = b.lastIndexOf(".");
   return i > 0 ? b.slice(0, i) : b;
 }
+
+/** A count the way NetEase shows it: 9999, 1.2万, 3.4亿. */
+export function formatCount(n: number): string {
+  const short = (v: number, unit: string) => `${v >= 100 ? Math.floor(v) : Math.floor(v * 10) / 10}${unit}`;
+  if (n < 10000) return String(n);
+  if (n < 1e8) return short(n / 1e4, "万");
+  return short(n / 1e8, "亿");
+}
+
+/** A comment's time: "14:05" today, "昨天 14:05", "3月8日" this year, else "2021年3月8日". */
+export function formatCommentTime(ms: number, now: Date = new Date()): string {
+  const d = new Date(ms);
+  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 86400000);
+  if (diff === 0) return hm;
+  if (diff === 1) return `昨天 ${hm}`;
+  const md = `${d.getMonth() + 1}月${d.getDate()}日`;
+  return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()}年${md}`;
+}

@@ -105,6 +105,8 @@ export interface UIState {
   settingsTab: "appearance" | "playback" | "lyrics" | "asr" | "netease" | "shortcuts" | "about";
   /** The floating play queue (narrow windows). */
   playlistFloat: boolean;
+  /** The NetEase comments panel. */
+  commentsOpen: boolean;
   fullscreen: boolean;
   toasts: Toast[];
   dragOver: boolean;
@@ -117,6 +119,7 @@ export const useUI = create<UIState>(() => ({
   overlay: null,
   settingsTab: "appearance",
   playlistFloat: false,
+  commentsOpen: false,
   fullscreen: false,
   toasts: [],
   dragOver: false,

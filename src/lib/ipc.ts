@@ -237,6 +237,30 @@ export interface NeteaseQrState {
   message: string;
 }
 
+export interface NeteaseComment {
+  id: number;
+  user: { id: number; nickname: string; avatar?: string | null };
+  content: string;
+  /** Milliseconds since the epoch. */
+  time: number;
+  likedCount: number;
+  /** "IP 属地". */
+  location?: string | null;
+  /** The comment this one answers; content null when it was deleted. */
+  replied?: { nickname: string; content?: string | null } | null;
+  replyCount: number;
+}
+
+export interface NeteaseCommentPage {
+  comments: NeteaseComment[];
+  /** Hot comments: only on the first page of the newest ones. */
+  hot: NeteaseComment[];
+  moreHot: boolean;
+  total: number;
+  hasMore: boolean;
+  cursor?: number | null;
+}
+
 export interface LibraryFolder {
   path: string;
   addedAt: number;
@@ -506,6 +530,33 @@ const mockSongs = (seed: string, n: number): NeteaseSong[] =>
     vip: i % 4 === 1,
     unavailable: i % 9 === 7,
   }));
+/** Pretend comments for the browser preview. */
+const MOCK_TEXTS = [
+  "第一次听就单曲循环了一整晚",
+  "副歌一出来眼泪就下来了[大哭]",
+  "十年前听不懂，现在听懂了\n可是已经回不去了",
+  "有没有人和我一样是从短视频过来的",
+  "前奏太好听了",
+  "这首歌陪我度过了高三",
+];
+const MOCK_NAMES = ["听歌的人", "夏天的风", "路人甲", "月亮不睡我不睡", "云村村民", "一只猫"];
+const MOCK_PLACES = ["广东", "上海", "北京", "四川", "浙江", null];
+function mockComments(seed: number, n: number, likes: number, time: number): NeteaseComment[] {
+  return Array.from({ length: n }, (_, i) => {
+    const k = seed + i;
+    return {
+      id: k,
+      user: { id: k, nickname: MOCK_NAMES[k % MOCK_NAMES.length], avatar: mockCover(k) },
+      content: MOCK_TEXTS[k % MOCK_TEXTS.length],
+      time: time - i * 3600_000 * (1 + (k % 5)),
+      likedCount: Math.max(0, Math.floor(likes / (i + 1))),
+      location: MOCK_PLACES[k % MOCK_PLACES.length],
+      replied: k % 4 === 3 ? { nickname: MOCK_NAMES[(k + 1) % MOCK_NAMES.length], content: k % 8 === 7 ? null : "原评论内容" } : null,
+      replyCount: likes > 0 && i % 3 === 0 ? 3 + (k % 40) : 0,
+    };
+  });
+}
+
 const mockQrSvg = () => {
   let cells = "";
   for (let y = 0; y < 25; y++)
@@ -684,6 +735,29 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       return mockSongs("推荐", 30) as T;
     case "netease_search":
       return mockSongs(String(args.query ?? ""), 20) as T;
+    case "netease_comments": {
+      await new Promise((r) => setTimeout(r, 300));
+      const offset = Number(args.offset ?? 0);
+      if (args.hot) {
+        const n = Math.max(0, Math.min(20, 45 - offset));
+        return { comments: mockComments(1000 + offset, n, 50000 / (offset + 1), Date.now() - 400 * 86400_000), hot: [], moreHot: false, total: 45, hasMore: offset + n < 45, cursor: null } as T;
+      }
+      const start = Number(args.before ?? Date.now());
+      const page = mockComments(5000 + offset, 20, 30, start - 60_000);
+      return {
+        comments: page,
+        hot: offset === 0 ? mockComments(1000, 15, 98765, Date.now() - 400 * 86400_000) : [],
+        moreHot: true,
+        total: 12345,
+        hasMore: offset < 80,
+        cursor: page[page.length - 1].time,
+      } as T;
+    }
+    case "netease_comment_replies": {
+      await new Promise((r) => setTimeout(r, 300));
+      const seed = Number(args.parent) * 10 + (args.time ? 5 : 0);
+      return { comments: mockComments(seed, 5, 3, Number(args.time ?? Date.now())), hot: [], moreHot: false, total: 10, hasMore: !args.time, cursor: Date.now() - 86400_000 } as T;
+    }
     case "server_base":
       return "" as T;
     case "ffmpeg_available":
@@ -751,6 +825,10 @@ export const api = {
   neteasePlaylist: (id: number) => call<NeteaseSong[]>("netease_playlist", { id }),
   neteaseDaily: () => call<NeteaseSong[]>("netease_daily"),
   neteaseSearch: (query: string) => call<NeteaseSong[]>("netease_search", { query }),
+  neteaseComments: (id: number, hot: boolean, offset: number, before?: number | null) =>
+    call<NeteaseCommentPage>("netease_comments", { id, hot, offset, before: before ?? null }),
+  neteaseCommentReplies: (id: number, parent: number, time?: number | null) =>
+    call<NeteaseCommentPage>("netease_comment_replies", { id, parent, time: time ?? null }),
   cacheSize: () => call<number>("cache_size"),
   /** Deletes the cache files except those behind `keep` (URLs in use); returns the bytes freed. */
   cacheClear: (keep: string[]) => call<number>("cache_clear", { keep }),

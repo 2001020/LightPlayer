@@ -8,6 +8,7 @@ import { useLibrary } from "../stores/library";
 import { Icon, SkipIcon, type IconName } from "./Icon";
 import { Popover } from "./Popover";
 import { togglePlaylist, usePlaylistShown } from "./PlaylistPanel";
+import { toggleComments } from "./CommentsPanel";
 import { setDesktopLyrics } from "../core/desktopLyrics";
 import { Slider } from "./Slider";
 import { tip } from "./Tooltip";
@@ -305,6 +306,7 @@ export function TransportBar() {
   const mode = usePlaylist((s) => s.mode);
   const count = usePlaylist((s) => s.items.length);
   const playlistShown = usePlaylistShown();
+  const commentsOpen = useUI((s) => s.commentsOpen);
   const desktopLyrics = useSettings((s) => s.desktopLyrics.enabled);
   const page = useUI((s) => s.page);
   const fullscreen = useUI((s) => s.fullscreen);
@@ -367,6 +369,15 @@ export function TransportBar() {
 
         <div className="right">
           {isCloudPath(media?.path) && <QualityMenu />}
+          {isCloudPath(media?.path) && (
+            <button
+              className={`icon-btn cm-toggle ${commentsOpen ? "active" : ""}`}
+              onClick={() => toggleComments()}
+              {...tip(commentsOpen ? "收起评论" : "网易云评论", "C")}
+            >
+              <Icon name="comment" />
+            </button>
+          )}
           <RateMenu />
           <SleepMenu />
           {media?.kind === "audio" && (

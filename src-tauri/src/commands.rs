@@ -1074,6 +1074,27 @@ pub async fn netease_search(state: State<'_, AppState>, query: String) -> AppRes
     state.netease.search(&query).await
 }
 
+#[tauri::command]
+pub async fn netease_comments(
+    state: State<'_, AppState>,
+    id: u64,
+    hot: bool,
+    offset: u32,
+    before: Option<i64>,
+) -> AppResult<netease::CommentPage> {
+    state.netease.comments(id, hot, offset, before).await
+}
+
+#[tauri::command]
+pub async fn netease_comment_replies(
+    state: State<'_, AppState>,
+    id: u64,
+    parent: u64,
+    time: Option<i64>,
+) -> AppResult<netease::CommentPage> {
+    state.netease.comment_replies(id, parent, time).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

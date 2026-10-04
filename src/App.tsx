@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import * as C from "./core/controller";
 import { AsrSetupDialog } from "./components/AsrSetupDialog";
 import { AsrTasks, AsrTasksButton } from "./components/AsrTasks";
+import { CommentsPanel } from "./components/CommentsPanel";
 import { ContextMenuHost } from "./components/ContextMenu";
 import { LibraryFolders } from "./components/LibraryFolders";
 import { NeteaseLogin } from "./components/NeteaseLogin";
@@ -65,6 +66,7 @@ export default function App() {
   const listLayout = usePlaylistLayout();
   const listShown = usePlaylistShown();
   const listBeside = showLyrics && listShown && listLayout === "side";
+  const commentsOpen = useUI((s) => s.commentsOpen);
   const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive;
 
   return (
@@ -117,6 +119,7 @@ export default function App() {
         )}
         {showLibrary && <LibraryPage />}
         {listFloating && <PlaylistPanel floating />}
+        {commentsOpen && !immersive && <CommentsPanel />}
       </main>
       {immersive && (
         <div className="immersive-top">

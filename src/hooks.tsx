@@ -5,10 +5,11 @@ import { useWeather } from "./stores/weather";
 import * as C from "./core/controller";
 import { engine } from "./core/player/engine";
 import { accentPalette } from "./lib/color";
-import { localFileUrl } from "./lib/ipc";
+import { isCloudPath, localFileUrl } from "./lib/ipc";
 import { usePlayer, useUI } from "./stores/player";
 import { clampLyricSize, useSettings } from "./stores/settings";
 import { lastFullscreenToggle, toggleFullscreen } from "./components/TransportBar";
+import { toggleComments } from "./components/CommentsPanel";
 import { isWindows } from "./lib/platform";
 
 function useSystemDark() {
@@ -208,6 +209,8 @@ export function useKeyboard() {
       else if ((k === "y" || k === "Y") && media?.kind === "audio") useUI.setState({ page: ui.page === "lyrics" ? "player" : "lyrics" });
       else if ((k === "e" || k === "E") && media?.kind === "audio") useUI.setState({ overlay: "editor" });
       else if (k === "a" || k === "A") media && C.cycleAbLoop();
+      else if ((k === "c" || k === "C") && isCloudPath(media?.path)) toggleComments();
+      else if (k === "Escape" && ui.commentsOpen && !ui.fullscreen && !document.querySelector(".popover")) toggleComments(false);
       else if (k === ",") C.stepFrame(-1);
       else if (k === ".") C.stepFrame(1);
       else if (k === "[") C.setRate(Math.max(0.25, Math.round((s.rate - 0.25) * 100) / 100));

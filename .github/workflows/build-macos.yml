@@ -62,6 +62,18 @@ jobs:
       - name: Rust tests
         working-directory: src-tauri
         run: cargo test
+      # NetEase is a third-party service: report what it answers, never block.
+      - name: NetEase comments (live, informational)
+        continue-on-error: true
+        working-directory: src-tauri
+        run: |
+          set +e
+          out=$(cargo test netease_comments_live -- --ignored --nocapture 2>&1)
+          code=$?
+          echo "$out"
+          sum=$(echo "$out" | grep -E '^(total|\[hot\]|hot page|replies to)|panicked|test result' | head -12 | sed ':a;N;$!ba;s/\n/%0A/g')
+          if [ $code -ne 0 ]; then echo "::warning title=NetEase comments::$sum"; exit 1; fi
+          echo "::notice title=NetEase comments::$sum"
 
   build:
     name: Build .app / .dmg (Apple Silicon)

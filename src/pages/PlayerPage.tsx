@@ -7,6 +7,7 @@ import { PlaylistPanel, togglePlaylist, usePlaylistLayout, usePlaylistShown } fr
 import { tip } from "../components/Tooltip";
 import { toggleFullscreen } from "../components/TransportBar";
 import { CoverFlow } from "../components/CoverFlow";
+import { CommentsChip } from "../components/CommentsPanel";
 import { basename } from "../lib/format";
 import { useLyrics, usePlayer, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
@@ -137,6 +138,7 @@ function AudioNowPlaying() {
           {strat && <span className="chip accent">{strat}</span>}
           {status === "loaded" && origin === "ai" && <span className="chip">AI 歌词</span>}
           {status === "loaded" && origin === "ai_reviewed" && <span className="chip">AI 歌词（已校对）</span>}
+          <CommentsChip />
         </div>
         <LyricPeek />
       </div>

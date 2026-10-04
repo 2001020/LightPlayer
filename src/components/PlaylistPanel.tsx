@@ -44,7 +44,11 @@ export function togglePlaylist(show?: boolean) {
     const s = useSettings.getState();
     s.set({ playlistOpen: show ?? !s.playlistOpen });
   } else {
-    useUI.setState((u) => ({ playlistFloat: show ?? !u.playlistFloat }));
+    // The floating queue and the comments panel take the same spot.
+    useUI.setState((u) => {
+      const playlistFloat = show ?? !u.playlistFloat;
+      return { playlistFloat, commentsOpen: playlistFloat ? false : u.commentsOpen };
+    });
   }
 }
 

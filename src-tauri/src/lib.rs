@@ -191,6 +191,8 @@ pub fn run() {
             commands::netease_playlist,
             commands::netease_daily,
             commands::netease_search,
+            commands::netease_comments,
+            commands::netease_comment_replies,
             commands::set_file_associations,
             commands::now_playing_metadata,
             commands::now_playing_state,

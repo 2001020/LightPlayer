@@ -12,6 +12,7 @@ import { ensureServerBase, isCloudPath, thumbUrl, type MediaEntry } from "../lib
 import { useLibrary } from "../stores/library";
 import { usePlayer, usePlaylist, useUI } from "../stores/player";
 import { Icon } from "./Icon";
+import { CommentsChip } from "./CommentsPanel";
 import { Slider } from "./Slider";
 
 /** Covers drawn on each side of the centre. */
@@ -274,6 +275,11 @@ export function CoverFlow({ peek }: { peek?: ReactNode }) {
         </div>
         {info.artist && <div className="artist">{info.artist}</div>}
         {info.album && <div className="album">{info.album}</div>}
+        {atCurrent && (
+          <div className="flow-chips">
+            <CommentsChip />
+          </div>
+        )}
         <div className="flow-peek">
           {atCurrent ? (
             peek

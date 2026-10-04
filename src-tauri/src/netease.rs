@@ -143,6 +143,55 @@ pub struct Stream {
     pub kbps: Option<u32>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentUser {
+    pub id: u64,
+    pub nickname: String,
+    pub avatar: Option<String>,
+}
+
+/// The comment a comment answers.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepliedTo {
+    pub nickname: String,
+    /// None when that comment was deleted.
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Comment {
+    pub id: u64,
+    pub user: CommentUser,
+    pub content: String,
+    /// Milliseconds since the epoch.
+    pub time: i64,
+    pub liked_count: u64,
+    /// Province or country NetEase shows ("IP 属地").
+    pub location: Option<String>,
+    pub replied: Option<RepliedTo>,
+    /// Replies in its thread ("floor").
+    pub reply_count: u64,
+}
+
+/// A page of a song's comments.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentPage {
+    pub comments: Vec<Comment>,
+    /// Hot comments; only on the first page of the newest comments.
+    pub hot: Vec<Comment>,
+    /// More hot comments than `hot` holds.
+    pub more_hot: bool,
+    pub total: u64,
+    pub has_more: bool,
+    /// Where the next page starts: the last comment's time (newest comments)
+    /// or NetEase's own cursor (replies).
+    pub cursor: Option<i64>,
+}
+
 /// One entry of a song/enhance/player/url answer.
 fn stream_entry(v: &Value) -> Option<Stream> {
     if v["code"].as_i64() != Some(200) {
@@ -220,6 +269,70 @@ fn parse_songs(songs: &Value, privileges: Option<&Value>) -> Vec<Song> {
         .as_array()
         .map(|a| a.iter().filter_map(|v| parse_song(v, v["id"].as_u64().and_then(|id| privs.get(&id).copied()))).collect())
         .unwrap_or_default()
+}
+
+/// A comment object from any comment endpoint.
+pub fn parse_comment(v: &Value) -> Option<Comment> {
+    let id = v["commentId"].as_u64()?;
+    let u = &v["user"];
+    let replied = v["beReplied"].as_array().and_then(|a| a.first()).map(|r| RepliedTo {
+        nickname: s(&r["user"]["nickname"]),
+        content: r["content"].as_str().filter(|c| !c.is_empty()).map(str::to_string),
+    });
+    Some(Comment {
+        id,
+        user: CommentUser {
+            id: u["userId"].as_u64().unwrap_or(0),
+            nickname: s(&u["nickname"]),
+            avatar: https(u["avatarUrl"].as_str()),
+        },
+        content: s(&v["content"]),
+        time: v["time"].as_i64().unwrap_or(0),
+        liked_count: v["likedCount"].as_u64().unwrap_or(0),
+        location: v["ipLocation"]["location"].as_str().filter(|l| !l.is_empty()).map(str::to_string),
+        replied,
+        reply_count: v["showFloorComment"]["replyCount"].as_u64().unwrap_or(0),
+    })
+}
+
+fn parse_comments(v: &Value) -> Vec<Comment> {
+    v.as_array().map(|a| a.iter().filter_map(parse_comment).collect()).unwrap_or_default()
+}
+
+/// Answer of `v1/resource/comments` (newest, plus hot ones on the first page)
+/// or `v1/resource/hotcomments` (hot only).
+pub fn parse_comment_page(v: &Value, hot_only: bool) -> CommentPage {
+    if hot_only {
+        let comments = parse_comments(&v["hotComments"]);
+        return CommentPage {
+            has_more: v["hasMore"].as_bool().unwrap_or(false),
+            total: v["total"].as_u64().unwrap_or(comments.len() as u64),
+            comments,
+            ..Default::default()
+        };
+    }
+    let comments = parse_comments(&v["comments"]);
+    let hot = parse_comments(&v["hotComments"]);
+    CommentPage {
+        more_hot: v["moreHot"].as_bool().unwrap_or(hot.len() >= 15),
+        hot,
+        total: v["total"].as_u64().unwrap_or(0),
+        has_more: v["more"].as_bool().unwrap_or(false),
+        cursor: comments.last().map(|c| c.time),
+        comments,
+    }
+}
+
+/// Answer of `resource/comment/floor/get` (replies to one comment).
+pub fn parse_reply_page(v: &Value) -> CommentPage {
+    let d = &v["data"];
+    CommentPage {
+        comments: parse_comments(&d["comments"]),
+        total: d["totalCount"].as_u64().unwrap_or(0),
+        has_more: d["hasMore"].as_bool().unwrap_or(false),
+        cursor: d["time"].as_i64(),
+        ..Default::default()
+    }
 }
 
 fn api_error(v: &Value) -> AppError {
@@ -620,6 +733,26 @@ impl Netease {
         let tr = v["tlyric"]["lyric"].as_str().unwrap_or("").trim();
         Ok(Some(if tr.is_empty() { lrc.to_string() } else { format!("{lrc}\n{tr}\n") }))
     }
+
+    // -------------------------------------------------------------- comments
+
+    /// `hot`: hot comments from `offset`; otherwise the newest ones, whose
+    /// first page also carries the first hot ones and the total. `before` is
+    /// the previous page's cursor, which NetEase needs past 5000 comments.
+    pub async fn comments(&self, id: u64, hot: bool, offset: u32, before: Option<i64>) -> AppResult<CommentPage> {
+        let kind = if hot { "hotcomments" } else { "comments" };
+        let before = if hot || offset < 5000 { 0 } else { before.unwrap_or(0) };
+        let data = json!({ "rid": format!("R_SO_4_{id}"), "limit": 20, "offset": offset, "beforeTime": before });
+        let v = ok(self.call(&format!("v1/resource/{kind}/R_SO_4_{id}"), data).await?)?;
+        Ok(parse_comment_page(&v, hot))
+    }
+
+    /// Replies to comment `parent`, from `time` (the previous page's cursor).
+    pub async fn comment_replies(&self, id: u64, parent: u64, time: Option<i64>) -> AppResult<CommentPage> {
+        let data = json!({ "parentCommentId": parent, "threadId": format!("R_SO_4_{id}"), "time": time.unwrap_or(-1), "limit": 20 });
+        let v = ok(self.call("resource/comment/floor/get", data).await?)?;
+        Ok(parse_reply_page(&v))
+    }
 }
 
 /// The song id in a `netease:<id>` path.
@@ -734,6 +867,59 @@ mod tests {
         let old: Value = serde_json::from_str(r#"{"id":6,"name":"a","artists":[{"name":"b"}],"album":{"name":"c"},"duration":1000,"privilege":{"st":-200}}"#).unwrap();
         let s = parse_song(&old, None).unwrap();
         assert_eq!((s.artists[0].as_str(), s.album.as_str(), s.unavailable), ("b", "c", true));
+    }
+
+    #[test]
+    fn parses_comments() {
+        let v: Value = serde_json::from_str(include_str!("../tests/netease_comments.json")).unwrap();
+        let p = parse_comment_page(&v, false);
+        assert_eq!((p.total, p.has_more, p.more_hot), (12345, true, true));
+        assert_eq!((p.hot.len(), p.comments.len()), (1, 2));
+        let h = &p.hot[0];
+        assert_eq!((h.id, h.user.nickname.as_str(), h.liked_count, h.reply_count), (11, "听歌的人", 98765, 3));
+        assert_eq!(h.user.avatar.as_deref(), Some("https://p1.music.126.net/a.jpg"));
+        assert_eq!(h.location.as_deref(), Some("广东"));
+        assert_eq!(h.content, "第一行\n第二行[大哭]");
+        assert!(h.replied.is_none());
+        let r = p.comments[0].replied.as_ref().unwrap();
+        assert_eq!((r.nickname.as_str(), r.content.as_deref()), ("听歌的人", Some("原评论")));
+        // A reply to a deleted comment; no location.
+        let c = &p.comments[1];
+        assert_eq!((c.replied.as_ref().unwrap().content.as_deref(), c.location.as_deref()), (None, None));
+        assert_eq!(p.cursor, Some(1700000000000));
+
+        let hot: Value = serde_json::from_str(r#"{"code":200,"hotComments":[{"commentId":1,"user":{"userId":2,"nickname":"a"},"content":"x","time":5,"likedCount":7}],"hasMore":true,"total":40}"#).unwrap();
+        let p = parse_comment_page(&hot, true);
+        assert_eq!((p.comments.len(), p.total, p.has_more, p.hot.len()), (1, 40, true, 0));
+
+        let floor: Value = serde_json::from_str(r#"{"code":200,"data":{"comments":[{"commentId":9,"user":{"userId":3,"nickname":"b"},"content":"y","time":6,"likedCount":0,"beReplied":[{"user":{"nickname":"c"},"content":"z"}]}],"hasMore":false,"totalCount":1,"time":6}}"#).unwrap();
+        let p = parse_reply_page(&floor);
+        assert_eq!((p.comments.len(), p.total, p.has_more, p.cursor), (1, 1, false, Some(6)));
+        assert_eq!(p.comments[0].replied.as_ref().unwrap().nickname, "c");
+    }
+
+    /// Real NetEase answers (needs network access to music.163.com).
+    #[tokio::test]
+    #[ignore]
+    async fn netease_comments_live() {
+        let dir = tempfile::tempdir().unwrap();
+        let ne = Netease::new(dir.path());
+        let first = ne.comments(186016, false, 0, None).await.unwrap();
+        println!("total {} newest {} hot {}", first.total, first.comments.len(), first.hot.len());
+        assert!(first.total > 1000 && !first.comments.is_empty() && !first.hot.is_empty());
+        for c in first.hot.iter().take(3) {
+            println!("[hot] {} ({} likes, {:?}): {}", c.user.nickname, c.liked_count, c.location, c.content.replace('\n', " "));
+        }
+        let more = ne.comments(186016, false, 20, first.cursor).await.unwrap();
+        assert!(!more.comments.is_empty() && more.comments[0].id != first.comments[0].id);
+        let hot = ne.comments(186016, true, 15, None).await.unwrap();
+        println!("hot page 2: {}", hot.comments.len());
+        assert!(!hot.comments.is_empty());
+        if let Some(c) = first.hot.iter().find(|c| c.reply_count > 0) {
+            let r = ne.comment_replies(186016, c.id, None).await.unwrap();
+            println!("replies to {}: {} of {}", c.id, r.comments.len(), r.total);
+            assert!(!r.comments.is_empty());
+        }
     }
 
     #[test]

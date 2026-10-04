@@ -1,0 +1,38 @@
+{
+  "code": 200,
+  "total": 12345,
+  "more": true,
+  "moreHot": true,
+  "hotComments": [
+    {
+      "commentId": 11,
+      "user": { "userId": 100, "nickname": "听歌的人", "avatarUrl": "http://p1.music.126.net/a.jpg" },
+      "content": "第一行\n第二行[大哭]",
+      "time": 1600000000000,
+      "likedCount": 98765,
+      "ipLocation": { "location": "广东", "ip": null },
+      "showFloorComment": { "replyCount": 3, "comments": null, "showReplyCount": true },
+      "beReplied": null
+    }
+  ],
+  "comments": [
+    {
+      "commentId": 21,
+      "user": { "userId": 101, "nickname": "路人", "avatarUrl": "https://p2.music.126.net/b.jpg" },
+      "content": "同感",
+      "time": 1700000001000,
+      "likedCount": 2,
+      "ipLocation": { "location": "上海" },
+      "beReplied": [{ "user": { "nickname": "听歌的人" }, "content": "原评论", "status": 0 }]
+    },
+    {
+      "commentId": 22,
+      "user": { "userId": 102, "nickname": "另一个人" },
+      "content": "回复",
+      "time": 1700000000000,
+      "likedCount": 0,
+      "ipLocation": { "location": "" },
+      "beReplied": [{ "user": { "nickname": "某人" }, "content": null, "status": -10 }]
+    }
+  ]
+}

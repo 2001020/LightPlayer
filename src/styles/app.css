@@ -1564,6 +1564,220 @@ input[type="range"] {
   box-shadow: var(--shadow);
   animation: floatIn 0.22s var(--ease);
 }
+/* NetEase comments panel: floats on the right like the narrow-window queue. */
+.comments {
+  position: fixed;
+  z-index: 41;
+  right: 14px;
+  bottom: calc(var(--transport-h) + 22px);
+  top: calc(var(--titlebar-h) + 8px);
+  width: min(380px, calc(100vw - 28px));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel-solid);
+  box-shadow: var(--shadow);
+  animation: floatIn 0.22s var(--ease);
+}
+.comments header {
+  padding: 14px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.comments header .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.comments header h3 {
+  margin: 0;
+  font-size: 15px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.comments header .count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+.comments header .icon-btn {
+  margin-right: -6px;
+}
+.comments .cm-song {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.comments .seg {
+  align-self: flex-start;
+}
+.cm-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 14px 12px;
+}
+.cm-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cm-item:last-of-type {
+  border-bottom: none;
+}
+.cm-item.reply {
+  padding: 8px 0;
+  border-bottom: none;
+}
+.cm-avatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--panel-2);
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.cm-item.reply .cm-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 11px;
+}
+.cm-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cm-body {
+  flex: 1;
+  min-width: 0;
+}
+.cm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cm-name {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cm-likes {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+.cm-text {
+  margin-top: 4px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.cm-quote {
+  margin-top: 6px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cm-quote b {
+  font-weight: 500;
+  color: var(--text);
+}
+.cm-quote i {
+  color: var(--text-faint);
+}
+.cm-meta {
+  margin-top: 5px;
+  display: flex;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+.cm-replies-toggle {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.cm-thread {
+  margin-top: 6px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+.cm-foot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 6px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+.cm-foot .spinner {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+.cm-foot.error {
+  flex-direction: column;
+  color: var(--danger, #e5484d);
+  text-align: center;
+  line-height: 1.6;
+}
+button.cm-foot {
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.cm-thread .cm-foot {
+  justify-content: flex-start;
+  padding: 4px 0;
+}
+.cm-chip {
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+}
+.cm-chip:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.flow-chips {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+
 @keyframes floatIn {
   from {
     opacity: 0;
