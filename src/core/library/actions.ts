@@ -3,7 +3,7 @@
 
 import * as C from "../controller";
 import { shuffled } from "../playlist/queue";
-import { api, isTauri, type LibraryTrack } from "../../lib/ipc";
+import { api, isCloudPath, isTauri, type LibraryTrack } from "../../lib/ipc";
 import { confirmDialog } from "../../lib/confirm";
 import { stem } from "../../lib/format";
 import { libraryAction, useLibrary } from "../../stores/library";
@@ -82,6 +82,17 @@ export interface TrackMenuContext {
 
 /** Right-click menu for `t` (one of `ctx.queue`). */
 export function openTrackMenu(e: React.MouseEvent, t: LibraryTrack, ctx: TrackMenuContext) {
+  if (isCloudPath(t.path)) {
+    // Online songs: queue actions only (no files, library or AI behind them).
+    if (t.unavailable) return;
+    const entry = toEntry(t);
+    const queue = ctx.queue.filter((q) => !q.unavailable);
+    return openMenu(e, [
+      { label: "播放", icon: "play", onClick: () => playTracks(queue, Math.max(0, queue.indexOf(t)), ctx.source) },
+      { label: "下一首播放", icon: "queue", onClick: () => C.playNext([entry]) },
+      { label: "加入播放队列", icon: "list", onClick: () => C.enqueue([entry]) },
+    ]);
+  }
   const { data } = useLibrary.getState();
   const fav = data.favorites.includes(t.path);
   const entry = toEntry(t);

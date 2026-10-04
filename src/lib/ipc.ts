@@ -45,6 +45,8 @@ export interface OpenedMedia {
   duration?: number | null;
   meta?: AudioMeta | null;
   subtitles: SubtitleTrack[];
+  /** Shown once playback starts (e.g. "preview clip only"). */
+  notice?: string | null;
 }
 
 export interface AssocKind {
@@ -92,7 +94,7 @@ export interface VideoInfo {
   subtitleCount: number;
 }
 
-export type LyricsOrigin = "sidecar" | "embedded" | "library" | "ai" | "ai_reviewed";
+export type LyricsOrigin = "sidecar" | "embedded" | "library" | "ai" | "ai_reviewed" | "online";
 
 export interface LyricsPayload {
   content: string;
@@ -181,6 +183,52 @@ export interface LibraryTrack {
   addedAt: number;
   playCount: number;
   lastPlayed?: number | null;
+  /** Online tracks: a short tag after the title (e.g. "VIP"). */
+  badge?: string;
+  /** Online tracks that cannot be played (no copyright / taken down). */
+  unavailable?: boolean;
+}
+
+/** Media paths of NetEase Cloud Music songs: `netease:<id>`. */
+export const NETEASE_PREFIX = "netease:";
+export const isCloudPath = (p: string | null | undefined) => !!p && p.startsWith(NETEASE_PREFIX);
+
+export interface NeteaseSong {
+  id: number;
+  name: string;
+  artists: string[];
+  album: string;
+  cover?: string | null;
+  duration: number;
+  vip: boolean;
+  unavailable: boolean;
+}
+
+export interface NeteasePlaylist {
+  id: number;
+  name: string;
+  count: number;
+  cover?: string | null;
+  mine: boolean;
+  liked: boolean;
+}
+
+export interface NeteaseAccount {
+  id: number;
+  nickname: string;
+  avatar?: string | null;
+  vip: boolean;
+}
+
+export interface NeteaseQr {
+  key: string;
+  svg: string;
+}
+
+export interface NeteaseQrState {
+  /** 800 expired, 801 waiting, 802 scanned, 803 signed in. */
+  code: number;
+  message: string;
 }
 
 export interface LibraryFolder {
@@ -431,11 +479,33 @@ function mockRecognition(mediaPath: string) {
 
 let mockAssoc = false;
 
+// Browser preview of the NetEase section: a pretend account and lists.
+let mockNetease = false;
+let mockQrPolls = 0;
+const mockSongs = (seed: string, n: number): NeteaseSong[] =>
+  Array.from({ length: n }, (_, i) => ({
+    id: Math.abs([...seed].reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % 100000 * 100 + i,
+    name: `${seed}示例歌曲 ${i + 1}`,
+    artists: [["示例歌手", "演示乐队", "预览艺人"][i % 3]],
+    album: `${seed}专辑`,
+    cover: null,
+    duration: 180 + ((i * 37) % 120),
+    vip: i % 4 === 1,
+    unavailable: i % 9 === 7,
+  }));
+const mockQrSvg = () => {
+  let cells = "";
+  for (let y = 0; y < 25; y++)
+    for (let x = 0; x < 25; x++) if ((x * 7 + y * 13 + x * y) % 5 < 2) cells += `<rect x="${x * 8 + 10}" y="${y * 8 + 10}" width="8" height="8"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220"><rect width="220" height="220" fill="#fff"/><g fill="#000">${cells}</g></svg>`;
+};
+
 async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const path = (args.path ?? args.mediaPath) as string | undefined;
   if (cmd.startsWith("library_") || cmd.startsWith("playlist_")) return mockLibrary(cmd, args) as T;
   switch (cmd) {
     case "open_media": {
+      if (isCloudPath(path)) throw new Error("浏览器预览不能播放网易云音乐的歌曲");
       const kind = kindOf(path!) ?? "audio";
       const name = stem(path!);
       const [artist, title] = name.includes(" - ") ? name.split(" - ", 2) : [null, name];
@@ -505,6 +575,35 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
     case "set_file_associations":
       mockAssoc = true;
       return [] as T;
+    case "netease_status":
+      return { account: mockNetease ? { id: 1, nickname: "预览用户", avatar: null, vip: false } : null } as T;
+    case "netease_qr_start":
+      mockQrPolls = 0;
+      return { key: "preview", svg: mockQrSvg() } as T;
+    case "netease_qr_check": {
+      mockQrPolls++;
+      const code = mockQrPolls < 3 ? 801 : mockQrPolls < 5 ? 802 : 803;
+      if (code === 803) mockNetease = true;
+      return { code, message: "" } as T;
+    }
+    case "netease_login_cookie":
+      mockNetease = true;
+      return { id: 1, nickname: "预览用户", avatar: null, vip: false } as T;
+    case "netease_logout":
+      mockNetease = false;
+      return undefined as T;
+    case "netease_playlists":
+      return [
+        { id: 11, name: "预览用户喜欢的音乐", count: 24, cover: null, mine: true, liked: true },
+        { id: 12, name: "通勤路上", count: 12, cover: null, mine: true, liked: false },
+        { id: 13, name: "收藏的歌单", count: 30, cover: null, mine: false, liked: false },
+      ] as T;
+    case "netease_playlist":
+      return mockSongs(`歌单${args.id}`, Number(args.id) === 11 ? 24 : 12) as T;
+    case "netease_daily":
+      return mockSongs("推荐", 30) as T;
+    case "netease_search":
+      return mockSongs(String(args.query ?? ""), 20) as T;
     case "server_base":
       return "" as T;
     case "ffmpeg_available":
@@ -558,7 +657,17 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
 }
 
 export const api = {
-  openMedia: (path: string, caps: Caps, precise = false) => call<OpenedMedia>("open_media", { path, caps, precise }),
+  openMedia: (path: string, caps: Caps, precise = false, quality?: string) =>
+    call<OpenedMedia>("open_media", { path, caps, precise, quality }),
+  neteaseStatus: () => call<{ account: NeteaseAccount | null }>("netease_status"),
+  neteaseQrStart: () => call<NeteaseQr>("netease_qr_start"),
+  neteaseQrCheck: (key: string) => call<NeteaseQrState>("netease_qr_check", { key }),
+  neteaseLoginCookie: (cookie: string) => call<NeteaseAccount>("netease_login_cookie", { cookie }),
+  neteaseLogout: () => call<void>("netease_logout"),
+  neteasePlaylists: () => call<NeteasePlaylist[]>("netease_playlists"),
+  neteasePlaylist: (id: number) => call<NeteaseSong[]>("netease_playlist", { id }),
+  neteaseDaily: () => call<NeteaseSong[]>("netease_daily"),
+  neteaseSearch: (query: string) => call<NeteaseSong[]>("netease_search", { query }),
   /** URL of an exact-seeking copy of an MP3/FLAC (null when the file seeks exactly). */
   exactAudio: (path: string) => call<string | null>("exact_audio", { path }),
   requestStream: (path: string, start: number, transcode: boolean) =>
@@ -638,7 +747,21 @@ export async function localFileUrl(path: string): Promise<string> {
 }
 
 /** Thumbnail (album art or video frame) for a library item; null in browser mode. */
+/** Cover image URLs of online tracks, by media path (see `thumbUrl`). */
+export const cloudCovers = new Map<string, string>();
+
+/** An online image or stream relayed by the local media server. */
+export function remoteUrl(url: string): string | null {
+  if (!isTauri) return url;
+  if (serverBaseCache === null) return null;
+  return `${serverBaseCache}/remote?u=${encodeURIComponent(url)}`;
+}
+
 export function thumbUrl(path: string, size = 256): string | null {
+  if (isCloudPath(path)) {
+    const cover = cloudCovers.get(path);
+    return cover ? remoteUrl(`${cover}?param=${size}y${size}`) : null;
+  }
   if (!isTauri || serverBaseCache === null) return null;
   return `${serverBaseCache}/thumb?p=${encodeURIComponent(path)}&s=${size}`;
 }

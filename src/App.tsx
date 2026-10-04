@@ -4,6 +4,7 @@ import { AsrSetupDialog } from "./components/AsrSetupDialog";
 import { AsrTasks, AsrTasksButton } from "./components/AsrTasks";
 import { ContextMenuHost } from "./components/ContextMenu";
 import { LibraryFolders } from "./components/LibraryFolders";
+import { NeteaseLogin } from "./components/NeteaseLogin";
 import { PlaylistPanel, usePlaylistLayout, usePlaylistShown } from "./components/PlaylistPanel";
 import { PromptHost } from "./components/Prompt";
 import { DesktopLyricsOverlay } from "./components/DesktopLyrics";
@@ -127,6 +128,7 @@ export default function App() {
       {overlay === "asrSetup" && <AsrSetupDialog />}
       {overlay === "asrTasks" && <AsrTasks />}
       {overlay === "libraryFolders" && <LibraryFolders />}
+      {overlay === "neteaseLogin" && <NeteaseLogin />}
       {!isTauri && <DesktopLyricsOverlay />}
       <PromptHost />
       <ContextMenuHost />

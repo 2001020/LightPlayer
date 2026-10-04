@@ -6,9 +6,9 @@ import * as C from "../core/controller";
 import { openTrackMenu, playTracks } from "../core/library/actions";
 import { sortTracks, trackArtist, trackTitle, type SortKey } from "../core/library/views";
 import { formatTime } from "../lib/format";
-import { api, thumbUrl, type LibraryTrack } from "../lib/ipc";
+import { api, isCloudPath, thumbUrl, type LibraryTrack } from "../lib/ipc";
 import { libraryAction, useLibrary } from "../stores/library";
-import { usePlayer } from "../stores/player";
+import { toast, usePlayer } from "../stores/player";
 import { Icon, type IconName } from "./Icon";
 import { tip } from "./Tooltip";
 
@@ -137,6 +137,13 @@ export function TrackTable({
 
   const cols = COLUMNS.filter((c) => !(hideAlbum && c.className === "c-album"));
 
+  // Songs that cannot be played (online, no copyright) stay out of the queue.
+  const play = (t: LibraryTrack) => {
+    if (t.unavailable) return toast("这首歌在网易云音乐暂无版权，无法播放");
+    const queue = rows.filter((r) => !r.unavailable);
+    playTracks(queue, queue.indexOf(t), source);
+  };
+
   return (
     <div className={`track-table ${hideAlbum ? "no-album" : ""}`}>
       <div className="tt-head">
@@ -169,9 +176,9 @@ export function TrackTable({
             return (
               <div
                 key={t.path}
-                className={`tt-row ${isCur ? "current" : ""} ${drag?.from === i ? "dragging" : ""}`}
+                className={`tt-row ${isCur ? "current" : ""} ${drag?.from === i ? "dragging" : ""} ${t.unavailable ? "unavailable" : ""}`}
                 style={{ transform: `translateY(${i * ROW + offset}px)` }}
-                onClick={() => (isCur ? C.toggle() : playTracks(rows, i, source))}
+                onClick={() => (isCur ? C.toggle() : play(t))}
                 onContextMenu={(e) => openTrackMenu(e, t, { queue: rows, source, playlistId })}
               >
                 <div className="c-idx">
@@ -195,12 +202,13 @@ export function TrackTable({
                   <span className="t" data-tip={trackTitle(t)}>
                     {trackTitle(t)}
                   </span>
+                  {t.badge && <span className={`tt-badge ${t.unavailable ? "off" : ""}`}>{t.badge}</span>}
                 </div>
                 <div className="c-artist">{trackArtist(t) || <span className="faint">未知</span>}</div>
                 {!hideAlbum && <div className="c-album">{t.album || <span className="faint">未知</span>}</div>}
                 <div className="c-dur">{t.duration ? formatTime(t.duration) : ""}</div>
                 <div className="c-fav">
-                  <button
+                  {!isCloudPath(t.path) && <button
                     className={`icon-btn small fav ${fav ? "on" : ""}`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -209,7 +217,7 @@ export function TrackTable({
                     {...tip(fav ? "取消收藏" : "收藏")}
                   >
                     <Icon name={fav ? "heartFill" : "heart"} size={16} />
-                  </button>
+                  </button>}
                 </div>
               </div>
             );

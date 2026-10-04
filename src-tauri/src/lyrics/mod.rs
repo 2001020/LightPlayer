@@ -19,6 +19,8 @@ pub enum Origin {
     Library,
     Ai,
     AiReviewed,
+    /// From an online music service.
+    Online,
 }
 
 #[derive(Debug, Clone, Serialize)]

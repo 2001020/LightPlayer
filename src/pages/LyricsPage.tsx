@@ -3,6 +3,7 @@ import { ColorChoices } from "../components/ColorChoices";
 import * as C from "../core/controller";
 import { Icon } from "../components/Icon";
 import { LyricsView } from "../components/LyricsView";
+import { isCloudPath } from "../lib/ipc";
 import { Popover } from "../components/Popover";
 import { tip } from "../components/Tooltip";
 import { ASR_STAGES } from "../components/AsrTasks";
@@ -111,6 +112,7 @@ function HighlightMenu() {
 function LyricsSourceMenu({ isAi, busy }: { isAi: boolean; busy: boolean }) {
   const path = usePlayer((s) => s.media?.path);
   const precise = useSettings((s) => !!path && s.precisePaths.includes(path));
+  const cloud = isCloudPath(path);
   return (
     <Popover
       down
@@ -124,14 +126,16 @@ function LyricsSourceMenu({ isAi, busy }: { isAi: boolean; busy: boolean }) {
         <div className="menu-list">
           <div className="label">歌词来源</div>
           <div className="item" onClick={() => (close(), void C.rescanLyrics())}>
-            <Icon name="refresh" size={15} /> 重新查找本地歌词文件
+            <Icon name="refresh" size={15} /> {cloud ? "重新获取网易云音乐歌词" : "重新查找本地歌词文件"}
           </div>
           <div className="item" onClick={() => (close(), void C.importLyricsWithDialog())}>
             <Icon name="upload" size={15} /> 上传歌词文件…
           </div>
-          <div className={`item ${busy ? "disabled" : ""}`} onClick={() => !busy && (close(), C.rerunRecognition())}>
-            <Icon name="sparkles" size={15} /> {isAi ? "重新识别（可换模型）…" : "AI 识别歌词（可选模型）…"}
-          </div>
+          {!cloud && (
+            <div className={`item ${busy ? "disabled" : ""}`} onClick={() => !busy && (close(), C.rerunRecognition())}>
+              <Icon name="sparkles" size={15} /> {isAi ? "重新识别（可换模型）…" : "AI 识别歌词（可选模型）…"}
+            </div>
+          )}
           {isAi && (
             <>
               <div className="sep" />
@@ -140,7 +144,7 @@ function LyricsSourceMenu({ isAi, busy }: { isAi: boolean; busy: boolean }) {
               </div>
             </>
           )}
-          {path && (
+          {path && !cloud && (
             <>
               <div className="sep" />
               <div className="label">播放计时</div>

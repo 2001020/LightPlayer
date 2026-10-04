@@ -1,7 +1,7 @@
 // Media library: folders scanned recursively, played / dropped files,
 // favourites and user playlists, browsed by song, album, artist or video.
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as C from "../core/controller";
 import {
   deletePlaylist,
@@ -20,7 +20,9 @@ import { tip } from "../components/Tooltip";
 import { formatTime, stem } from "../lib/format";
 import { type LibraryTrack } from "../lib/ipc";
 import { useLibrary, type LibraryNav } from "../stores/library";
+import { loadNeteaseList, refreshNetease, searchNetease, useNetease } from "../stores/netease";
 import { usePlayer, useUI } from "../stores/player";
+import { useSettings } from "../stores/settings";
 
 const NAV: { view: "songs" | "albums" | "artists" | "videos" | "favorites" | "recent"; label: string; icon: IconName }[] = [
   { view: "songs", label: "歌曲", icon: "music" },
@@ -110,6 +112,7 @@ function Sidebar() {
           </div>
         )}
       </div>
+      <NeteaseSidebar />
       <div className="lib-side-foot">
         {progress && (
           <div className="lib-scan">
@@ -130,6 +133,64 @@ function Sidebar() {
         </button>
       </div>
     </aside>
+  );
+}
+
+/** The experimental NetEase Cloud Music section of the sidebar. */
+function NeteaseSidebar() {
+  const enabled = useSettings((s) => s.netease.enabled);
+  const account = useNetease((s) => s.account);
+  const playlists = useNetease((s) => s.playlists);
+  const nav = useLibrary((s) => s.nav);
+  useEffect(() => {
+    if (enabled && account === undefined) void refreshNetease();
+  }, [enabled, account]);
+  if (!enabled) return null;
+  const on = (list: string) => (nav.view === "netease" && nav.list === list ? "on" : "");
+  return (
+    <>
+      <div className="lib-group">
+        <span>
+          网易云音乐 <em className="ne-exp">试验</em>
+        </span>
+        {account && (
+          <div className="acts">
+            <button className="icon-btn small" onClick={() => void refreshNetease()} {...tip("刷新歌单")}>
+              <Icon name="refresh" size={15} />
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="lib-nav lib-playlists ne-side">
+        {account === null && (
+          <div className="lib-hint">
+            登录后可以播放你的歌单和每日推荐。
+            <button className="link" onClick={() => useUI.setState({ overlay: "neteaseLogin" })}>
+              扫码登录
+            </button>
+          </div>
+        )}
+        {account && (
+          <>
+            <button className={`lib-link ${on("daily")}`} onClick={() => go({ view: "netease", list: "daily" })}>
+              <Icon name="sun" size={17} />
+              每日推荐
+            </button>
+            <button className={`lib-link ${on("search")}`} onClick={() => go({ view: "netease", list: "search" })}>
+              <Icon name="search" size={17} />
+              搜索
+            </button>
+            {playlists.map((p) => (
+              <button key={p.id} className={`lib-link ${on(`pl:${p.id}`)}`} onClick={() => go({ view: "netease", list: `pl:${p.id}` })}>
+                <Icon name={p.liked ? "heart" : "playlist"} size={17} />
+                <span className="ell">{p.liked ? "我喜欢的音乐" : p.name}</span>
+                <span className="n">{p.count}</span>
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -417,6 +478,97 @@ function VideosView({ videos }: { videos: LibraryTrack[] }) {
   );
 }
 
+/** A NetEase list: daily recommendations, search results or a playlist. */
+function NeteaseView({ list }: { list: string }) {
+  const entry = useNetease((s) => s.lists[list]);
+  const playlists = useNetease((s) => s.playlists);
+  const account = useNetease((s) => s.account);
+  const searched = useNetease((s) => s.searchQuery);
+  const query = useLibrary((s) => s.query);
+  const [input, setInput] = useState(searched);
+  const isSearch = list === "search";
+  useEffect(() => {
+    if (account && !isSearch) loadNeteaseList(list);
+  }, [list, account, isSearch]);
+  const tracks = entry?.tracks ?? [];
+  const shown = useMemo(() => (isSearch ? tracks : filterTracks(tracks, query)), [tracks, query, isSearch]);
+  if (account === null) {
+    return (
+      <Empty
+        icon="music"
+        title="没有登录网易云音乐"
+        text="登录后可以播放你的歌单、我喜欢的音乐和每日推荐"
+        action={
+          <button className="btn primary" onClick={() => useUI.setState({ overlay: "neteaseLogin" })}>
+            扫码登录
+          </button>
+        }
+      />
+    );
+  }
+  const pl = list.startsWith("pl:") ? playlists.find((p) => `pl:${p.id}` === list) : undefined;
+  const title = list === "daily" ? "每日推荐" : isSearch ? "搜索网易云音乐" : pl ? (pl.liked ? "我喜欢的音乐" : pl.name) : "歌单";
+  const source = `网易云音乐 ${isSearch ? `搜索“${searched}”` : title}`;
+  const searchBox = isSearch && (
+    <form
+      className="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        searchNetease(input);
+      }}
+    >
+      <Icon name="search" size={15} />
+      <input type="search" autoFocus placeholder="歌名、歌手、专辑，按回车搜索" value={input} onChange={(e) => setInput(e.target.value)} />
+    </form>
+  );
+  const sub = entry?.loading ? "正在加载…" : parts(tracks.length && `${tracks.length} 首`, totalDuration(tracks));
+  return (
+    <>
+      <Header
+        title={title}
+        sub={sub || undefined}
+        tracks={shown.filter((t) => !t.unavailable)}
+        source={source}
+        search={!isSearch}
+        extra={
+          <>
+            {searchBox}
+            {!isSearch && (
+              <button className="icon-btn" disabled={entry?.loading} onClick={() => loadNeteaseList(list, true)} {...tip("刷新")}>
+                <Icon name="refresh" />
+              </button>
+            )}
+          </>
+        }
+      />
+      {entry?.error ? (
+        <Empty
+          icon="warning"
+          title="加载失败"
+          text={entry.error}
+          action={
+            <button className="btn" onClick={() => (isSearch ? searchNetease(searched) : loadNeteaseList(list, true))}>
+              重试
+            </button>
+          }
+        />
+      ) : !tracks.length ? (
+        entry?.loading ? (
+          <Empty icon="music" title="正在加载…" text="" />
+        ) : isSearch ? (
+          <Empty icon="search" title={searched ? "没有找到相关歌曲" : "搜索网易云音乐"} text={searched ? "换个关键词试试" : "输入歌名、歌手或专辑，按回车搜索"} />
+        ) : (
+          <Empty icon="playlist" title="这里还没有歌曲" text="" />
+        )
+      ) : shown.length ? (
+        <TrackTable tracks={shown} source={source} sortable={!isSearch} />
+      ) : (
+        <NoMatch />
+      )}
+    </>
+  );
+}
+
 function PlaylistView({ id }: { id: string }) {
   const data = useLibrary((s) => s.data);
   const query = useLibrary((s) => s.query);
@@ -517,13 +669,16 @@ export function LibraryPage() {
     case "playlist":
       body = <PlaylistView id={nav.id} />;
       break;
+    case "netease":
+      body = <NeteaseView list={nav.list} />;
+      break;
   }
 
   return (
     <div className="library-page">
       <Sidebar />
       <section className="lib-main panel">
-        {libraryEmpty && nav.view !== "playlist" ? (
+        {libraryEmpty && nav.view !== "playlist" && nav.view !== "netease" ? (
           <>
             <Header title="媒体库" tracks={[]} source="" search={false} />
             {emptyAll}

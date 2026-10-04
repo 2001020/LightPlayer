@@ -7,6 +7,7 @@ use crate::media::probe::{self, Probe, VideoInfo};
 use crate::media::router::{self, Caps, Strategy};
 use crate::media::scan::{self, MediaEntry};
 use crate::media::transcode::{self, HlsMode};
+use crate::netease;
 use crate::tools::tools;
 use crate::AppState;
 use serde::{Deserialize, Serialize};
@@ -37,6 +38,9 @@ pub struct OpenedMedia {
     pub duration: Option<f64>,
     pub meta: Option<AudioMeta>,
     pub subtitles: Vec<SubtitleTrack>,
+    /// Shown to the user once playback starts (e.g. "preview clip only").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notice: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -142,7 +146,16 @@ pub async fn exact_audio(state: State<'_, AppState>, path: String) -> AppResult<
 }
 
 #[tauri::command]
-pub async fn open_media(state: State<'_, AppState>, path: String, caps: Caps, precise: Option<bool>) -> AppResult<OpenedMedia> {
+pub async fn open_media(
+    state: State<'_, AppState>,
+    path: String,
+    caps: Caps,
+    precise: Option<bool>,
+    quality: Option<String>,
+) -> AppResult<OpenedMedia> {
+    if let Some(id) = netease::song_id(&path) {
+        return open_netease(&state, path, id, quality.as_deref().unwrap_or("exhigh")).await;
+    }
     let p = PathBuf::from(&path);
     if !p.is_file() {
         return Err(AppError::msg("文件不存在"));
@@ -198,6 +211,7 @@ pub async fn open_media(state: State<'_, AppState>, path: String, caps: Caps, pr
         duration: probe.duration().or(meta.as_ref().and_then(|m| m.duration)),
         meta,
         subtitles,
+        notice: None,
     })
 }
 
@@ -235,6 +249,19 @@ pub async fn get_video_info(state: State<'_, AppState>, path: String) -> AppResu
 #[tauri::command]
 pub async fn find_lyrics(state: State<'_, AppState>, path: String) -> AppResult<Option<LyricsPayload>> {
     let p = PathBuf::from(&path);
+    if let Some(id) = netease::song_id(&path) {
+        // Lyrics the user edited and saved come first.
+        if let Some(saved) = state.library.find(&p, None) {
+            return Ok(Some(saved));
+        }
+        return Ok(state.netease.lyrics(id).await?.map(|content| LyricsPayload {
+            content,
+            origin: Origin::Online,
+            format: "lrc".into(),
+            path: None,
+            model: None,
+        }));
+    }
     let pp = p.clone();
     let embedded = tokio::task::spawn_blocking(move || {
         if kind_of(&pp) == Some(MediaKind::Audio) {
@@ -288,6 +315,8 @@ pub fn save_lyrics(
 ) -> AppResult<SavedLyrics> {
     let media = PathBuf::from(&media_path);
     let origin = origin.unwrap_or(Origin::Library);
+    // Online songs have no folder to put a lyrics file in.
+    let target = if netease::song_id(&media_path).is_some() { SaveTarget::Library } else { target };
     match target {
         SaveTarget::SameDir => match lyrics::save_same_dir(&media, &content) {
             Ok(p) => {
@@ -815,4 +844,88 @@ pub fn playlist_set_items(app: AppHandle, state: State<'_, AppState>, id: String
     state.media_lib.update(|l| l.playlist_mut(&id).map(|p| p.items = items))??;
     lib_changed(&app);
     Ok(())
+}
+
+// ------------------------------------------------------------------ NetEase (experimental)
+
+async fn open_netease(state: &AppState, path: String, id: u64, quality: &str) -> AppResult<OpenedMedia> {
+    let ne = &state.netease;
+    let song = ne.song(id).await?;
+    let stream = ne.stream(id, quality).await?;
+    let artist = song.artists.join(" / ");
+    let name = if artist.is_empty() { song.name.clone() } else { format!("{artist} - {}", song.name) };
+    let cover = song.cover.as_ref().map(|c| state.server.remote_url(&format!("{c}?param=600y600")));
+    // A preview clip is shorter than the song: let the player find its length.
+    let duration = (!stream.trial && song.duration > 0.0).then_some(song.duration);
+    Ok(OpenedMedia {
+        file_name: name.clone(),
+        name,
+        kind: MediaKind::Audio,
+        strategy: Strategy::Direct,
+        url: state.server.remote_url(&stream.url),
+        base_offset: 0.0,
+        duration,
+        meta: Some(AudioMeta {
+            title: Some(song.name.clone()),
+            artist: (!artist.is_empty()).then_some(artist),
+            album: (!song.album.is_empty()).then(|| song.album.clone()),
+            cover,
+            duration,
+            embedded_lyrics: None,
+        }),
+        subtitles: vec![],
+        notice: stream.trial.then(|| "这首歌需要网易云音乐会员，只能试听片段".to_string()),
+        path,
+    })
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NeteaseStatus {
+    pub account: Option<netease::Account>,
+}
+
+#[tauri::command]
+pub async fn netease_status(state: State<'_, AppState>) -> AppResult<NeteaseStatus> {
+    Ok(NeteaseStatus { account: state.netease.account().await? })
+}
+
+#[tauri::command]
+pub async fn netease_qr_start(state: State<'_, AppState>) -> AppResult<netease::QrStart> {
+    state.netease.qr_start().await
+}
+
+#[tauri::command]
+pub async fn netease_qr_check(state: State<'_, AppState>, key: String) -> AppResult<netease::QrState> {
+    state.netease.qr_check(&key).await
+}
+
+#[tauri::command]
+pub async fn netease_login_cookie(state: State<'_, AppState>, cookie: String) -> AppResult<netease::Account> {
+    state.netease.set_cookie(&cookie).await
+}
+
+#[tauri::command]
+pub fn netease_logout(state: State<'_, AppState>) {
+    state.netease.logout();
+}
+
+#[tauri::command]
+pub async fn netease_playlists(state: State<'_, AppState>) -> AppResult<Vec<netease::Playlist>> {
+    state.netease.playlists().await
+}
+
+#[tauri::command]
+pub async fn netease_playlist(state: State<'_, AppState>, id: u64) -> AppResult<Vec<netease::Song>> {
+    state.netease.playlist_songs(id).await
+}
+
+#[tauri::command]
+pub async fn netease_daily(state: State<'_, AppState>) -> AppResult<Vec<netease::Song>> {
+    state.netease.daily().await
+}
+
+#[tauri::command]
+pub async fn netease_search(state: State<'_, AppState>, query: String) -> AppResult<Vec<netease::Song>> {
+    state.netease.search(&query).await
 }

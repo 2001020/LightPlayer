@@ -35,6 +35,9 @@ export interface BackgroundSettings {
   fit: "cover" | "contain" | "tile";
 }
 
+/** NetEase stream quality: standard 128k, exhigh 320k MP3, lossless FLAC, hires. */
+export type NeteaseQuality = "standard" | "exhigh" | "lossless" | "hires";
+
 export interface Settings {
   theme: ThemeMode;
   accent: string;
@@ -58,6 +61,8 @@ export interface Settings {
   libraryRecordPlays: boolean;
   /** Closing the window keeps the app (and playback) running in the menu bar. */
   runInBackground: boolean;
+  /** Experimental NetEase Cloud Music section (off by default). */
+  netease: { enabled: boolean; quality: NeteaseQuality };
   /** A video keeps playing when its window is closed to the background. */
   videoInBackground: boolean;
   /** Play the next item when a song / a video ends ("single" mode repeats regardless). */
@@ -118,6 +123,7 @@ export const defaultSettings: Settings = {
   libraryRecordPlays: true,
   runInBackground: true,
   videoInBackground: false,
+  netease: { enabled: false, quality: "exhigh" },
   autoNextAudio: true,
   autoNextVideo: false,
   trayShowTitle: false,

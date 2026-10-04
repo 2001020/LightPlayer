@@ -4,6 +4,7 @@ mod error;
 mod library;
 mod lyrics;
 mod media;
+mod netease;
 mod nowplaying;
 mod file_assoc;
 mod server;
@@ -38,6 +39,7 @@ pub struct AppState {
     pub downloads: Mutex<HashMap<String, Arc<AtomicBool>>>,
     pub now_playing: nowplaying::NowPlaying,
     pub tray: tray::TrayState,
+    pub netease: netease::Netease,
 }
 
 /// Files macOS asks to open before `setup` has run: launching the app by
@@ -87,6 +89,7 @@ pub fn run() {
             app.manage(AppState {
                 server,
                 hls,
+                netease: netease::Netease::new(&data_dir),
                 library: lyrics::LyricsLibrary::new(&data_dir),
                 media_lib: Arc::new(library::LibraryStore::load(&data_dir)),
                 cache_dir,
@@ -153,6 +156,15 @@ pub fn run() {
             commands::import_background,
             commands::take_pending_open,
             commands::file_associations,
+            commands::netease_status,
+            commands::netease_qr_start,
+            commands::netease_qr_check,
+            commands::netease_login_cookie,
+            commands::netease_logout,
+            commands::netease_playlists,
+            commands::netease_playlist,
+            commands::netease_daily,
+            commands::netease_search,
             commands::set_file_associations,
             commands::now_playing_metadata,
             commands::now_playing_state,

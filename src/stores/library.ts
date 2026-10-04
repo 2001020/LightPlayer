@@ -7,7 +7,9 @@ export type LibraryNav =
   | { view: "songs" | "albums" | "artists" | "videos" | "favorites" | "recent" }
   | { view: "album"; key: string; from: "albums" | "artists" }
   | { view: "artist"; name: string }
-  | { view: "playlist"; id: string };
+  | { view: "playlist"; id: string }
+  /** NetEase Cloud Music: "daily", "search" or "pl:<playlist id>". */
+  | { view: "netease"; list: string };
 
 interface LibraryState {
   data: LibraryData;

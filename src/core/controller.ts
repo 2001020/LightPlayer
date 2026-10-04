@@ -11,6 +11,7 @@ import {
   AUDIO_EXTS,
   detectCaps,
   extOf,
+  isCloudPath,
   isTauri,
   kindOf,
   on,
@@ -262,7 +263,8 @@ export async function playIndex(index: number, autoplay = true, reload?: { live:
   usePlayer.setState({ loading: true, error: null, abLoop: { a: null, b: null } });
   caps ??= detectCaps();
   try {
-    const media = await api.openMedia(entry.path, caps, settings().precisePaths.includes(entry.path));
+    const cloud = isCloudPath(entry.path);
+    const media = await api.openMedia(entry.path, caps, settings().precisePaths.includes(entry.path), cloud ? settings().netease.quality : undefined);
     // Ignore stale results if the user skipped again in the meantime.
     if (usePlaylist.getState().items[usePlaylist.getState().index]?.path !== entry.path) return;
     const st = settings();
@@ -275,7 +277,8 @@ export async function playIndex(index: number, autoplay = true, reload?: { live:
       toast(`已从上次位置 ${Math.floor(saved / 60)}:${String(Math.floor(saved % 60)).padStart(2, "0")} 继续播放`);
     }
     usePlayer.setState({ media, loading: false, duration: dur, position: startAt });
-    if (!st.privateMode && !reload) useSettings.getState().addRecent(media.path);
+    // Online songs stay out of the recent files and the library.
+    if (!st.privateMode && !reload && !cloud) useSettings.getState().addRecent(media.path);
     if (media.kind === "video" && useUI.getState().page === "lyrics") useUI.setState({ page: "player" });
     await engine.load(media, startAt, autoplay);
     if (!reload) {
@@ -284,11 +287,12 @@ export async function playIndex(index: number, autoplay = true, reload?: { live:
     }
     void updateNowPlaying();
     void updateDynamicAccent();
-    if (media.kind === "audio" && media.strategy === "direct") {
+    if (media.notice && !reload) toast(media.notice, "info", 6000);
+    if (media.kind === "audio" && media.strategy === "direct" && !cloud) {
       void checkTiming(media);
       void prepareExact(media);
     }
-    if (!reload && !st.privateMode && (isTauri || media.path.startsWith("browser:"))) {
+    if (!reload && !st.privateMode && !cloud && (isTauri || media.path.startsWith("browser:"))) {
       void api.libraryRecordPlay(media.path, st.libraryRecordPlays).catch(() => {});
     }
   } catch (e) {
@@ -495,6 +499,10 @@ export async function rescanLyrics() {
   const wasAi = isAiOrigin(useLyrics.getState().origin);
   await loadLyrics(media.path);
   const { status, origin } = useLyrics.getState();
+  if (isCloudPath(media.path)) {
+    toast(status === "loaded" ? "已重新获取歌词" : status === "error" ? "获取网易云音乐歌词失败" : "网易云音乐没有这首歌的歌词", status === "loaded" ? "success" : "info");
+    return;
+  }
   if (status !== "loaded") toast("歌曲所在目录中没有找到歌词文件");
   else if (wasAi && isAiOrigin(origin)) toast("目录中没有找到同名歌词文件，继续显示 AI 歌词");
   else toast(origin === "sidecar" ? "已加载歌曲目录中的歌词文件" : "已重新加载歌词", "success");
@@ -931,6 +939,8 @@ function rememberPosition(final = false) {
 }
 
 let lastNpSync = 0;
+/** Last refresh of an expired online stream (at most one a minute per song). */
+let cloudRetry: { path: string; at: number } | null = null;
 let lastPosSave = 0;
 
 function tick() {
@@ -1020,6 +1030,17 @@ export async function init() {
     void next(true);
   };
   engine.onError = (msg) => {
+    // Online stream links expire after a while (e.g. a long pause): fetch a
+    // fresh one once and carry on from the same place.
+    const path = engine.media?.path;
+    if (isCloudPath(path) && !(cloudRetry && cloudRetry.path === path && Date.now() - cloudRetry.at < 60_000)) {
+      cloudRetry = { path: path!, at: Date.now() };
+      const pl = usePlaylist.getState();
+      if (pl.items[pl.index]?.path === path) {
+        void playIndex(pl.index, true, { live: true });
+        return;
+      }
+    }
     usePlayer.setState({ error: msg });
     toast(msg, "error", 5000);
   };

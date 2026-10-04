@@ -25,6 +25,8 @@ pub struct ServerState {
     pub token: String,
     pub hls: Arc<HlsManager>,
     pub thumbs: PathBuf,
+    /// For `/remote` (online music streams and covers).
+    pub http: reqwest::Client,
 }
 
 #[derive(Clone)]
@@ -44,6 +46,12 @@ impl ServerInfo {
 
     pub fn hls_url(&self, id: &str) -> String {
         format!("{}/hls/{}/index.m3u8", self.base(), id)
+    }
+
+    /// An online stream or image fetched through this server (the WebView needs
+    /// CORS headers and byte ranges that the CDNs do not always send).
+    pub fn remote_url(&self, url: &str) -> String {
+        format!("{}/remote?u={}", self.base(), urlencode(url))
     }
 
     pub fn subtitle_url(&self, path: &std::path::Path, stream: Option<i64>) -> String {
@@ -68,12 +76,18 @@ pub fn urlencode(s: &str) -> String {
 
 pub async fn start(hls: Arc<HlsManager>, thumbs: PathBuf) -> std::io::Result<ServerInfo> {
     let token = format!("{:032x}", rand::random::<u128>());
-    let state = ServerState { token: token.clone(), hls, thumbs };
+    let http = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15")
+        .build()
+        .map_err(std::io::Error::other)?;
+    let state = ServerState { token: token.clone(), hls, thumbs, http };
     let app = Router::new()
         .route("/{token}/file", get(file_handler))
         .route("/{token}/hls/{id}/{name}", get(hls_handler))
         .route("/{token}/sub", get(subtitle_handler))
         .route("/{token}/thumb", get(thumb_handler))
+        .route("/{token}/remote", get(remote_handler))
         .layer(middleware::from_fn(cors))
         .with_state(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
@@ -123,6 +137,41 @@ async fn file_handler(
         return forbidden();
     }
     range::serve_file(PathBuf::from(q.p), &headers).await
+}
+
+#[derive(Deserialize)]
+struct RemoteQuery {
+    u: String,
+}
+
+/// Relays an online stream or image (allowed CDNs only), passing byte ranges
+/// through so seeking works.
+async fn remote_handler(
+    State(st): State<ServerState>,
+    AxPath(token): AxPath<String>,
+    Query(q): Query<RemoteQuery>,
+    headers: HeaderMap,
+) -> Response {
+    if token != st.token || !crate::netease::allowed_remote(&q.u) {
+        return forbidden();
+    }
+    let mut req = st.http.get(&q.u).header("Referer", "https://music.163.com/");
+    if let Some(r) = headers.get(header::RANGE) {
+        req = req.header(header::RANGE, r.clone());
+    }
+    let resp = match req.send().await {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_GATEWAY, e.to_string()).into_response(),
+    };
+    let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+    let mut out = Response::builder().status(status);
+    for name in [header::CONTENT_TYPE, header::CONTENT_LENGTH, header::CONTENT_RANGE, header::ACCEPT_RANGES, header::CACHE_CONTROL] {
+        if let Some(v) = resp.headers().get(name.as_str()).and_then(|v| HeaderValue::from_bytes(v.as_bytes()).ok()) {
+            out = out.header(name, v);
+        }
+    }
+    let body = Body::from_stream(resp.bytes_stream());
+    out.body(body).unwrap_or_else(|_| StatusCode::BAD_GATEWAY.into_response())
 }
 
 #[derive(Deserialize)]
@@ -279,6 +328,15 @@ mod tests {
         assert_eq!(r.bytes().await.unwrap().len(), 256);
         let bad = url.replace(&info.token, "wrong");
         assert_eq!(client.get(&bad).send().await.unwrap().status(), 403);
+
+        // The online relay passes ranges through (tests may relay localhost).
+        let r = client.get(info.remote_url(&url)).header("Range", "bytes=250-").send().await.unwrap();
+        assert_eq!(r.status(), 206);
+        assert_eq!(r.headers()["content-range"], "bytes 250-255/256");
+        assert_eq!(r.headers()["access-control-allow-origin"], "*");
+        assert_eq!(r.bytes().await.unwrap().to_vec(), (250u8..=255).collect::<Vec<_>>());
+        let other = client.get(info.remote_url("https://example.com/a.mp3")).send().await.unwrap();
+        assert_eq!(other.status(), 403);
 
         // Subtitles and HLS need a working ffmpeg with libx264.
         let srt = dir.path().join("a.srt");

@@ -4,6 +4,9 @@ import { describeCode, PREVIEWS } from "../core/weather/scene";
 import { refreshWeather } from "../core/weather/service";
 import { api, isTauri, localFileUrl, pickBrowserFiles, type CityHit, type FileAssociations } from "../lib/ipc";
 import { useWeather } from "../stores/weather";
+import { confirmDialog } from "../lib/confirm";
+import { neteaseLogout, refreshNetease, useNetease } from "../stores/netease";
+import type { NeteaseQuality } from "../stores/settings";
 import { toast, useUI, type UIState } from "../stores/player";
 import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZE_MIN } from "../stores/settings";
 import { ColorChoices } from "./ColorChoices";
@@ -17,6 +20,7 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: "playback", label: "播放", icon: "play" },
   { id: "lyrics", label: "歌词", icon: "lyrics" },
   { id: "asr", label: "歌词识别", icon: "sparkles" },
+  { id: "netease", label: "网易云音乐", icon: "cloud" },
   { id: "shortcuts", label: "快捷键", icon: "keyboard" },
   { id: "about", label: "关于", icon: "info" },
 ];
@@ -334,6 +338,61 @@ function Playback() {
   );
 }
 
+/** Experimental NetEase Cloud Music connection. */
+function NeteaseSettings() {
+  const s = useSettings();
+  const account = useNetease((st) => st.account);
+  const ne = s.netease;
+  useEffect(() => {
+    if (ne.enabled && account === undefined) void refreshNetease();
+  }, [ne.enabled, account]);
+  const enable = async (on: boolean) => {
+    if (on) {
+      const ok = await confirmDialog(
+        "这是试验性功能：它使用网易云音乐网页版的非官方接口，随时可能失效；使用第三方客户端也违反网易云音乐的用户协议，你的账号存在被限制的风险。\n\n会员歌曲只有会员账号才能完整播放，LightPlayer 不会下载或破解任何歌曲。\n\n仍要开启吗？",
+        "开启网易云音乐（试验性）",
+      );
+      if (!ok) return;
+    }
+    s.set({ netease: { ...ne, enabled: on } });
+  };
+  return (
+    <>
+      <h3>网易云音乐（试验性）</h3>
+      <Row label="在媒体库中显示网易云音乐" hint="登录后可以在媒体库侧栏播放你的歌单、我喜欢的音乐和每日推荐，也可以搜索歌曲。使用非官方接口，随时可能失效">
+        <Switch on={ne.enabled} onChange={(on) => void enable(on)} />
+      </Row>
+      {ne.enabled && (
+        <>
+          <Row label="账号" hint={account ? `${account.nickname}${account.vip ? "（会员）" : ""}` : account === null ? "还没有登录" : "正在检查…"}>
+            {account ? (
+              <button className="btn" onClick={() => void neteaseLogout()}>
+                退出登录
+              </button>
+            ) : (
+              <button className="btn primary" onClick={() => useUI.setState({ overlay: "neteaseLogin" })}>
+                扫码登录
+              </button>
+            )}
+          </Row>
+          <Row label="音质" hint="无损和 Hi-Res 需要会员。选择无损或 Hi-Res 时，拖动进度后歌词可能和歌声稍有偏差">
+            <Seg<NeteaseQuality>
+              value={ne.quality}
+              options={[
+                ["standard", "标准"],
+                ["exhigh", "极高"],
+                ["lossless", "无损"],
+                ["hires", "Hi-Res"],
+              ]}
+              onChange={(quality) => s.set({ netease: { ...ne, quality } })}
+            />
+          </Row>
+        </>
+      )}
+    </>
+  );
+}
+
 function LyricsSettings() {
   const s = useSettings();
   return (
@@ -476,6 +535,7 @@ export function SettingsDialog() {
                 <AsrOptions />
               </>
             )}
+            {tab === "netease" && <NeteaseSettings />}
             {tab === "shortcuts" && <Shortcuts />}
             {tab === "about" && <About />}
           </div>
