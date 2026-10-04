@@ -176,16 +176,23 @@ jobs:
       - name: Smoke test bundled ffmpeg and package the portable version
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           $rel = "src-tauri/target/x86_64-pc-windows-msvc/release"
-          Get-ChildItem "$rel/bundle/nsis"
-          & "$rel/ffprobe.exe" -hide_banner -version | Select-Object -First 1
-          if ($LASTEXITCODE -ne 0) { throw "ffprobe failed" }
-          $dir = "$env:RUNNER_TEMP/portable/LightPlayer"
+          $exes = (Get-ChildItem $rel -Filter *.exe | ForEach-Object Name) -join ", "
+          $setup = (Get-ChildItem "$rel/bundle/nsis" -Filter *.exe | ForEach-Object Name) -join ", "
+          Write-Output "::notice title=Windows build::release: $exes; nsis: $setup"
+          $ver = & "$rel/ffprobe.exe" -hide_banner -version 2>&1
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=ffprobe::exit $LASTEXITCODE $ver"; exit 1 }
+          Write-Output "::notice title=ffprobe::$($ver | Select-Object -First 1)"
+          $app = Get-ChildItem $rel -Filter *.exe | Where-Object { $_.Name -notmatch '^(ffmpeg|ffprobe)' } | Select-Object -First 1
+          if (-not $app) { Write-Output "::error title=portable::app exe not found in $exes"; exit 1 }
+          $dir = Join-Path $env:RUNNER_TEMP "portable/LightPlayer"
           New-Item -ItemType Directory -Force $dir | Out-Null
-          Copy-Item "$rel/lightplayer.exe" "$dir/LightPlayer.exe"
+          Copy-Item $app.FullName (Join-Path $dir "LightPlayer.exe")
           Copy-Item "$rel/ffmpeg.exe", "$rel/ffprobe.exe" $dir
-          Compress-Archive -Path $dir -DestinationPath "$env:RUNNER_TEMP/LightPlayer-portable.zip" -Force
-          Get-Item "$env:RUNNER_TEMP/LightPlayer-portable.zip"
+          Compress-Archive -Path $dir -DestinationPath (Join-Path $env:RUNNER_TEMP "LightPlayer-portable.zip") -Force
+          "LP_APP_EXE=$($app.FullName)" >> $env:GITHUB_ENV
+          Get-Item (Join-Path $env:RUNNER_TEMP "LightPlayer-portable.zip")
       - uses: actions/upload-artifact@v4
         with:
           name: LightPlayer-Windows-x64-setup
@@ -206,7 +213,7 @@ jobs:
           New-Item -ItemType Directory -Force $shots | Out-Null
           & "$rel/ffmpeg.exe" -loglevel error -y -f lavfi -i testsrc2=size=1280x720:rate=30 `
             -f lavfi -i sine=frequency=440 -t 20 -c:v libx264 -pix_fmt yuv420p -c:a aac "$env:RUNNER_TEMP/test.mp4"
-          $p = Start-Process "$rel/lightplayer.exe" -ArgumentList "`"$env:RUNNER_TEMP/test.mp4`"" -PassThru
+          $p = Start-Process $env:LP_APP_EXE -ArgumentList "`"$env:RUNNER_TEMP/test.mp4`"" -PassThru
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           function Shot($name) {
             $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
@@ -219,6 +226,8 @@ jobs:
           Shot "window"
           Start-Sleep 4
           Shot "window-later"
+          $alive = -not $p.HasExited
+          Write-Output "::notice title=UI smoke test::app still running after 16 s: $alive"
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           Get-ChildItem $shots
       - uses: actions/upload-artifact@v4
@@ -243,14 +252,25 @@ jobs:
           $tts.Dispose()
           $env:LIGHTPLAYER_FFMPEG_DIR = "$PWD/src-tauri/target/x86_64-pc-windows-msvc/release"
           cd src-tauri
-          cargo test --release --target x86_64-pc-windows-msvc asr_smoke -- --ignored --nocapture
-          if ($LASTEXITCODE -ne 0) { throw "speech recognition smoke test failed" }
+          $out = cargo test --release --target x86_64-pc-windows-msvc asr_smoke -- --ignored --nocapture 2>&1 | ForEach-Object { "$_" }
+          $code = $LASTEXITCODE
+          $out
+          $tail = ($out | Select-Object -Last 25) -join "%0A"
+          if ($code -ne 0) { Write-Output "::error title=Speech recognition::$tail"; exit 1 }
+          Write-Output "::notice title=Speech recognition::$(($out | Select-String '^\[0' | Select-Object -First 3) -join ' ')"
       - name: Rust unit tests (Windows, informational)
         continue-on-error: true
         working-directory: src-tauri
         env:
           LIGHTPLAYER_FFMPEG_DIR: ${{ github.workspace }}/src-tauri/target/x86_64-pc-windows-msvc/release
-        run: cargo test --release --target x86_64-pc-windows-msvc
+        shell: pwsh
+        run: |
+          $out = cargo test --release --target x86_64-pc-windows-msvc 2>&1 | ForEach-Object { "$_" }
+          $code = $LASTEXITCODE
+          $out
+          $sum = ($out | Select-String 'test result|FAILED|panicked' | Select-Object -First 30) -join "%0A"
+          if ($code -ne 0) { Write-Output "::warning title=Rust tests on Windows::$sum"; exit 1 }
+          Write-Output "::notice title=Rust tests on Windows::$sum"
 
   release:
     name: Publish GitHub release
