@@ -1,7 +1,9 @@
+import { useRef, useState } from "react";
 import * as C from "../core/controller";
 import { formatTime } from "../lib/format";
 import { usePlayer, usePlaylist, useSubtitles, useUI } from "../stores/player";
-import { useSettings } from "../stores/settings";
+import { NETEASE_QUALITIES, useSettings } from "../stores/settings";
+import { isCloudPath } from "../lib/ipc";
 import { useLibrary } from "../stores/library";
 import { Icon, SkipIcon, type IconName } from "./Icon";
 import { Popover } from "./Popover";
@@ -121,6 +123,114 @@ function RateMenu() {
             </div>
           ))}
         </>
+      )}
+    </Popover>
+  );
+}
+
+/** NetEase level names, including ones only some songs have. */
+const LEVEL_NAMES: Record<string, string> = {
+  ...Object.fromEntries(NETEASE_QUALITIES),
+  higher: "较高",
+  jyeffect: "高清环绕声",
+  sky: "沉浸环绕声",
+  jymaster: "超清母带",
+};
+const LEVEL_RANK: Record<string, number> = { standard: 0, higher: 1, exhigh: 2, lossless: 3, hires: 4 };
+
+/** Four snapping stops, lowest quality on the left; applied on release. */
+function QualitySlider({ value, onChange }: { value: number; onChange: (i: number) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<number | null>(null);
+  const last = NETEASE_QUALITIES.length - 1;
+  const stopAt = (x: number) => {
+    const r = ref.current!.getBoundingClientRect();
+    return Math.round(Math.min(1, Math.max(0, (x - r.left) / r.width)) * last);
+  };
+  const shown = drag ?? value;
+  const pct = (i: number) => `${(i / last) * 100}%`;
+  return (
+    <div className="q-slider">
+      <div
+        ref={ref}
+        className={`q-track ${drag !== null ? "dragging" : ""}`}
+        role="slider"
+        tabIndex={0}
+        aria-label="音质"
+        aria-valuemin={0}
+        aria-valuemax={last}
+        aria-valuenow={shown}
+        aria-valuetext={NETEASE_QUALITIES[shown][1]}
+        onPointerDown={(e) => {
+          ref.current!.setPointerCapture(e.pointerId);
+          setDrag(stopAt(e.clientX));
+        }}
+        onPointerMove={(e) => drag !== null && setDrag(stopAt(e.clientX))}
+        onPointerUp={(e) => {
+          if (drag === null) return;
+          setDrag(null);
+          onChange(stopAt(e.clientX));
+        }}
+        onPointerCancel={() => setDrag(null)}
+        onKeyDown={(e) => {
+          const d = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0;
+          if (!d) return;
+          e.preventDefault();
+          e.stopPropagation();
+          onChange(Math.min(last, Math.max(0, value + d)));
+        }}
+      >
+        <div className="q-rail" />
+        <div className="q-fill" style={{ width: pct(shown) }} />
+        {NETEASE_QUALITIES.map((_, i) => (
+          <span key={i} className={`q-dot ${i <= shown ? "on" : ""}`} style={{ left: pct(i) }} />
+        ))}
+        <span className="q-knob" style={{ left: pct(shown) }} />
+      </div>
+      <div className="q-labels">
+        {NETEASE_QUALITIES.map(([q, label], i) => (
+          <button key={q} className={i === shown ? "on" : ""} style={{ left: pct(i) }} onClick={() => onChange(i)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QualityMenu() {
+  const quality = useSettings((s) => s.netease.quality);
+  const got = usePlayer((s) => s.media?.quality);
+  const loading = usePlayer((s) => s.loading);
+  const index = Math.max(0, NETEASE_QUALITIES.findIndex(([q]) => q === quality));
+  const label = NETEASE_QUALITIES[index][1];
+  const lower = !!got?.level && (LEVEL_RANK[got.level] ?? 9) < (LEVEL_RANK[quality] ?? 0);
+  return (
+    <Popover
+      trigger={(_, t) => (
+        <button className="icon-btn q-btn" onClick={t} {...tip("音质（网易云音乐）")}>
+          {label}
+        </button>
+      )}
+    >
+      {() => (
+        <div className="q-menu">
+          <div className="label">音质</div>
+          <QualitySlider value={index} onChange={(i) => void C.setNeteaseQuality(NETEASE_QUALITIES[i][0])} />
+          <div className="q-now">
+            {loading ? (
+              "正在切换…"
+            ) : got?.level || got?.kbps ? (
+              <>
+                当前播放：{LEVEL_NAMES[got.level ?? ""] ?? got.level ?? ""}
+                {got.kbps ? ` ${got.kbps} kbps` : ""}
+                {lower && <div className="warn">账号或这首歌不支持更高音质</div>}
+              </>
+            ) : (
+              "无损和 Hi-Res 需要会员"
+            )}
+          </div>
+        </div>
       )}
     </Popover>
   );
@@ -255,6 +365,7 @@ export function TransportBar() {
         </div>
 
         <div className="right">
+          {isCloudPath(media?.path) && <QualityMenu />}
           <RateMenu />
           <SleepMenu />
           {media?.kind === "audio" && (

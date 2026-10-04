@@ -2426,9 +2426,11 @@ kbd {
 .lib-hint .link:hover {
   text-decoration: underline;
 }
+/* Each playlist section is as tall as its content; when both do not fit
+   they share the room and scroll. The footer stays at the bottom. */
 .lib-playlists {
-  flex: 1;
-  min-height: 0;
+  flex: 0 1 auto;
+  min-height: 40px;
   overflow-y: auto;
 }
 .lib-hint {
@@ -2437,6 +2439,7 @@ kbd {
   color: var(--text-faint);
 }
 .lib-side-foot {
+  margin-top: auto;
   padding-top: 8px;
   border-top: 1px solid var(--border);
   display: flex;
@@ -3561,9 +3564,112 @@ html.desktop-lyrics #root {
   font-family: ui-monospace, Menlo, monospace;
   font-size: 12px;
 }
-/* An empty local playlist section leaves the room to the NetEase lists. */
-.lib-playlists:not(.ne-side):has(> .lib-hint:only-child) {
-  flex: none;
+/* Stream quality (NetEase songs only), in the transport bar. */
+.icon-btn.q-btn {
+  width: auto;
+  min-width: 34px;
+  padding: 0 8px;
+  border-radius: 17px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.q-menu {
+  width: 248px;
+  padding: 2px 4px 6px;
+}
+.q-slider {
+  padding: 10px 26px 0;
+}
+.q-track {
+  position: relative;
+  height: 22px;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+.q-rail,
+.q-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+}
+.q-rail {
+  right: 0;
+  background: var(--track, rgba(127, 127, 127, 0.25));
+}
+.q-fill {
+  background: var(--accent);
+}
+.q-track:not(.dragging) .q-fill,
+.q-track:not(.dragging) .q-knob {
+  transition: left 0.15s var(--ease), width 0.15s var(--ease);
+}
+.q-dot {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--panel-solid);
+  border: 2px solid var(--track, rgba(127, 127, 127, 0.35));
+  box-sizing: border-box;
+}
+.q-dot.on {
+  border-color: var(--accent);
+}
+.q-knob {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent);
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.q-track:focus-visible .q-knob {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.q-labels {
+  position: relative;
+  height: 22px;
+  margin-top: 2px;
+}
+.q-labels button {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.q-labels button.on {
+  color: var(--accent);
+  font-weight: 700;
+}
+.q-now {
+  margin-top: 8px;
+  padding: 8px 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.q-now .warn {
+  margin-top: 3px;
+  color: var(--text-faint);
 }
 .ne-web {
   display: flex;

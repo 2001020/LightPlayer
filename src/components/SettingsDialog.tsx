@@ -5,8 +5,9 @@ import { refreshWeather } from "../core/weather/service";
 import { api, isTauri, localFileUrl, pickBrowserFiles, type CityHit, type FileAssociations } from "../lib/ipc";
 import { useWeather } from "../stores/weather";
 import { confirmDialog } from "../lib/confirm";
+import { formatBytes } from "../lib/format";
 import { neteaseLogout, refreshNetease, useNetease } from "../stores/netease";
-import type { NeteaseQuality } from "../stores/settings";
+import { NETEASE_QUALITIES, type NeteaseQuality } from "../stores/settings";
 import { toast, useUI, type UIState } from "../stores/player";
 import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZE_MIN } from "../stores/settings";
 import { ColorChoices } from "./ColorChoices";
@@ -378,13 +379,8 @@ function NeteaseSettings() {
           <Row label="音质" hint="无损和 Hi-Res 需要会员。选择无损或 Hi-Res 时，拖动进度后歌词可能和歌声稍有偏差">
             <Seg<NeteaseQuality>
               value={ne.quality}
-              options={[
-                ["standard", "标准"],
-                ["exhigh", "极高"],
-                ["lossless", "无损"],
-                ["hires", "Hi-Res"],
-              ]}
-              onChange={(quality) => s.set({ netease: { ...ne, quality } })}
+              options={NETEASE_QUALITIES}
+              onChange={(quality) => void C.setNeteaseQuality(quality)}
             />
           </Row>
         </>
@@ -457,6 +453,36 @@ function Shortcuts() {
   );
 }
 
+function CacheRow() {
+  const [bytes, setBytes] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void api.cacheSize().then(setBytes, () => setBytes(null));
+  }, []);
+  const clear = async () => {
+    setBusy(true);
+    try {
+      const freed = await C.clearCache();
+      toast(freed > 0 ? `已删除缓存文件，释放了 ${formatBytes(freed)}` : "没有可以删除的缓存文件", "success");
+      setBytes(await api.cacheSize());
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <h3>存储</h3>
+      <Row label={`缓存文件${bytes === null ? "" : `：${bytes ? formatBytes(bytes) : "0 B"}`}`} hint="转码后的音频副本和封面缩略图，需要时会重新生成；不会删除歌词、模型、媒体库和设置">
+        <button className="btn" disabled={busy || bytes === 0} onClick={() => void clear()}>
+          {busy ? "正在删除…" : "删除缓存"}
+        </button>
+      </Row>
+    </>
+  );
+}
+
 function About() {
   const reset = () => {
     const keep = useSettings.getState();
@@ -482,6 +508,7 @@ function About() {
       <p className="note">
         第三方组件：Tauri、React、FFmpeg（LGPL/GPL）、whisper.cpp（MIT）、OpenAI Whisper 模型权重（MIT）、Silero VAD（MIT）、hls.js（Apache-2.0）。
       </p>
+      <CacheRow />
       <h3>重置</h3>
       <Row label="恢复默认设置" hint="不会删除歌词、模型和播放记录">
         <button className="btn danger" onClick={reset}>

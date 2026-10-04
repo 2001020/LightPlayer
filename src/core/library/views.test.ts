@@ -54,4 +54,9 @@ describe("library views", () => {
   it("builds queue entries", () => {
     expect(toEntry(tracks[0])).toEqual({ path: tracks[0].path, fileName: "02 晴天.mp3", name: "02 晴天", kind: "audio", size: 1 });
   });
+
+  it("names online songs by title", () => {
+    const e = toEntry(t("netease:186016", { title: "晴天", artist: "周杰伦", size: 0 }));
+    expect(e).toMatchObject({ name: "晴天", fileName: "周杰伦 - 晴天" });
+  });
 });

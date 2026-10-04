@@ -2,7 +2,7 @@
 // albums, artists, sorted / filtered track lists and queue entries.
 
 import { basename, stem } from "../../lib/format";
-import type { LibraryData, LibraryTrack, MediaEntry } from "../../lib/ipc";
+import { isCloudPath, type LibraryData, type LibraryTrack, type MediaEntry } from "../../lib/ipc";
 
 export const UNKNOWN_ALBUM = "未知专辑";
 export const UNKNOWN_ARTIST = "未知艺术家";
@@ -32,6 +32,12 @@ export const trackArtist = (t: LibraryTrack) => t.artist?.trim() || "";
 export const albumArtistOf = (t: LibraryTrack) => t.albumArtist?.trim() || t.artist?.trim() || UNKNOWN_ARTIST;
 
 export function toEntry(t: LibraryTrack): MediaEntry {
+  // Online songs have no file name: show the title (and search by artist too).
+  if (isCloudPath(t.path)) {
+    const title = trackTitle(t);
+    const artist = trackArtist(t);
+    return { path: t.path, fileName: artist ? `${artist} - ${title}` : title, name: title, kind: t.kind, size: t.size };
+  }
   return { path: t.path, fileName: basename(t.path), name: stem(t.path), kind: t.kind, size: t.size };
 }
 

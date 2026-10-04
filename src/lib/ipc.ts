@@ -47,6 +47,8 @@ export interface OpenedMedia {
   subtitles: SubtitleTrack[];
   /** Shown once playback starts (e.g. "preview clip only"). */
   notice?: string | null;
+  /** The quality an online stream actually has. */
+  quality?: { level?: string | null; kbps?: number | null } | null;
 }
 
 export interface AssocKind {
@@ -501,12 +503,56 @@ const mockQrSvg = () => {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220"><rect width="220" height="220" fill="#fff"/><g fill="#000">${cells}</g></svg>`;
 };
 
+/** A silent minute standing in for an online song in the browser preview. */
+let silence: string | null = null;
+function mockCloudMedia(path: string, level: string): OpenedMedia {
+  if (!silence) {
+    const rate = 8000;
+    const n = rate * 60;
+    const buf = new DataView(new ArrayBuffer(44 + n));
+    const str = (o: number, t: string) => [...t].forEach((c, i) => buf.setUint8(o + i, c.charCodeAt(0)));
+    str(0, "RIFF");
+    buf.setUint32(4, 36 + n, true);
+    str(8, "WAVEfmt ");
+    buf.setUint32(16, 16, true);
+    buf.setUint16(20, 1, true);
+    buf.setUint16(22, 1, true);
+    buf.setUint32(24, rate, true);
+    buf.setUint32(28, rate, true);
+    buf.setUint16(32, 1, true);
+    buf.setUint16(34, 8, true);
+    str(36, "data");
+    buf.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) buf.setUint8(44 + i, 128);
+    silence = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  const id = Number(path.slice(NETEASE_PREFIX.length));
+  // The mock account has no Hi-Res: it falls back to lossless.
+  const got = level === "hires" ? "lossless" : level;
+  const kbps = { standard: 128, exhigh: 320, lossless: 925 }[got] ?? 320;
+  return {
+    path,
+    fileName: `歌手${id % 7} - 歌曲${id}`,
+    name: `歌手${id % 7} - 歌曲${id}`,
+    kind: "audio",
+    strategy: "direct",
+    url: silence,
+    baseOffset: 0,
+    duration: 60,
+    meta: { title: `歌曲${id}`, artist: `歌手${id % 7}` },
+    subtitles: [],
+    quality: { level: got, kbps },
+  };
+}
+
+let mockCacheBytes = 734_003_200;
+
 async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const path = (args.path ?? args.mediaPath) as string | undefined;
   if (cmd.startsWith("library_") || cmd.startsWith("playlist_")) return mockLibrary(cmd, args) as T;
   switch (cmd) {
     case "open_media": {
-      if (isCloudPath(path)) throw new Error("浏览器预览不能播放网易云音乐的歌曲");
+      if (isCloudPath(path)) return mockCloudMedia(path!, String(args.quality ?? "exhigh")) as T;
       const kind = kindOf(path!) ?? "audio";
       const name = stem(path!);
       const [artist, title] = name.includes(" - ") ? name.split(" - ", 2) : [null, name];
@@ -612,6 +658,13 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       ] as T;
     case "netease_playlist":
       return mockSongs(`歌单${args.id}`, Number(args.id) === 11 ? 24 : 12) as T;
+    case "cache_size":
+      return mockCacheBytes as T;
+    case "cache_clear": {
+      const freed = mockCacheBytes;
+      mockCacheBytes = 0;
+      return freed as T;
+    }
     case "netease_daily":
       return mockSongs("推荐", 30) as T;
     case "netease_search":
@@ -683,6 +736,9 @@ export const api = {
   neteasePlaylist: (id: number) => call<NeteaseSong[]>("netease_playlist", { id }),
   neteaseDaily: () => call<NeteaseSong[]>("netease_daily"),
   neteaseSearch: (query: string) => call<NeteaseSong[]>("netease_search", { query }),
+  cacheSize: () => call<number>("cache_size"),
+  /** Deletes the cache files except those behind `keep` (URLs in use); returns the bytes freed. */
+  cacheClear: (keep: string[]) => call<number>("cache_clear", { keep }),
   /** URL of an exact-seeking copy of an MP3/FLAC (null when the file seeks exactly). */
   exactAudio: (path: string) => call<string | null>("exact_audio", { path }),
   requestStream: (path: string, start: number, transcode: boolean) =>

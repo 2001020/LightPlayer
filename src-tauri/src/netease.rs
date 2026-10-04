@@ -130,21 +130,33 @@ pub struct QrState {
 }
 
 /// The stream NetEase gives out for a song.
+#[derive(Debug, Clone)]
 pub struct Stream {
     pub url: String,
     /// Only a preview clip (VIP song on a non-VIP account).
     pub trial: bool,
     /// Why only a preview, for the user.
     pub notice: Option<String>,
+    /// The quality NetEase actually gave ("standard", "exhigh", "lossless", "hires"...).
+    pub level: Option<String>,
+    /// Bit rate in kbit/s.
+    pub kbps: Option<u32>,
 }
 
 /// One entry of a song/enhance/player/url answer.
-fn stream_entry(v: &Value) -> Option<(String, bool)> {
+fn stream_entry(v: &Value) -> Option<Stream> {
     if v["code"].as_i64() != Some(200) {
         return None;
     }
     let d = &v["data"][0];
-    https(d["url"].as_str()).map(|u| (u, d["freeTrialInfo"].is_object()))
+    let url = https(d["url"].as_str())?;
+    Some(Stream {
+        url,
+        trial: d["freeTrialInfo"].is_object(),
+        notice: None,
+        level: d["level"].as_str().filter(|l| !l.is_empty()).map(str::to_string),
+        kbps: d["br"].as_u64().filter(|&b| b > 0).map(|b| ((b + 500) / 1000) as u32),
+    })
 }
 
 /// Why NetEase gave no (full) stream, from its answer and the account.
@@ -539,19 +551,19 @@ impl Netease {
         let data = json!({ "ids": format!("[{id}]"), "level": level, "encodeType": "flac" });
         let pc = self.call_eapi("/api/song/enhance/player/url/v1", data.clone()).await;
         let pc_entry = pc.as_ref().ok().and_then(stream_entry);
-        if let Some((url, false)) = &pc_entry {
-            return Ok(Stream { url: url.clone(), trial: false, notice: None });
+        if let Some(s) = pc_entry.as_ref().filter(|s| !s.trial) {
+            return Ok(s.clone());
         }
         let web = self.call("song/enhance/player/url/v1", data).await;
         let web_entry = web.as_ref().ok().and_then(stream_entry);
-        if let Some((url, false)) = &web_entry {
-            return Ok(Stream { url: url.clone(), trial: false, notice: None });
+        if let Some(s) = web_entry.as_ref().filter(|s| !s.trial) {
+            return Ok(s.clone());
         }
         let answer = pc.as_ref().ok().filter(|v| v["code"].as_i64() == Some(200)).or(web.as_ref().ok()).map(|v| v["data"][0].clone()).unwrap_or(Value::Null);
         let vip = *self.vip.lock().unwrap();
-        if let Some((url, _)) = pc_entry.or(web_entry) {
+        if let Some(s) = pc_entry.or(web_entry) {
             let why = explain(&answer, self.signed_in(), vip);
-            return Ok(Stream { url, trial: true, notice: Some(format!("只能试听片段：{why}")) });
+            return Ok(Stream { notice: Some(format!("只能试听片段：{why}")), ..s });
         }
         // Neither gave anything: say why, including a failed request.
         let mut msg = explain(&answer, self.signed_in(), vip);
@@ -619,6 +631,18 @@ mod tests {
     fn eapi_matches_reference() {
         let p = eapi("/api/song/enhance/player/url/v1", r#"{"ids":"[1]","level":"exhigh"}"#);
         assert_eq!(p, include_str!("../tests/netease_eapi.txt").trim());
+    }
+
+    #[test]
+    fn reads_stream_quality() {
+        let v = json!({ "code": 200, "data": [{ "url": "http://m701.music.126.net/a.flac", "level": "lossless", "br": 925_000 }] });
+        let s = stream_entry(&v).unwrap();
+        assert_eq!(s.url, "https://m701.music.126.net/a.flac");
+        assert_eq!((s.level.as_deref(), s.kbps, s.trial), (Some("lossless"), Some(925), false));
+        let t = json!({ "code": 200, "data": [{ "url": "https://x.126.net/b.mp3", "freeTrialInfo": { "start": 0 }, "br": 0 }] });
+        let s = stream_entry(&t).unwrap();
+        assert!(s.trial && s.kbps.is_none() && s.level.is_none());
+        assert!(stream_entry(&json!({ "code": 200, "data": [{ "url": null }] })).is_none());
     }
 
     #[test]

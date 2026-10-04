@@ -41,6 +41,16 @@ pub struct OpenedMedia {
     /// Shown to the user once playback starts (e.g. "preview clip only").
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
+    /// The quality an online stream actually has.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quality: Option<StreamQuality>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamQuality {
+    pub level: Option<String>,
+    pub kbps: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -212,6 +222,7 @@ pub async fn open_media(
         meta,
         subtitles,
         notice: None,
+        quality: None,
     })
 }
 
@@ -505,6 +516,22 @@ pub fn file_associations(app: tauri::AppHandle) -> crate::file_assoc::Status {
 #[tauri::command]
 pub fn set_file_associations(app: tauri::AppHandle, audio: bool, video: bool) -> Vec<String> {
     crate::file_assoc::associate(&app.config().identifier, audio, video)
+}
+
+/// Bytes taken by the cache files ("delete cache files" in Settings).
+#[tauri::command]
+pub async fn cache_size(state: State<'_, AppState>) -> AppResult<u64> {
+    let dir = state.cache_dir.clone();
+    Ok(tokio::task::spawn_blocking(move || crate::cache::size(&dir)).await.unwrap_or(0))
+}
+
+/// Deletes the cache files, except those behind the media server URLs in
+/// `keep` (what the player has open); returns the bytes freed.
+#[tauri::command]
+pub async fn cache_clear(state: State<'_, AppState>, keep: Vec<String>) -> AppResult<u64> {
+    let dir = state.cache_dir.clone();
+    let keep = keep.iter().filter_map(|u| crate::cache::served_path(u)).collect();
+    Ok(tokio::task::spawn_blocking(move || crate::cache::clear(&dir, &keep)).await.unwrap_or(0))
 }
 
 #[tauri::command]
@@ -874,6 +901,7 @@ async fn open_netease(state: &AppState, path: String, id: u64, quality: &str) ->
             embedded_lyrics: None,
         }),
         subtitles: vec![],
+        quality: Some(StreamQuality { level: stream.level, kbps: stream.kbps }),
         notice: stream.notice,
         path,
     })

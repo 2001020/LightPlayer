@@ -38,6 +38,14 @@ export interface BackgroundSettings {
 /** NetEase stream quality: standard 128k, exhigh 320k MP3, lossless FLAC, hires. */
 export type NeteaseQuality = "standard" | "exhigh" | "lossless" | "hires";
 
+/** The NetEase qualities offered, lowest first. */
+export const NETEASE_QUALITIES: [NeteaseQuality, string][] = [
+  ["standard", "标准"],
+  ["exhigh", "极高"],
+  ["lossless", "无损"],
+  ["hires", "Hi-Res"],
+];
+
 export interface Settings {
   theme: ThemeMode;
   accent: string;

@@ -1,4 +1,5 @@
 mod asr;
+mod cache;
 mod commands;
 mod error;
 mod library;
@@ -136,6 +137,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::open_media,
             commands::exact_audio,
+            commands::cache_size,
+            commands::cache_clear,
             commands::request_stream,
             commands::stop_streams,
             commands::scan_playlist,

@@ -31,7 +31,7 @@ import {
 import { confirmDialog } from "../lib/confirm";
 import { stem } from "../lib/format";
 import { useLyrics, useModels, usePlayer, usePlaylist, useSubtitles, useUI, toast } from "../stores/player";
-import { useSettings } from "../stores/settings";
+import { useSettings, type NeteaseQuality } from "../stores/settings";
 import { initLibrary, libraryAction, useLibrary } from "../stores/library";
 import {
   addTasks,
@@ -179,6 +179,23 @@ export async function setPreciseTiming(path: string, on: boolean, auto = false) 
   // from wherever it is by then.
   await playIndex(pl.index, !engine.paused, { live: true });
   if (!on) toast("已恢复普通播放");
+}
+
+/** Picks the NetEase stream quality and reloads the online song playing now, from where it is. */
+export async function setNeteaseQuality(quality: NeteaseQuality) {
+  const s = useSettings.getState();
+  if (s.netease.quality === quality) return;
+  s.set({ netease: { ...s.netease, quality } });
+  const pl = usePlaylist.getState();
+  const path = usePlayer.getState().media?.path;
+  if (!isCloudPath(path) || pl.items[pl.index]?.path !== path) return;
+  await playIndex(pl.index, !engine.paused, { live: true });
+}
+
+/** Deletes the cache files the player is not using right now; returns the bytes freed. */
+export async function clearCache(): Promise<number> {
+  const keep = [engine.media?.url, engine.exact?.url].filter((u): u is string => !!u);
+  return api.cacheClear(keep);
 }
 
 /** Drag-and-drop reordering in the play queue. */

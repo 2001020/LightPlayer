@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as C from "../core/controller";
 import { reveal } from "../core/library/actions";
-import { extOf, isTauri } from "../lib/ipc";
+import { extOf, isCloudPath, isTauri } from "../lib/ipc";
 import { usePlayer, usePlaylist, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
 import { openMenu } from "./ContextMenu";
@@ -129,12 +129,13 @@ export function PlaylistPanel({ floating = false }: { floating?: boolean }) {
         disabled: i === index || i === index + 1,
         onClick: () => C.moveQueueItem(i, i < index ? index : index + 1),
       },
-      { label: "在访达中显示", icon: "reveal", disabled: !isTauri, onClick: () => void reveal(it.path) },
+      { label: "在访达中显示", icon: "reveal", disabled: !isTauri || isCloudPath(it.path), onClick: () => void reveal(it.path) },
       { label: "从播放列表移除", icon: "minus", danger: true, disabled: items.length <= 1, onClick: () => void C.removeQueueItem(i) },
     ]);
   };
 
   const mixed = items.some((i) => i.kind === "audio") && items.some((i) => i.kind === "video");
+  const online = items.some((i) => isCloudPath(i.path));
   const kindLabel = mixed ? "项" : (items[0]?.kind ?? media?.kind) === "video" ? "个视频" : "首";
 
   return (
@@ -152,7 +153,7 @@ export function PlaylistPanel({ floating = false }: { floating?: boolean }) {
         {items.length > 8 && (
           <div className="search">
             <Icon name="search" size={15} />
-            <input type="search" placeholder="搜索当前目录" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input type="search" placeholder={online ? "搜索播放列表" : "搜索当前目录"} value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
         )}
       </header>
@@ -191,7 +192,7 @@ export function PlaylistPanel({ floating = false }: { floating?: boolean }) {
                 </span>
               </span>
               <span className="name">{it.name}</span>
-              <span className="ext">{extOf(it.fileName)}</span>
+              {!isCloudPath(it.path) && <span className="ext">{extOf(it.fileName)}</span>}
               {items.length > 1 && (
                 <button
                   className="remove"
