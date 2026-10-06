@@ -7,7 +7,8 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig({
   plugins: [react()],
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
+    // Release builds carry their tag (v1.6.0b1); local builds the package version.
+    __APP_VERSION__: JSON.stringify((process.env.LP_RELEASE_TAG ?? "").trim().replace(/^v/, "") || pkg.version),
   },
   clearScreen: false,
   server: {

@@ -74,11 +74,25 @@ jobs:
           sum=$(echo "$out" | grep -E '^(total|\[hot\]|hot page|replies to)|panicked|test result' | head -12 | sed ':a;N;$!ba;s/\n/%0A/g')
           if [ $code -ne 0 ]; then echo "::warning title=NetEase comments::$sum"; exit 1; fi
           echo "::notice title=NetEase comments::$sum"
+      - name: GitHub releases for the updater (live, informational)
+        continue-on-error: true
+        working-directory: src-tauri
+        run: |
+          set +e
+          out=$(cargo test updater_live -- --ignored --nocapture 2>&1)
+          code=$?
+          echo "$out"
+          sum=$(echo "$out" | grep -E '^(current|releases listed|MacApp|WindowsSetup|WindowsPortable)|panicked|test result' | head -10 | sed ':a;N;$!ba;s/\n/%0A/g')
+          if [ $code -ne 0 ]; then echo "::warning title=Updater::$sum"; exit 1; fi
+          echo "::notice title=Updater::$sum"
 
   build:
     name: Build .app / .dmg (Apple Silicon)
     runs-on: macos-14
     timeout-minutes: 60
+    env:
+      # The version the app reports and compares when checking for updates.
+      LP_RELEASE_TAG: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -154,6 +168,15 @@ jobs:
           export LIGHTPLAYER_FFMPEG_DIR="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app/Contents/MacOS"
           cd src-tauri
           cargo test --release --target aarch64-apple-darwin asr_smoke -- --ignored --nocapture
+      - name: Updater tests (bundle swap)
+        working-directory: src-tauri
+        run: |
+          set +e
+          out=$(cargo test --release --target aarch64-apple-darwin updater:: 2>&1); code=$?
+          echo "$out"
+          sum=$(echo "$out" | grep -E '^test |test result|panicked' | head -12 | sed ':a;N;$!ba;s/\n/%0A/g')
+          if [ $code -ne 0 ]; then echo "::error title=Updater tests (macOS)::$sum"; exit 1; fi
+          echo "::notice title=Updater tests (macOS)::$sum"
 
   build-windows:
     name: Build installer (Windows x64)
@@ -163,6 +186,7 @@ jobs:
       # Build whisper.cpp for a fixed instruction set (AVX2), not the runner's
       # CPU, so the app runs on any recent x64 PC.
       GGML_NATIVE: "OFF"
+      LP_RELEASE_TAG: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

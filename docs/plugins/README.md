@@ -158,6 +158,7 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 | `library-main` | 媒体库内容区域 |
 | `track-table` | 歌曲列表 |
 | `settings` | 设置窗口 |
+| `update` | 发现新版本时的更新窗口 |
 | `desktop-lyrics` | 桌面歌词窗口 |
 | `desktop-lyrics-line` | 桌面歌词的文字 |
 <!-- /anchors -->

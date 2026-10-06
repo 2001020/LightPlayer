@@ -313,6 +313,37 @@ export interface PluginEntry {
   incompatible: boolean;
 }
 
+export type InstallKind = "macApp" | "windowsSetup" | "windowsPortable" | "manual";
+
+export interface AppInfo {
+  version: string;
+  prerelease: boolean;
+  install: InstallKind;
+}
+
+export interface UpdateAsset {
+  name: string;
+  url: string;
+  size: number;
+  sha256?: string | null;
+}
+
+/** A newer release on GitHub. */
+export interface UpdateInfo {
+  version: string;
+  current: string;
+  tag: string;
+  name: string;
+  /** Release notes (Markdown). */
+  notes: string;
+  page: string;
+  published?: string | null;
+  prerelease: boolean;
+  kind: InstallKind;
+  /** null: no file to install automatically; open `page`. */
+  asset: UpdateAsset | null;
+}
+
 export interface LibraryFolder {
   path: string;
   addedAt: number;
@@ -663,6 +694,7 @@ let mockCacheBytes = 734_003_200;
 /** The example plugins in `examples/plugins`, served by the Vite dev server. */
 const examplePlugins = import.meta.glob<PluginManifest>("/examples/plugins/*/manifest.json", { import: "default" });
 let mockRemovedPlugins = new Set<string>();
+let mockUpdateCancel = false;
 
 async function mockPlugins(): Promise<PluginEntry[]> {
   const list = await Promise.all(Object.values(examplePlugins).map((load) => load()));
@@ -824,6 +856,42 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
     }
     case "server_base":
       return "" as T;
+    case "app_info":
+      return { version: __APP_VERSION__, prerelease: /[a-z]/i.test(__APP_VERSION__), install: "manual" } as T;
+    case "update_check":
+      await new Promise((r) => setTimeout(r, 400));
+      // Set window.__lpMockUpdate in the browser preview to see an update.
+      if (!(window as { __lpMockUpdate?: boolean }).__lpMockUpdate) return null as T;
+      return {
+        version: "1.6.1",
+        current: __APP_VERSION__,
+        tag: "v1.6.1",
+        name: "LightPlayer v1.6.1",
+        notes: "# LightPlayer 1.6.1\n\n修复与改进。\n\n## 新功能\n\n- **示例**：这是预览中的更新说明，带有 `代码` 和[链接](https://github.com)。\n  - 第二层列表\n- 另一项\n\n## 已知限制\n\n- 预览中不能真的安装。",
+        page: "https://github.com/2001020/LightPlayer/releases",
+        published: new Date().toISOString(),
+        prerelease: false,
+        kind: "macApp",
+        asset: { name: "LightPlayer_1.6.1_aarch64.app.zip", url: "", size: 44_400_000, sha256: null },
+      } as T;
+    case "update_download": {
+      mockUpdateCancel = false;
+      const total = 44_400_000;
+      for (let got = 0; got < total; got += 2_220_000) {
+        await new Promise((r) => setTimeout(r, 100));
+        if (mockUpdateCancel) throw new Error("已取消");
+        mockEmit("update://progress", { received: got, total });
+      }
+      mockEmit("update://progress", { received: total, total });
+      return "/mock/LightPlayer_1.6.1_aarch64.app.zip" as T;
+    }
+    case "update_startup":
+      return false as T;
+    case "update_cancel":
+      mockUpdateCancel = true;
+      return undefined as T;
+    case "update_install":
+      throw new Error("浏览器预览中不能安装更新");
     case "plugins_list":
       return (await mockPlugins()) as T;
     case "plugin_remove":
@@ -930,6 +998,15 @@ export const api = {
   asrStart: (path: string, options: AsrOptions) => call<void>("asr_start", { path, options }),
   asrCancel: () => call<void>("asr_cancel"),
   serverBase: () => call<string>("server_base"),
+  appInfo: () => call<AppInfo>("app_info"),
+  updateCheck: (includePrerelease: boolean) => call<UpdateInfo | null>("update_check", { includePrerelease }),
+  /** Downloads an update (progress: "update://progress"); returns the file path. */
+  updateDownload: (asset: UpdateAsset) => call<string>("update_download", { asset }),
+  updateCancel: () => call<void>("update_cancel"),
+  /** At launch: true when the last automatic install did not complete (also clears old downloads). */
+  updateStartup: () => call<boolean>("update_startup"),
+  /** Installs a downloaded update: the app quits and restarts as the new version. */
+  updateInstall: (path: string) => call<void>("update_install", { path }),
   pluginsList: () => call<PluginEntry[]>("plugins_list"),
   /** Installs a plugin folder or .lpplugin file; fails with "PLUGIN_EXISTS" unless `replace`. */
   pluginInstall: (path: string, replace: boolean) => call<string>("plugin_install", { path, replace }),

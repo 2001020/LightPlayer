@@ -15,6 +15,7 @@ import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
 import { PluginSettings } from "./PluginSettings";
 import { Row, Seg, Switch } from "./SettingsControls";
+import { UpdateSettings } from "./UpdateSettings";
 import { isWindows, keys, TRAY } from "../lib/platform";
 
 type Tab = UIState["settingsTab"];
@@ -523,6 +524,7 @@ function About() {
       <p className="note">
         第三方组件：Tauri、React、FFmpeg（LGPL/GPL）、whisper.cpp（MIT）、OpenAI Whisper 模型权重（MIT）、Silero VAD（MIT）、hls.js（Apache-2.0）。
       </p>
+      <UpdateSettings />
       <CacheRow />
       <h3>重置</h3>
       <Row label="恢复默认设置" hint="不会删除歌词、模型和播放记录">

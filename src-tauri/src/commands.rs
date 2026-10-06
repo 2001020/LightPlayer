@@ -547,6 +547,71 @@ pub fn server_base(state: State<'_, AppState>) -> String {
     state.server.base()
 }
 
+// ------------------------------------------------------------ updates ----
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    pub version: String,
+    pub prerelease: bool,
+    pub install: crate::updater::InstallKind,
+}
+
+#[tauri::command]
+pub fn app_info() -> AppInfo {
+    let version = crate::updater::current_version();
+    AppInfo {
+        version: version.to_string(),
+        prerelease: crate::updater::Version::parse(version).is_some_and(|v| v.is_prerelease()),
+        install: crate::updater::install_kind(),
+    }
+}
+
+/// The newest release on GitHub above this version, if any.
+#[tauri::command]
+pub async fn update_check(include_prerelease: bool) -> AppResult<Option<crate::updater::UpdateInfo>> {
+    crate::updater::check(include_prerelease).await
+}
+
+/// Downloads an update file (progress: `update://progress`); returns its path.
+#[tauri::command]
+pub async fn update_download(app: AppHandle, state: State<'_, AppState>, asset: crate::updater::UpdateAsset) -> AppResult<String> {
+    let cancel = state.update_cancel.clone();
+    cancel.store(false, Ordering::SeqCst);
+    let dir = state.cache_dir.join("updates");
+    let path = crate::updater::download(&asset, &dir, &cancel, |p| {
+        let _ = app.emit("update://progress", p);
+    })
+    .await?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// At launch: true when the last automatic install did not complete.
+#[tauri::command]
+pub fn update_startup(state: State<'_, AppState>) -> bool {
+    crate::updater::startup(&state.cache_dir.join("updates"))
+}
+
+#[tauri::command]
+pub fn update_cancel(state: State<'_, AppState>) {
+    state.update_cancel.store(true, Ordering::SeqCst);
+}
+
+/// Installs a downloaded update: the app quits and the new version starts.
+#[tauri::command]
+pub fn update_install(app: AppHandle, state: State<'_, AppState>, path: String) -> AppResult<()> {
+    let dir = state.cache_dir.join("updates");
+    let file = PathBuf::from(&path);
+    if !file.starts_with(&dir) || !file.is_file() {
+        return Err(AppError::msg("找不到下载的更新文件"));
+    }
+    crate::updater::install(&file, crate::updater::install_kind(), &dir)?;
+    // ffmpeg helpers would keep files in use on Windows.
+    state.hls.stop_all();
+    app.exit(0);
+    Ok(())
+}
+
 // ------------------------------------------------------------ plugins ----
 
 #[tauri::command]

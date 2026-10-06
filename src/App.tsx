@@ -13,6 +13,8 @@ import { isTauri } from "./lib/ipc";
 import { Icon } from "./components/Icon";
 import { LyricsEditor } from "./components/LyricsEditor";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { UpdateButton, UpdateDialog } from "./components/UpdateDialog";
+import { startUpdateChecks } from "./stores/updater";
 import { Tooltips, tip } from "./components/Tooltip";
 import { TransportBar } from "./components/TransportBar";
 import { VideoInfoDialog } from "./components/VideoInfoDialog";
@@ -54,6 +56,7 @@ export default function App() {
 
   useEffect(() => {
     void C.init();
+    startUpdateChecks();
   }, []);
 
   useEffect(() => {
@@ -106,6 +109,7 @@ export default function App() {
         >
           <Icon name="library" />
         </button>
+        <UpdateButton />
         <AsrTasksButton />
         <button className="icon-btn" onClick={C.openWithDialog} {...tip("打开文件", "⌘O")}>
           <Icon name="folder" />
@@ -144,6 +148,7 @@ export default function App() {
       {overlay === "asrTasks" && <AsrTasks />}
       {overlay === "libraryFolders" && <LibraryFolders />}
       {overlay === "neteaseLogin" && <NeteaseLogin />}
+      {overlay === "update" && <UpdateDialog />}
       {!isTauri && <DesktopLyricsOverlay />}
       <PromptHost />
       <ContextMenuHost />

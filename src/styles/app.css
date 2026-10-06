@@ -4312,3 +4312,157 @@ html.desktop-lyrics #root {
   cursor: pointer;
   font: inherit;
 }
+
+/* ---------------------------------------------------------------- updates */
+.update-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(640px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+}
+.update-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 10px;
+}
+.update-logo {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.update-title {
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.update-title .chip {
+  font-size: 11px;
+  font-weight: 600;
+}
+.update-head .muted {
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+.update-notes {
+  flex: 1;
+  min-height: 80px;
+  overflow-y: auto;
+  margin: 0 20px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-size: 13px;
+  line-height: 1.55;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.update-notes h4 {
+  margin: 12px 0 4px;
+  font-size: 13.5px;
+}
+.update-notes h4.h1 {
+  font-size: 15px;
+}
+.update-notes h4:first-child {
+  margin-top: 2px;
+}
+.update-notes p {
+  margin: 4px 0;
+}
+.update-notes .li {
+  position: relative;
+  margin: 2px 0;
+}
+.update-notes .li::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--indent, 0px) + 4px);
+  top: 0.62em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+.update-notes code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--hover);
+}
+.update-notes pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--hover);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.update-notes .link,
+.update-note .link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent-text);
+  cursor: pointer;
+  font: inherit;
+}
+.dialog footer.update-foot {
+  display: block;
+  padding: 14px 20px 18px;
+  border-top: 0;
+}
+.update-note {
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+.update-note .err {
+  color: var(--danger);
+}
+.update-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.update-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.update-progress .bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track);
+  overflow: hidden;
+}
+.update-progress .bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.2s;
+}
+.update-btn {
+  position: relative;
+  color: var(--accent-text);
+}
+.update-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+}

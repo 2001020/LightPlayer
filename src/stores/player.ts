@@ -91,7 +91,7 @@ export interface ModelsState {
 export const useModels = create<ModelsState>(() => ({ models: [], downloads: {} }));
 
 export type Page = "player" | "lyrics" | "library";
-export type Overlay = null | "settings" | "editor" | "videoInfo" | "asrSetup" | "asrTasks" | "shortcuts" | "libraryFolders" | "neteaseLogin";
+export type Overlay = null | "settings" | "editor" | "videoInfo" | "asrSetup" | "asrTasks" | "shortcuts" | "libraryFolders" | "neteaseLogin" | "update";
 
 export interface Toast {
   id: number;

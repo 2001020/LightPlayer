@@ -1,0 +1,95 @@
+[
+ {
+  "tag_name": "v1.5.0",
+  "name": "LightPlayer v1.5.0",
+  "draft": false,
+  "prerelease": false,
+  "body": "# LightPlayer 1.5.0\n\n播放网易云音乐的歌曲时，现在可以查看这首歌的网易云评论区。macOS 和 Windows 版本同时更新。\n\n## 下载与安装\n\n### macOS\n\n- 适用于 **Apple Silicon（M 系列芯片）** 的 Mac，需要 **macOS 12** 或更高版本。\n- 下载下方的 `LightPlayer_1.5.0_aarch64.dmg`，打开后",
+  "html_url": "https://github.com/2001020/LightPlayer/releases/tag/v1.5.0",
+  "published_at": "2026-10-04T09:31:32Z",
+  "assets": [
+   {
+    "name": "LightPlayer_1.5.0_aarch64.app.zip",
+    "size": 44405031,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.5.0/LightPlayer_1.5.0_aarch64.app.zip",
+    "digest": "sha256:efc478e3850385160c8ad0542711d2f55161fee93aa60212f2de774e7e15d1ed"
+   },
+   {
+    "name": "LightPlayer_1.5.0_aarch64.dmg",
+    "size": 44640569,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.5.0/LightPlayer_1.5.0_aarch64.dmg",
+    "digest": "sha256:6d4b1e4af9904b10737229b2f410e020d22ecf4cfd58dbf83c109ea61406ce09"
+   },
+   {
+    "name": "LightPlayer_1.5.0_x64-setup.exe",
+    "size": 48403776,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.5.0/LightPlayer_1.5.0_x64-setup.exe",
+    "digest": "sha256:bb77c819f51d5124b3e82929d6e3b64e3f0f255c4b584164cb0ac3793f6b93cc"
+   },
+   {
+    "name": "LightPlayer_1.5.0_x64_portable.zip",
+    "size": 67942632,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.5.0/LightPlayer_1.5.0_x64_portable.zip",
+    "digest": "sha256:f6a9641d19daac7ce2c520a49264fefbdb7c9dde8713d9de863cfbf5c697569a"
+   }
+  ]
+ },
+ {
+  "tag_name": "v1.4.0",
+  "name": "LightPlayer v1.4.0",
+  "draft": false,
+  "prerelease": false,
+  "body": "# LightPlayer 1.4.0\n\n新增播放器样式 Flow：仿照早年 Coverflow 的封面墙，左右翻看播放列表。\n\n**首个 Windows 版本**：LightPlayer 现在同时提供 macOS 和 Windows 版本，功能基本一致。\n\n## 下载与安装\n\n### macOS\n\n- 适用于 **Apple Silicon（M 系列芯片）** 的 Mac，需要 **macOS ",
+  "html_url": "https://github.com/2001020/LightPlayer/releases/tag/v1.4.0",
+  "published_at": "2026-10-04T08:23:32Z",
+  "assets": [
+   {
+    "name": "LightPlayer_1.4.0_aarch64.app.zip",
+    "size": 44383750,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.4.0/LightPlayer_1.4.0_aarch64.app.zip",
+    "digest": "sha256:5e733cf822add0a762aa5cea73b086af421f1fe5630e8bec06481261642f2ed2"
+   },
+   {
+    "name": "LightPlayer_1.4.0_aarch64.dmg",
+    "size": 44632281,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.4.0/LightPlayer_1.4.0_aarch64.dmg",
+    "digest": "sha256:090870b6d8747807bee7cd732a50bd75b67985807dcaa119e9909b855503d75e"
+   },
+   {
+    "name": "LightPlayer_1.4.0_x64-setup.exe",
+    "size": 48357096,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.4.0/LightPlayer_1.4.0_x64-setup.exe",
+    "digest": "sha256:9cafdf9bed595dcbf5467010564ad986e028dfe410d38a47a3e21605484e74e9"
+   },
+   {
+    "name": "LightPlayer_1.4.0_x64_portable.zip",
+    "size": 67913686,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.4.0/LightPlayer_1.4.0_x64_portable.zip",
+    "digest": "sha256:9ec0ab92fbfef8eac253994ae7f0e2ea512a919e0bf30a925269eac14e653dc5"
+   }
+  ]
+ },
+ {
+  "tag_name": "v1.3.0",
+  "name": "LightPlayer v1.3.0",
+  "draft": false,
+  "prerelease": false,
+  "body": "# LightPlayer 1.3.0\n\n新增天气主题、桌面歌词、无痕浏览、网易云音乐（试验性）等功能，改进了播放列表和歌词显示，并修复了多个问题。\n\n## 下载与安装\n\n- 适用于 **Apple Silicon（M 系列芯片）** 的 Mac，需要 **macOS 12** 或更高版本。\n- 下载下方的 `LightPlayer_1.3.0_aarch64.dmg`，打开后把 LightPla",
+  "html_url": "https://github.com/2001020/LightPlayer/releases/tag/v1.3.0",
+  "published_at": "2026-10-04T05:24:27Z",
+  "assets": [
+   {
+    "name": "LightPlayer_1.3.0_aarch64.app.zip",
+    "size": 44375152,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.3.0/LightPlayer_1.3.0_aarch64.app.zip",
+    "digest": "sha256:aea6fe9d6583dd5e5180c73246d26ef30bd6926962dcccdebad1f4d7112da667"
+   },
+   {
+    "name": "LightPlayer_1.3.0_aarch64.dmg",
+    "size": 44624640,
+    "browser_download_url": "https://github.com/2001020/LightPlayer/releases/download/v1.3.0/LightPlayer_1.3.0_aarch64.dmg",
+    "digest": "sha256:be10247c13a4ee4400a84d96c6bfd17a866c3066b9f7859294de81ec4c83e48b"
+   }
+  ]
+ }
+]

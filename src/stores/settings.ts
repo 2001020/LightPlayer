@@ -28,6 +28,15 @@ export interface AsrSettings {
   wordTimestamps: boolean;
 }
 
+export interface UpdateSettings {
+  /** Check GitHub at launch and every 12 hours. */
+  auto: boolean;
+  /** Offer pre-releases; null: when this build is one. */
+  prerelease: boolean | null;
+  /** A version the user chose to skip. */
+  skip: string | null;
+}
+
 export interface BackgroundSettings {
   path: string | null;
   blur: number;
@@ -89,6 +98,7 @@ export interface Settings {
   /** Active lyric line colour on the lyrics page (null: theme colour). */
   lyricHighlight: string | null;
   desktopLyrics: DesktopLyricsSettings;
+  update: UpdateSettings;
   tapCompensation: number;
   asr: AsrSettings;
   recent: string[];
@@ -145,6 +155,7 @@ export const defaultSettings: Settings = {
   precisePaths: [],
   lyricHighlight: null,
   desktopLyrics: { enabled: false, color: "#66ccff" },
+  update: { auto: true, prerelease: null, skip: null },
   tapCompensation: 0.15,
   asr: {
     model: "large-v3-turbo-q5_0",
@@ -220,6 +231,7 @@ export const useSettings = create<SettingsStore>()(
           background: { ...current.background, ...(p.background ?? {}) },
           weather: { ...current.weather, ...(p.weather ?? {}) },
           desktopLyrics: { ...current.desktopLyrics, ...(p.desktopLyrics ?? {}) },
+          update: { ...current.update, ...(p.update ?? {}) },
         };
       },
     },

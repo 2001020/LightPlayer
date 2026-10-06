@@ -14,6 +14,7 @@ mod tools;
 mod desktop_lyrics;
 mod trash;
 mod tray;
+mod updater;
 mod weather;
 #[cfg(target_os = "macos")]
 mod location_macos;
@@ -43,6 +44,8 @@ pub struct AppState {
     pub now_playing: nowplaying::NowPlaying,
     pub tray: tray::TrayState,
     pub netease: netease::Netease,
+    /// Set to stop an update download.
+    pub update_cancel: Arc<AtomicBool>,
 }
 
 /// Files macOS asks to open before `setup` has run: launching the app by
@@ -129,6 +132,7 @@ pub fn run() {
                 downloads: Mutex::new(HashMap::new()),
                 now_playing: nowplaying::NowPlaying::new(&handle),
                 tray: tray::TrayState::new(),
+                update_cancel: Arc::new(AtomicBool::new(false)),
             });
             // The menu bar icon is optional (e.g. Linux desktops without a tray).
             match tray::create(&handle) {
@@ -202,6 +206,12 @@ pub fn run() {
             commands::plugin_install,
             commands::plugin_remove,
             commands::plugins_open_dir,
+            commands::app_info,
+            commands::update_check,
+            commands::update_download,
+            commands::update_cancel,
+            commands::update_startup,
+            commands::update_install,
             commands::set_file_associations,
             commands::now_playing_metadata,
             commands::now_playing_state,
