@@ -149,7 +149,7 @@ export function defaultElement(kind: ElementKind, id: string = kind): LayoutElem
   });
   switch (kind) {
     case "cover":
-      return { ...base, w: 56, cover: { shape: "square", radius: 4, shadow: true, spin: true, speed: 20, arm: true, grooves: true, label: 66 } };
+      return { ...base, w: 56, cover: { shape: "square", radius: 4, shadow: true, spin: true, speed: 20, arm: false, grooves: true, label: 66 } };
     case "title":
       return { ...base, w: 70, text: text(4.6, 700) };
     case "artist":
@@ -319,7 +319,7 @@ function checkElement(raw: unknown, plugin?: string): LayoutElement | null {
       shadow: bool(c.shadow, true),
       spin: bool(c.spin, true),
       speed: num(c.speed, 2, 120, d.cover.speed),
-      arm: bool(c.arm, true),
+      arm: bool(c.arm, false),
       grooves: bool(c.grooves, true),
       label: num(c.label, 30, 90, d.cover.label),
     };

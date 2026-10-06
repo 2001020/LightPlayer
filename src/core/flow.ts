@@ -24,8 +24,12 @@ export function flowTransform(d: number, size: number): FlowPlacement {
   const gap = size * 0.62;
   const spacing = size * 0.24;
   const depth = size * 0.55;
+  // While two covers turn at once (one leaving the centre, one arriving),
+  // their inner edges swing back towards each other; pushing them outwards
+  // a little in mid-turn keeps them from cutting through each other.
+  const bulge = size * 0.56 * t * (1 - t);
   return {
-    x: s * (t * gap + Math.max(0, a - 1) * spacing),
+    x: s * (t * gap + bulge + Math.max(0, a - 1) * spacing),
     z: -t * depth,
     rotate: -s * t * FLOW_ANGLE,
     zIndex: 1000 - Math.round(a * 10),

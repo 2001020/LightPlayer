@@ -403,7 +403,7 @@ A layout file is JSON:
   "name": "复古唱机",
   "elements": [
     { "id": "cover", "kind": "cover", "x": 50, "y": 44, "w": 62,
-      "cover": { "shape": "vinyl", "spin": true, "speed": 20, "arm": true, "grooves": true, "label": 66, "shadow": true, "radius": 4 },
+      "cover": { "shape": "vinyl", "spin": true, "speed": 20, "arm": false, "grooves": true, "label": 66, "shadow": true, "radius": 4 },
       "enter": { "type": "zoom", "duration": 700, "delay": 0 } },
     { "id": "title", "kind": "title", "x": 50, "y": 83, "w": 90, "text": { "size": 4.2, "weight": 700 } },
     { "id": "now", "kind": "text", "x": 50, "y": 6, "w": 60, "content": "正在播放：{artist}", "text": { "size": 1.8, "spacing": 0.3 } },
@@ -445,7 +445,7 @@ There can be only one each of `cover`, `title`, `artist`, `album`, `chips` and `
 | `hidden` | Hidden |
 | `enter` | Entrance animation on song change: `type` is `none` / `fade` / `up` / `down` / `left` / `right` / `zoom` / `blur`; `duration` and `delay` in milliseconds |
 | `text` | Text style (text elements): `size` (u), `weight` (100–900), `color` (`#RRGGBB`, `null` follows the theme), `font` (empty for the default, `serif` / `rounded` / `mono`, or a font name), `italic`, `shadow`, `spacing` (letter spacing, em), `align` (`left` / `center` / `right`) |
-| `cover` | Cover: `shape`, `radius` (corner radius of the square, percent of the width), `shadow`; records also have `spin` (spin while playing), `speed` (seconds per turn), `arm` (tonearm), `grooves` (grooves and sheen), `label` (the cover's share of the record's diameter, percent) |
+| `cover` | Cover: `shape`, `radius` (corner radius of the square, percent of the width), `shadow`; records also have `spin` (spin while playing), `speed` (seconds per turn), `arm` (tonearm, off by default), `grooves` (grooves and sheen), `label` (the cover's share of the record's diameter, percent) |
 | `progress` | `style`, `thickness` (u), `color` (`null` for the accent color) |
 
 Other fields are ignored, and out-of-range numbers are clamped. The full format is [`layout.schema.json`](layout.schema.json).

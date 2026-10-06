@@ -6,6 +6,7 @@ import {
   deleteLayout,
   duplicateElement,
   finishEditing,
+  migrateLayouts,
   redo,
   removeElement,
   setActiveLayout,
@@ -110,5 +111,11 @@ describe("layout editor", () => {
     finishEditing();
     deleteLayout("custom-1");
     expect(useLayouts.getState().active).toBe("default");
+  });
+
+  it("leaves the tonearm off: new records, and layouts saved before 1.6.1", () => {
+    expect(defaultElement("cover").cover!.arm).toBe(false);
+    const saved = { custom: [{ id: "custom-1", name: "x", elements: [{ ...defaultElement("cover"), cover: { ...defaultElement("cover").cover!, shape: "vinyl", arm: true } }] }] };
+    expect(migrateLayouts(saved, 1).custom![0].elements[0].cover!.arm).toBe(false);
   });
 });

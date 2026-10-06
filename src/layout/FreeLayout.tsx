@@ -436,7 +436,7 @@ export function measureClassic(stage: HTMLElement | null): LayoutElement[] {
     const e = base("cover", cover);
     delete e.text;
     const radius = parseFloat(getComputedStyle(cover).borderTopLeftRadius) || 0;
-    e.cover = { shape: "square", radius: round1(Math.min(50, (radius / cover.getBoundingClientRect().width) * 100)), shadow: true, spin: true, speed: 20, arm: true, grooves: true, label: 66 };
+    e.cover = { shape: "square", radius: round1(Math.min(50, (radius / cover.getBoundingClientRect().width) * 100)), shadow: true, spin: true, speed: 20, arm: false, grooves: true, label: 66 };
     // The cover shrinks a little while paused.
     if (cover.classList.contains("paused")) e.w = round1(e.w / 0.94);
     out.push(e);

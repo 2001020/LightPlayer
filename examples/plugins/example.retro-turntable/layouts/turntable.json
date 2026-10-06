@@ -4,7 +4,7 @@
   "elements": [
     { "id": "rt-ring", "kind": "progress", "x": 31, "y": 52, "w": 71, "progress": { "style": "ring", "thickness": 0.45, "color": null } },
     { "id": "cover", "kind": "cover", "x": 31, "y": 52, "w": 66,
-      "cover": { "shape": "vinyl", "spin": true, "speed": 12, "arm": true, "grooves": true, "label": 58, "shadow": true },
+      "cover": { "shape": "vinyl", "spin": true, "speed": 12, "arm": false, "grooves": true, "label": 58, "shadow": true },
       "enter": { "type": "zoom", "duration": 800, "delay": 0 } },
     { "id": "rt-badge", "kind": "image", "x": 9, "y": 19, "w": 13, "rotate": -14, "src": "images/badge.svg",
       "enter": { "type": "fade", "duration": 600, "delay": 400 } },

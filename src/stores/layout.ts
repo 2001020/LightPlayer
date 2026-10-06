@@ -38,6 +38,16 @@ interface LayoutState {
   sample: boolean;
 }
 
+/** Saved layouts from an older version of the store. */
+export function migrateLayouts(saved: unknown, version: number): Partial<LayoutState> {
+  const s = (saved ?? {}) as Partial<LayoutState>;
+  // 1.6.1 leaves the tonearm off, in layouts saved before too.
+  if (version < 2 && Array.isArray(s.custom)) {
+    for (const l of s.custom) for (const e of l?.elements ?? []) if (e?.cover) e.cover.arm = false;
+  }
+  return s;
+}
+
 export const useLayouts = create<LayoutState>()(
   persist(
     (): LayoutState => ({
@@ -56,7 +66,8 @@ export const useLayouts = create<LayoutState>()(
     }),
     {
       name: "lightplayer-layouts",
-      version: 1,
+      version: 2,
+      migrate: (saved, version) => migrateLayouts(saved, version) as LayoutState,
       partialize: (s) => ({ custom: s.custom, active: s.active, panelSide: s.panelSide }),
       merge: (saved, cur) => {
         const s = (saved ?? {}) as Partial<LayoutState>;

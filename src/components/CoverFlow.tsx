@@ -236,7 +236,9 @@ export function CoverFlow() {
               key={items[i].path}
               className={`flow-cover ${i === current ? "now" : ""}`}
               style={{
-                transform: `translate3d(${p.x}px, 0, ${p.z}px) rotateY(${p.rotate}deg)`,
+                // Viewed from the stage's centre, as a `perspective` on the stage
+                // would, but each cover drawn on its own.
+                transform: `perspective(${size * 3.4}px) translate3d(${p.x}px, 0, ${p.z}px) rotateY(${p.rotate}deg)`,
                 zIndex: p.zIndex,
                 opacity: fade,
               }}

@@ -186,7 +186,9 @@
               "description": "转一圈的秒数"
             },
             "arm": {
-              "type": "boolean"
+              "type": "boolean",
+              "default": false,
+              "description": "唱臂（默认不显示）"
             },
             "grooves": {
               "type": "boolean"

@@ -844,8 +844,8 @@ input[type="range"] {
   width: 100%;
   /* The cover plus room for its reflection. */
   height: calc(var(--flow-size) * 1.36);
-  perspective: calc(var(--flow-size) * 3.4);
-  perspective-origin: 50% calc(var(--flow-size) * 0.5);
+  /* No shared 3D space: each cover carries its own perspective (see
+     CoverFlow), so they stack by z-index and can't cut into each other. */
   overflow: hidden;
   touch-action: pan-y;
   cursor: grab;

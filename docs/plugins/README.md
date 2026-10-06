@@ -400,7 +400,7 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
   "name": "复古唱机",
   "elements": [
     { "id": "cover", "kind": "cover", "x": 50, "y": 44, "w": 62,
-      "cover": { "shape": "vinyl", "spin": true, "speed": 20, "arm": true, "grooves": true, "label": 66, "shadow": true, "radius": 4 },
+      "cover": { "shape": "vinyl", "spin": true, "speed": 20, "arm": false, "grooves": true, "label": 66, "shadow": true, "radius": 4 },
       "enter": { "type": "zoom", "duration": 700, "delay": 0 } },
     { "id": "title", "kind": "title", "x": 50, "y": 83, "w": 90, "text": { "size": 4.2, "weight": 700 } },
     { "id": "now", "kind": "text", "x": 50, "y": 6, "w": 60, "content": "正在播放：{artist}", "text": { "size": 1.8, "spacing": 0.3 } },
@@ -442,7 +442,7 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 | `hidden` | 隐藏 |
 | `enter` | 换歌时的入场动画：`type` 为 `none` / `fade` / `up` / `down` / `left` / `right` / `zoom` / `blur`，`duration`、`delay` 单位为毫秒 |
 | `text` | 文字样式（文字类元素）：`size`（u）、`weight`（100–900）、`color`（`#RRGGBB`，`null` 为跟随主题）、`font`（空为默认，`serif` / `rounded` / `mono`，或字体名称）、`italic`、`shadow`、`spacing`（字间距，em）、`align`（`left` / `center` / `right`） |
-| `cover` | 封面：`shape`、`radius`（方形的圆角，宽度的百分比）、`shadow`；唱片另有 `spin`（播放时旋转）、`speed`（转一圈的秒数）、`arm`（唱臂）、`grooves`（纹路与光泽）、`label`（封面占唱片直径的百分比） |
+| `cover` | 封面：`shape`、`radius`（方形的圆角，宽度的百分比）、`shadow`；唱片另有 `spin`（播放时旋转）、`speed`（转一圈的秒数）、`arm`（唱臂，默认不显示）、`grooves`（纹路与光泽）、`label`（封面占唱片直径的百分比） |
 | `progress` | `style`、`thickness`（u）、`color`（`null` 为主题色） |
 
 其余字段会被忽略，超出范围的数值会被限制在范围内。完整格式见 [`layout.schema.json`](layout.schema.json)。
