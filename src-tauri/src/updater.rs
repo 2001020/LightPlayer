@@ -735,6 +735,17 @@ mod tests {
 
         match crate::tools::aria2() {
             Some(aria2) => {
+                // aria2 itself (a failure here would otherwise hide behind the fallback).
+                let direct = dir.join("direct.part");
+                std::fs::create_dir_all(&dir).unwrap();
+                let mut most = 0;
+                crate::aria2::download(aria2, &format!("{base}/f.zip"), &direct, "LightPlayer/test", &cancel, |s| most = most.max(s.connections))
+                    .await
+                    .unwrap_or_else(|e| panic!("aria2 ({}): {e}", aria2.display()));
+                assert_eq!(std::fs::read(&direct).unwrap(), data);
+                assert!(most > 1, "aria2 used {most} connection(s)");
+                std::fs::remove_file(&direct).unwrap();
+
                 let mut most = 0;
                 let mut last = 0;
                 let file = download_with(Some(aria2), &asset("/f.zip", &sha), &dir, &cancel, |p| {

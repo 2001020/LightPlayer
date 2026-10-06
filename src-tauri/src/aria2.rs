@@ -53,8 +53,6 @@ fn args(port: u16, secret: &str, user_agent: &str, proxy: Option<(String, Option
         "--retry-wait=2".into(),
         "--connect-timeout=15".into(),
         "--timeout=30".into(),
-        // The system resolver follows the system's DNS settings.
-        "--async-dns=false".into(),
         "--check-certificate=true".into(),
         format!("--user-agent={user_agent}"),
     ];
