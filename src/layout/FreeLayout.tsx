@@ -4,10 +4,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import * as C from "../core/controller";
 import { Icon } from "../components/Icon";
-import { LyricPeek, TrackChips } from "../components/NowPlayingParts";
+import { LyricPeek, TrackChips, usePlaying, useProgress, useTrack } from "../components/NowPlayingParts";
 import { tip } from "../components/Tooltip";
 import { ensureServerBase, layoutImageUrl } from "../lib/ipc";
-import { usePlayer, useUI } from "../stores/player";
+import { useUI } from "../stores/player";
 import { selectElement, updateElement, useLayouts } from "../stores/layout";
 import {
   defaultElement,
@@ -17,6 +17,7 @@ import {
   formatTimeEl,
   round1,
   snap,
+  snapAngle,
   usesClock,
   usesPosition,
   type CoverStyle,
@@ -100,8 +101,8 @@ function Vinyl({ c, src, playing, onClick }: { c: CoverStyle; src?: string | nul
 }
 
 function Cover({ e, editing }: { e: LayoutElement; editing: boolean }) {
-  const playing = usePlayer((s) => s.playing);
-  const src = usePlayer((s) => s.media?.meta?.cover);
+  const playing = usePlaying();
+  const src = useTrack()?.meta?.cover;
   const c = e.cover!;
   const click = editing ? undefined : toLyrics;
   if (c.shape === "vinyl") return <Vinyl c={c} src={src} playing={playing} onClick={click} />;
@@ -121,8 +122,7 @@ function Cover({ e, editing }: { e: LayoutElement; editing: boolean }) {
 // ------------------------------------------------------------------ others
 
 function Progress({ e, editing }: { e: LayoutElement; editing: boolean }) {
-  const position = usePlayer((s) => s.position);
-  const duration = usePlayer((s) => s.duration);
+  const { position, duration } = useProgress();
   const p = e.progress!;
   const pct = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
   const color = p.color ?? undefined;
@@ -149,11 +149,9 @@ function Progress({ e, editing }: { e: LayoutElement; editing: boolean }) {
 }
 
 function TextEl({ e }: { e: LayoutElement }) {
-  const media = usePlayer((s) => s.media);
+  const media = useTrack();
   const content = e.content ?? "";
-  const needPos = usesPosition(content);
-  const position = usePlayer((s) => (needPos ? Math.floor(s.position) : 0));
-  const duration = usePlayer((s) => s.duration);
+  const { position, duration } = useProgress(true, usesPosition(content));
   const now = useNow(1000, usesClock(content));
   const meta = media?.meta ?? {};
   const text = fillTemplate(content, {
@@ -174,8 +172,7 @@ function Clock({ e }: { e: LayoutElement }) {
 }
 
 function Time({ e }: { e: LayoutElement }) {
-  const position = usePlayer((s) => Math.floor(s.position));
-  const duration = usePlayer((s) => s.duration);
+  const { position, duration } = useProgress(true);
   return <div className="fl-time">{formatTimeEl(e.time ?? "both", position, duration)}</div>;
 }
 
@@ -190,7 +187,7 @@ function Picture({ e, editing }: { e: LayoutElement; editing: boolean }) {
 }
 
 function Content({ e, editing }: { e: LayoutElement; editing: boolean }) {
-  const media = usePlayer((s) => s.media);
+  const media = useTrack();
   const meta = media?.meta ?? {};
   switch (e.kind) {
     case "cover":
@@ -216,7 +213,7 @@ function Content({ e, editing }: { e: LayoutElement; editing: boolean }) {
     case "chips":
       return <TrackChips />;
     case "lyric":
-      return <LyricPeek showNext={e.next !== false} interactive={!editing} />;
+      return <LyricPeek showNext={e.next !== false} interactive={!editing} placeholder={editing} />;
     case "text":
       return <TextEl e={e} />;
     case "image":
@@ -262,21 +259,29 @@ function enterStyle(e: LayoutElement): CSSProperties | undefined {
 
 interface Drag {
   id: string;
-  mode: "move" | "resize";
+  mode: "move" | "resize" | "rotate";
   startX: number;
   startY: number;
   orig: LayoutElement;
   moved: boolean;
+  /** Rotating: the element's centre on screen, and the pointer's angle around it at the start. */
+  cx: number;
+  cy: number;
+  a0: number;
 }
+
+const deg = (x: number, y: number) => (Math.atan2(y, x) * 180) / Math.PI;
+
 
 export function FreeLayout({ layout, editing }: { layout: PlayerLayout; editing: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const size = useStageSize(ref);
   const u = Math.min(size.w, size.h) / 100;
-  const path = usePlayer((s) => s.media?.path);
+  const path = useTrack()?.path;
   const replay = useLayouts((s) => s.replay);
   const selected = useLayouts((s) => (editing ? s.selected : null));
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
+  const [angle, setAngle] = useState<{ deg: number; x: number; y: number } | null>(null);
   const drag = useRef<Drag | null>(null);
 
   const begin = (ev: ReactPointerEvent, e: LayoutElement, mode: Drag["mode"]) => {
@@ -284,8 +289,13 @@ export function FreeLayout({ layout, editing }: { layout: PlayerLayout; editing:
     ev.stopPropagation();
     ev.preventDefault();
     selectElement(e.id);
-    (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
-    drag.current = { id: e.id, mode, startX: ev.clientX, startY: ev.clientY, orig: e, moved: false };
+    const target = ev.currentTarget as HTMLElement;
+    target.setPointerCapture(ev.pointerId);
+    // The box of a rotated element is still centred on it.
+    const box = (target.closest(".fl-item") ?? target).getBoundingClientRect();
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    drag.current = { id: e.id, mode, startX: ev.clientX, startY: ev.clientY, orig: e, moved: false, cx, cy, a0: deg(ev.clientX - cx, ev.clientY - cy) };
   };
   const move = (ev: ReactPointerEvent) => {
     const d = drag.current;
@@ -314,6 +324,11 @@ export function FreeLayout({ layout, editing }: { layout: PlayerLayout; editing:
         el.x = round1(x);
         el.y = round1(y);
       }, record);
+    } else if (d.mode === "rotate") {
+      const r = snapAngle(d.orig.rotate + deg(ev.clientX - d.cx, ev.clientY - d.cy) - d.a0, ev.shiftKey, ev.altKey);
+      const st = ref.current!.getBoundingClientRect();
+      setAngle({ deg: r, x: ev.clientX - st.left, y: ev.clientY - st.top });
+      updateElement(d.id, (el) => (el.rotate = r), record);
     } else {
       // Along the element's own x axis (it may be rotated); it grows on both sides.
       const a = (d.orig.rotate * Math.PI) / 180;
@@ -325,6 +340,7 @@ export function FreeLayout({ layout, editing }: { layout: PlayerLayout; editing:
   const end = () => {
     drag.current = null;
     setGuides({ x: null, y: null });
+    setAngle(null);
   };
 
   const style = { "--u": `${u}px` } as CSSProperties;
@@ -354,12 +370,30 @@ export function FreeLayout({ layout, editing }: { layout: PlayerLayout; editing:
               <div className="fl-anim" key={e.enter.type === "none" ? "still" : `${path}|${replay}`} style={enterStyle(e)}>
                 <Content e={e} editing={editing} />
               </div>
-              {editing && selected === e.id && <div className="fl-handle" onPointerDown={(ev) => begin(ev, e, "resize")} />}
+              {editing && selected === e.id && (
+                <>
+                  <div className="fl-handle" onPointerDown={(ev) => begin(ev, e, "resize")} />
+                  <div
+                    className="fl-rotate"
+                    onPointerDown={(ev) => begin(ev, e, "rotate")}
+                    onDoubleClick={(ev) => {
+                      ev.stopPropagation();
+                      updateElement(e.id, (el) => (el.rotate = 0));
+                    }}
+                    {...tip("拖动旋转；按住 Shift 以 15° 为步长，双击归零")}
+                  />
+                </>
+              )}
             </div>
           ),
         )}
       {editing && guides.x !== null && <div className="fl-guide v" style={{ left: `${guides.x}%` }} />}
       {editing && guides.y !== null && <div className="fl-guide h" style={{ top: `${guides.y}%` }} />}
+      {editing && angle && (
+        <div className="fl-angle" style={{ left: angle.x, top: angle.y }}>
+          {angle.deg}°
+        </div>
+      )}
     </div>
   );
 }

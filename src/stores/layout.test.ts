@@ -71,8 +71,11 @@ describe("layout editor", () => {
     expect(el("title").y).toBe(y0);
     redo();
     expect(el("title").y).toBe(3);
+    useLayouts.setState({ sample: true });
     cancelEditing();
     expect(useLayouts.getState().draft).toBeNull();
+    // The sample song goes with the editor.
+    expect(useLayouts.getState().sample).toBe(false);
     expect(activeLayout().id).toBe("vinyl");
   });
 

@@ -34,6 +34,8 @@ interface LayoutState {
   panelSide: "left" | "right";
   /** The inspector is folded away (to see the whole stage). */
   panelHidden: boolean;
+  /** The player page shows a sample song, to edit a layout with nothing playing. */
+  sample: boolean;
 }
 
 export const useLayouts = create<LayoutState>()(
@@ -50,6 +52,7 @@ export const useLayouts = create<LayoutState>()(
       replay: 0,
       panelSide: "right",
       panelHidden: false,
+      sample: false,
     }),
     {
       name: "lightplayer-layouts",
@@ -231,11 +234,11 @@ export function finishEditing() {
     saved.name = from && !from.classic ? uniqueName(`${saved.name}（自定义）`) : uniqueName(saved.name);
     useLayouts.setState({ custom: [...s.custom, saved] });
   }
-  useLayouts.setState({ active: saved.id, draft: null, draftFrom: null, selected: null, past: [], future: [] });
+  useLayouts.setState({ active: saved.id, draft: null, draftFrom: null, selected: null, past: [], future: [], sample: false });
 }
 
 export function cancelEditing() {
-  useLayouts.setState({ draft: null, draftFrom: null, selected: null, past: [], future: [] });
+  useLayouts.setState({ draft: null, draftFrom: null, selected: null, past: [], future: [], sample: false });
 }
 
 /** Whether the draft differs from what it was opened from. */

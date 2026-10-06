@@ -8,6 +8,7 @@ import {
   formatTimeEl,
   fontFamily,
   snap,
+  snapAngle,
   validSrc,
   type PlayerLayout,
 } from "./model";
@@ -102,6 +103,17 @@ describe("player layouts", () => {
     expect(snap(49.4, [50, 20], 1)).toEqual({ value: 50, guide: 50 });
     expect(snap(47, [50], 1)).toEqual({ value: 47, guide: null });
     expect(snap(20.6, [50, 20, 21], 1).value).toBe(21);
+  });
+
+  it("snaps rotation angles", () => {
+    expect(snapAngle(43.2, false, false)).toBe(45);
+    expect(snapAngle(43.2, false, true)).toBe(43);
+    expect(snapAngle(38, false, false)).toBe(38);
+    expect(snapAngle(38, true, false)).toBe(45);
+    expect(snapAngle(200, false, true)).toBe(-160);
+    expect(snapAngle(-181, false, true)).toBe(179);
+    expect(snapAngle(179.6, false, true)).toBe(-180);
+    expect(snapAngle(-1, false, false)).toBe(0);
   });
 
   it("names fonts safely", () => {

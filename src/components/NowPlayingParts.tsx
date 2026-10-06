@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { findLineIndex, spokenLines } from "../core/lyrics/lrc";
+import type { OpenedMedia } from "../lib/ipc";
+import { useLayouts } from "../stores/layout";
 import { useLyrics, usePlayer, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
 import { CommentsChip } from "./CommentsPanel";
@@ -13,6 +15,53 @@ export const STRATEGY_LABEL: Record<string, string> = {
   hlsTranscode: "实时转码播放",
 };
 
+// ------------------------------------------------------------------ sample song
+
+/** What the layout editor shows when no song is playing. */
+export const SAMPLE_TRACK: OpenedMedia = {
+  path: "lightplayer:sample",
+  fileName: "示例歌曲.flac",
+  name: "示例歌曲",
+  kind: "audio",
+  strategy: "direct",
+  url: "",
+  baseOffset: 0,
+  duration: 236,
+  meta: { title: "歌曲名称", artist: "歌手", album: "专辑" },
+  subtitles: [],
+};
+const SAMPLE_POSITION = 83;
+const SAMPLE_LYRIC = { cur: "这里显示当前这句歌词", next: "下一句歌词" };
+
+/** Whether the player page shows the sample song (editing a layout with no song playing). */
+export function useSample() {
+  const on = useLayouts((s) => s.sample);
+  const audio = usePlayer((s) => s.media?.kind === "audio");
+  return on && !audio;
+}
+
+/** The song the now playing page shows: the playing one, or the sample. */
+export function useTrack(): OpenedMedia | null {
+  const media = usePlayer((s) => s.media);
+  return useSample() ? SAMPLE_TRACK : media;
+}
+
+/** Whether playing; the sample song is always shown playing. */
+export function usePlaying() {
+  const playing = usePlayer((s) => s.playing);
+  return useSample() || playing;
+}
+
+/** Position and duration in seconds (whole seconds when `whole`). */
+export function useProgress(whole = false, on = true) {
+  const sample = useSample();
+  const position = usePlayer((s) => (sample || !on ? 0 : whole ? Math.floor(s.position) : s.position));
+  const duration = usePlayer((s) => s.duration);
+  return sample ? { position: SAMPLE_POSITION, duration: SAMPLE_TRACK.duration! } : { position, duration };
+}
+
+// ------------------------------------------------------------------ parts
+
 interface PeekLine {
   key: string;
   cur: string;
@@ -23,8 +72,11 @@ interface PeekLine {
 /**
  * Current and next lyric line. The box has a fixed size so changing lines
  * never moves the cover or the song info; lines slide and fade in and out.
+ * `placeholder` shows sample lines when the song has no synced lyrics (in
+ * the layout editor), as does the sample song.
  */
-export function LyricPeek({ showNext = true, interactive = true }: { showNext?: boolean; interactive?: boolean }) {
+export function LyricPeek({ showNext = true, interactive = true, placeholder = false }: { showNext?: boolean; interactive?: boolean; placeholder?: boolean }) {
+  const sample = useSample();
   const lyrics = useLyrics((s) => s.lyrics);
   const position = usePlayer((s) => s.position);
   const media = usePlayer((s) => s.media);
@@ -49,6 +101,16 @@ export function LyricPeek({ showNext = true, interactive = true }: { showNext?: 
     const t = window.setTimeout(() => setLines((prev) => prev.filter((l) => !l.leaving)), 450);
     return () => clearTimeout(t);
   }, [key, cur, next, synced]);
+  if (sample || (placeholder && !synced)) {
+    return (
+      <div className={`lyric-peek ${showNext ? "" : "single"}`} data-lp="lyric-peek" data-lp-raw>
+        <div className="peek-line" data-lp="lyric-peek-line">
+          <span className="cur">{SAMPLE_LYRIC.cur}</span>
+          {showNext && <span className="next">{SAMPLE_LYRIC.next}</span>}
+        </div>
+      </div>
+    );
+  }
   if (!synced) return null;
   return (
     <div
@@ -69,10 +131,18 @@ export function LyricPeek({ showNext = true, interactive = true }: { showNext?: 
 
 /** File type, playback strategy, AI lyrics and comments. */
 export function TrackChips() {
-  const media = usePlayer((s) => s.media);
+  const media = useTrack();
+  const sample = useSample();
   const origin = useLyrics((s) => s.origin);
   const status = useLyrics((s) => s.status);
   if (!media) return null;
+  if (sample) {
+    return (
+      <div className="chips" data-lp="chips">
+        <span className="chip">FLAC</span>
+      </div>
+    );
+  }
   const strat = STRATEGY_LABEL[media.strategy];
   return (
     <div className="chips" data-lp="chips">

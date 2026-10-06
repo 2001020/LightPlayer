@@ -8,7 +8,7 @@ import { confirmDialog } from "../lib/confirm";
 import { formatBytes } from "../lib/format";
 import { neteaseLogout, refreshNetease, useNetease } from "../stores/netease";
 import { NETEASE_QUALITIES, type NeteaseQuality } from "../stores/settings";
-import { toast, usePlayer, useUI, type UIState } from "../stores/player";
+import { toast, useUI, type UIState } from "../stores/player";
 import { activeLayout, setActiveLayout, useLayouts } from "../stores/layout";
 import { BUILTIN_LAYOUTS } from "../layout/model";
 import { editActiveLayout } from "../layout/LayoutEditor";
@@ -546,7 +546,6 @@ function LayoutRow() {
   const active = useLayouts((st) => activeLayout(st).id);
   const custom = useLayouts((st) => st.custom);
   const plugin = useLayouts((st) => st.plugin);
-  const hasAudio = usePlayer((st) => st.media?.kind === "audio");
   const list = [...BUILTIN_LAYOUTS, ...custom, ...plugin];
   return (
     <Row label="播放页布局" hint="唱片形封面、元素位置与样式等；在播放页的“布局”菜单中编辑">
@@ -561,12 +560,11 @@ function LayoutRow() {
         </select>
         <button
           className="btn small"
-          disabled={!hasAudio}
           onClick={() => {
             useUI.setState({ overlay: null, page: "player" });
             requestAnimationFrame(() => requestAnimationFrame(editActiveLayout));
           }}
-          {...(hasAudio ? {} : tip("先播放一首歌曲"))}
+          {...tip("没有播放歌曲时，用示例歌曲编辑")}
         >
           编辑…
         </button>

@@ -7,6 +7,7 @@ import { ContextMenuHost } from "./components/ContextMenu";
 import { LibraryFolders } from "./components/LibraryFolders";
 import { NeteaseLogin } from "./components/NeteaseLogin";
 import { PlaylistPanel, usePlaylistLayout, usePlaylistShown } from "./components/PlaylistPanel";
+import { useSample } from "./components/NowPlayingParts";
 import { PromptHost } from "./components/Prompt";
 import { DesktopLyricsOverlay } from "./components/DesktopLyrics";
 import { isTauri } from "./lib/ipc";
@@ -74,16 +75,18 @@ export default function App() {
   const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive;
   const playerStyle = useSettings((s) => s.playerStyle);
   const freeLayout = useLayouts((s) => !activeLayout(s).classic || !!s.draft);
+  const sample = useSample();
 
   // State plugins can style by (see docs/plugins/README.md).
   useEffect(() => {
     const root = document.documentElement.dataset;
     root.page = showLyrics ? "lyrics" : showLibrary ? "library" : "player";
-    root.media = media?.kind ?? "none";
+    // The layout editor's sample song counts as audio.
+    root.media = sample ? "audio" : media?.kind ?? "none";
     root.playerStyle = playerStyle;
     root.fullscreen = fullscreen ? "true" : "false";
     root.playerLayout = playerStyle === "classic" && freeLayout ? "free" : "classic";
-  }, [showLyrics, showLibrary, media?.kind, playerStyle, fullscreen, freeLayout]);
+  }, [showLyrics, showLibrary, media?.kind, playerStyle, fullscreen, freeLayout, sample]);
 
   return (
     <div className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""}`}>

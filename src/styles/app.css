@@ -1524,6 +1524,47 @@ input[type="range"] {
   z-index: 2;
   touch-action: none;
 }
+/* Rotate handle: a knob on a stem above the element's top edge. */
+.fl-rotate {
+  position: absolute;
+  left: 50%;
+  top: -34px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+  touch-action: none;
+}
+.fl-rotate:active {
+  cursor: grabbing;
+}
+.fl-rotate::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 1.5px;
+  height: 20px;
+  margin-left: -0.75px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.fl-angle {
+  position: absolute;
+  z-index: 7;
+  transform: translate(14px, -130%);
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font: 600 12px/1.5 var(--mono);
+  pointer-events: none;
+  white-space: nowrap;
+}
 .fl-guide {
   position: absolute;
   pointer-events: none;

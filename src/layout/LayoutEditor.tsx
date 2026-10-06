@@ -11,7 +11,8 @@ import { tip } from "../components/Tooltip";
 import { confirmDialog } from "../lib/confirm";
 import { api, isTauri } from "../lib/ipc";
 import { keys } from "../lib/platform";
-import { toast } from "../stores/player";
+import { toast, usePlayer } from "../stores/player";
+import { useSettings } from "../stores/settings";
 import {
   activeLayout,
   addElement,
@@ -512,7 +513,7 @@ function Inspector() {
         <ElementInspector key={selected.id} e={selected} />
       ) : (
         <p className="le-hint">
-          点选元素进行设置。拖动可移动，拖右下角可调大小；按住 {keys("⌥")} 拖动时不吸附对齐线。方向键微调，{keys("⌘Z")} 撤销。
+          点选元素进行设置。拖动可移动，拖右下角可调大小，拖上方圆点可旋转（按住 ⇧ 以 15° 为步长）；按住 {keys("⌥")} 拖动时不吸附对齐线。方向键微调，{keys("⌘Z")} 撤销。
         </p>
       )}
     </aside>
@@ -560,7 +561,15 @@ function Toolbar() {
       <button className="btn small" onClick={() => void cancel()}>
         取消
       </button>
-      <button className="btn small primary" onClick={finishEditing}>
+      <button
+        className="btn small primary"
+        onClick={() => {
+          // With the sample song the page goes back to empty: say where the layout went.
+          const sample = useLayouts.getState().sample && usePlayer.getState().media?.kind !== "audio";
+          finishEditing();
+          if (sample) toast("布局已保存，播放歌曲时生效", "success");
+        }}
+      >
         完成
       </button>
     </div>
@@ -617,8 +626,21 @@ export function LayoutEditor() {
 
 // ------------------------------------------------------------------ menu
 
+/**
+ * Opens the editor on the shown layout. The player page must be showing (or
+ * about to show). With no song playing it shows a sample song to edit with;
+ * the Flow style switches to the classic one, the only one with layouts.
+ */
 export function editActiveLayout() {
-  startEditing(() => measureClassic(document.querySelector<HTMLElement>(".player-page .stage")));
+  const go = () => startEditing(() => measureClassic(document.querySelector<HTMLElement>(".player-page .stage")));
+  const settings = useSettings.getState();
+  const flow = settings.playerStyle === "flow";
+  if (flow) settings.set({ playerStyle: "classic" });
+  // Kept for the whole edit, so the sample takes over if the song is closed meanwhile.
+  useLayouts.setState({ sample: true });
+  if (!flow && usePlayer.getState().media?.kind === "audio") go();
+  // The classic page has to be on screen to measure it.
+  else requestAnimationFrame(() => requestAnimationFrame(go));
 }
 
 async function exportLayout(id: string) {

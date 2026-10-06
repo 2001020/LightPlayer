@@ -7,7 +7,7 @@ import { PlaylistPanel, togglePlaylist, usePlaylistLayout, usePlaylistShown } fr
 import { tip } from "../components/Tooltip";
 import { toggleFullscreen } from "../components/TransportBar";
 import { CoverFlow } from "../components/CoverFlow";
-import { LyricPeek, STRATEGY_LABEL, TrackChips } from "../components/NowPlayingParts";
+import { LyricPeek, STRATEGY_LABEL, TrackChips, usePlaying, useSample, useTrack } from "../components/NowPlayingParts";
 import { basename } from "../lib/format";
 import { usePlayer, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
@@ -55,8 +55,8 @@ function EmptyState() {
 }
 
 function AudioNowPlaying() {
-  const media = usePlayer((s) => s.media)!;
-  const playing = usePlayer((s) => s.playing);
+  const media = useTrack()!;
+  const playing = usePlaying();
   const meta = media.meta ?? {};
   const toLyrics = () => useUI.setState({ page: "lyrics" });
   return (
@@ -193,13 +193,16 @@ export function PlayerPage() {
   const style = useSettings((s) => s.playerStyle);
   const free = useActiveLayout();
   const audio = media?.kind === "audio";
-  const editing = useLayouts((s) => !!s.draft) && audio && style !== "flow";
+  // Editing a layout with no song playing shows a sample song instead.
+  const sample = useSample();
+  const nowPlaying = audio || sample;
+  const editing = useLayouts((s) => !!s.draft) && nowPlaying && style !== "flow";
   return (
     <div className={`player-page ${showList ? "with-list" : ""}`} data-lp="player">
-      <div className={`stage ${media?.kind === "video" ? "is-video" : ""} ${editing ? "layout-editing" : ""}`}>
+      <div className={`stage ${media?.kind === "video" && !sample ? "is-video" : ""} ${editing ? "layout-editing" : ""} ${sample ? "layout-sample" : ""}`}>
         {!editing && <BackButton />}
-        {!media && !loading && <EmptyState />}
-        {!media && loading && (
+        {!media && !loading && !sample && <EmptyState />}
+        {!media && loading && !sample && (
           <div className="empty">
             <div className="spinner dark" />
           </div>
@@ -210,7 +213,7 @@ export function PlayerPage() {
             <StyleToggle />
           </div>
         )}
-        {audio && (style === "flow" ? <CoverFlow peek={<LyricPeek />} /> : free.classic ? <AudioNowPlaying /> : <FreeLayout layout={free} editing={editing} />)}
+        {nowPlaying && (style === "flow" ? <CoverFlow peek={<LyricPeek />} /> : free.classic ? <AudioNowPlaying /> : <FreeLayout layout={free} editing={editing} />)}
         {editing && <LayoutEditor />}
         {media?.kind === "video" && <VideoStage />}
         {media && !shown && <PlaylistHandle />}

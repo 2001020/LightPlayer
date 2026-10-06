@@ -457,6 +457,18 @@ export function fontFamily(font: string): string | undefined {
 
 // ------------------------------------------------------------------ snapping
 
+/** A whole angle in [-180, 180), snapped to 15° steps with Shift, or near multiples of 45° unless Alt. */
+export function snapAngle(a: number, step: boolean, free: boolean): number {
+  let r = a;
+  if (step) r = Math.round(r / 15) * 15;
+  else if (!free) {
+    const near = Math.round(r / 45) * 45;
+    if (Math.abs(near - r) <= 3) r = near;
+  }
+  r = ((((Math.round(r) + 180) % 360) + 360) % 360) - 180;
+  return r || 0;
+}
+
 /** Snaps `v` to the nearest target within `range`; returns the value and the target used. */
 export function snap(v: number, targets: number[], range: number): { value: number; guide: number | null } {
   let best: number | null = null;
