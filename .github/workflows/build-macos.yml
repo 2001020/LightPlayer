@@ -303,7 +303,7 @@ jobs:
           $out = cargo test --release --target x86_64-pc-windows-msvc 2>&1 | ForEach-Object { "$_" }
           $code = $LASTEXITCODE
           $out
-          $sum = ($out | Select-String 'test result|FAILED|panicked' | Select-Object -First 30) -join "%0A"
+          $sum = ($out | Select-String 'test result|FAILED|panicked|left:|right:|update helper' | Select-Object -First 40) -join "%0A"
           if ($code -ne 0) { Write-Output "::error title=Rust tests on Windows::$sum"; exit 1 }
           Write-Output "::notice title=Rust tests on Windows::$sum"
 

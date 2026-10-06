@@ -322,6 +322,9 @@ fn mac_helper(pid: &str, old: &Path, new: &Path, marker: &Path, launch: &str) ->
 const WIN_SCRIPT: &str = r#"
 param([int]$ProcId, [string]$Mode, [string]$Source, [string]$Dir, [string]$Exe, [string]$Marker, [string]$Launch = 'yes')
 $ErrorActionPreference = 'Stop'
+$Log = Join-Path (Split-Path -Parent $Marker) 'install-update.log'
+function Note($text) { Add-Content -LiteralPath $Log -Value "$(Get-Date -Format o) $text" -ErrorAction SilentlyContinue }
+Note "mode=$Mode source=$Source dir=$Dir"
 Wait-Process -Id $ProcId -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500
 try {
@@ -333,7 +336,9 @@ try {
       Copy-Item -Destination $Dir -Recurse -Force
     Copy-Item -LiteralPath (Join-Path $Source 'LightPlayer.exe') -Destination $Exe -Force
   }
+  Note 'done'
 } catch {
+  Note "failed: $_"
   Set-Content -LiteralPath $Marker -Value "$_"
 } finally {
   if ($Launch -eq 'yes') { Start-Process -FilePath $Exe }
@@ -349,7 +354,7 @@ fn windows_helper(work: &Path, pid: &str, mode: &str, source: &Path, dir: &Path,
     let script = work.join("install-update.ps1");
     std::fs::write(&script, WIN_SCRIPT)?;
     std::process::Command::new("powershell.exe")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File"])
+        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"])
         .arg(&script)
         .args(["-ProcId", pid, "-Mode", mode, "-Source"])
         .arg(source)
@@ -360,8 +365,12 @@ fn windows_helper(work: &Path, pid: &str, mode: &str, source: &Path, dir: &Path,
         .arg("-Marker")
         .arg(marker)
         .args(["-Launch", if launch { "yes" } else { "no" }])
-        // CREATE_NO_WINDOW | DETACHED_PROCESS: keeps running after the app quits.
-        .creation_flags(0x0800_0000 | 0x0000_0008)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        // CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP: a hidden console of its
+        // own; the helper keeps running after the app quits.
+        .creation_flags(0x0800_0000 | 0x0000_0200)
         .spawn()
 }
 
@@ -576,10 +585,14 @@ mod tests {
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(src.join("LightPlayer.exe"), "new").unwrap();
         std::fs::write(src.join("ffmpeg.exe"), "new").unwrap();
+        let log = || {
+            let read = |p: &Path| std::fs::read_to_string(p).unwrap_or_else(|e| format!("({e})"));
+            format!("update helper log: {} marker: {}", read(&work.join("install-update.log")), read(&marker))
+        };
         let mut c = windows_helper(&work, &finished_pid(), "portable", &src, &dir, &exe, &marker, false).unwrap();
-        assert!(c.wait().unwrap().success());
-        assert_eq!(std::fs::read_to_string(&exe).unwrap(), "new");
-        assert_eq!(std::fs::read_to_string(dir.join("ffmpeg.exe")).unwrap(), "new");
+        assert!(c.wait().unwrap().success(), "{}", log());
+        assert_eq!(std::fs::read_to_string(&exe).unwrap(), "new", "{}", log());
+        assert_eq!(std::fs::read_to_string(dir.join("ffmpeg.exe")).unwrap(), "new", "{}", log());
         assert!(!marker.exists());
 
         // Installer: runs silently into the same folder (a stand-in records its arguments).
@@ -587,15 +600,15 @@ mod tests {
         std::fs::write(&setup, "@echo %* > \"%~dp0args.txt\"\r\n@exit /b 0\r\n").unwrap();
         let mut c = windows_helper(&work, &finished_pid(), "setup", &setup, &dir, &exe, &marker, false).unwrap();
         assert!(c.wait().unwrap().success());
-        let args = std::fs::read_to_string(work.join("args.txt")).unwrap();
+        let args = std::fs::read_to_string(work.join("args.txt")).unwrap_or_else(|e| panic!("{e}; {}", log()));
         assert!(args.contains("/S") && args.contains(&format!("/D={}", dir.display())), "{args}");
-        assert!(!marker.exists());
+        assert!(!marker.exists(), "{}", log());
 
         // A failing installer is recorded.
         std::fs::write(&setup, "@exit /b 2\r\n").unwrap();
         let mut c = windows_helper(&work, &finished_pid(), "setup", &setup, &dir, &exe, &marker, false).unwrap();
         c.wait().unwrap();
-        assert!(marker.is_file());
+        assert!(marker.is_file(), "{}", log());
     }
 
     /// Talks to GitHub: `cargo test updater_live -- --ignored --nocapture`.
