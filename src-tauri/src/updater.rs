@@ -1,6 +1,6 @@
 //! Updates from GitHub Releases: finds a newer release with a file for this
-//! kind of install, downloads it (checking its size and SHA-256), and swaps it
-//! in once the app has quit, then starts the new version.
+//! kind of install, downloads it with the bundled aria2 (checking its size and
+//! SHA-256), and swaps it in once the app has quit, then starts the new version.
 //!
 //! - macOS: replaces the running LightPlayer.app with the one in `*_aarch64.app.zip`.
 //! - Windows installer: runs `*_x64-setup.exe /S` into the same folder.
@@ -198,55 +198,116 @@ pub async fn check(include_prerelease: bool) -> AppResult<Option<UpdateInfo>> {
 pub struct Progress {
     pub received: u64,
     pub total: u64,
+    /// Bytes per second.
+    pub speed: u64,
+    /// Connections in use: several with aria2, 1 otherwise.
+    pub connections: u32,
 }
 
 /// Downloads `asset` into `dir`, reporting progress; checks size and SHA-256.
-pub async fn download(asset: &UpdateAsset, dir: &Path, cancel: &AtomicBool, mut progress: impl FnMut(Progress)) -> AppResult<PathBuf> {
-    use futures_util::StreamExt;
-    use tokio::io::AsyncWriteExt;
+/// Uses the bundled aria2 (several connections) and falls back to a single
+/// connection when aria2 is missing or fails.
+pub async fn download(asset: &UpdateAsset, dir: &Path, cancel: &AtomicBool, progress: impl FnMut(Progress)) -> AppResult<PathBuf> {
+    download_with(crate::tools::aria2(), asset, dir, cancel, progress).await
+}
+
+async fn download_with(aria2: Option<&Path>, asset: &UpdateAsset, dir: &Path, cancel: &AtomicBool, mut progress: impl FnMut(Progress)) -> AppResult<PathBuf> {
     let name = Path::new(&asset.name).file_name().ok_or_else(|| AppError::msg("文件名无效"))?;
     tokio::fs::create_dir_all(dir).await?;
     let dest = dir.join(name);
     let part = dir.join(format!("{}.part", name.to_string_lossy()));
-    let resp = client()?.get(&asset.url).send().await?.error_for_status()?;
-    let total = resp.content_length().unwrap_or(asset.size);
-    let mut file = tokio::fs::File::create(&part).await?;
-    let mut hash = Sha256::new();
-    let mut received = 0u64;
-    let mut last = 0u64;
-    let mut stream = resp.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        if cancel.load(Ordering::SeqCst) {
-            drop(file);
-            let _ = tokio::fs::remove_file(&part).await;
-            return Err(AppError::Cancelled);
+    let control = crate::aria2::control_file(&part);
+    let remove = |files: Vec<PathBuf>| async move {
+        for f in files {
+            let _ = tokio::fs::remove_file(f).await;
         }
-        let chunk = chunk?;
-        hash.update(&chunk);
-        file.write_all(&chunk).await?;
-        received += chunk.len() as u64;
-        if received - last >= 256 * 1024 || received == total {
-            last = received;
-            progress(Progress { received, total });
-        }
-    }
-    file.flush().await?;
-    drop(file);
-    let fail = |msg: String| async {
-        let _ = tokio::fs::remove_file(&part).await;
-        Err(AppError::msg(msg))
     };
-    if asset.size > 0 && received != asset.size {
-        return fail(format!("下载不完整（{received} / {} 字节），请重试", asset.size)).await;
-    }
-    if let Some(want) = &asset.sha256 {
-        let got = hex::encode(hash.finalize());
-        if &got != want {
-            return fail("下载的文件校验失败，请重试".into()).await;
+    let mut done = false;
+    if let Some(aria2) = aria2 {
+        let ua = format!("LightPlayer/{}", current_version());
+        let report = |s: crate::aria2::Status| {
+            progress(Progress {
+                received: s.completed,
+                total: if s.total > 0 { s.total } else { asset.size },
+                speed: s.speed,
+                connections: s.connections,
+            })
+        };
+        match crate::aria2::download(aria2, &asset.url, &part, &ua, cancel, report).await {
+            Ok(()) => done = true,
+            Err(AppError::Cancelled) => {
+                remove(vec![part, control]).await;
+                return Err(AppError::Cancelled);
+            }
+            Err(e) => log::warn!("aria2 download failed, using a single connection: {e}"),
         }
+    }
+    if !done {
+        remove(vec![control]).await;
+        if let Err(e) = single(asset, &part, cancel, &mut progress).await {
+            remove(vec![part]).await;
+            return Err(e);
+        }
+    }
+    if let Err(e) = verify(&part, asset).await {
+        remove(vec![part]).await;
+        return Err(e);
     }
     tokio::fs::rename(&part, &dest).await?;
     Ok(dest)
+}
+
+/// One connection, straight to `part`.
+async fn single(asset: &UpdateAsset, part: &Path, cancel: &AtomicBool, progress: &mut impl FnMut(Progress)) -> AppResult<()> {
+    use futures_util::StreamExt;
+    use tokio::io::AsyncWriteExt;
+    let resp = client()?.get(&asset.url).send().await?.error_for_status()?;
+    let total = resp.content_length().unwrap_or(asset.size);
+    let mut file = tokio::fs::File::create(part).await?;
+    let mut received = 0u64;
+    let mut last = 0u64;
+    // Speed over the last half second or more.
+    let mut window = (std::time::Instant::now(), 0u64, 0u64);
+    let mut stream = resp.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        if cancel.load(Ordering::SeqCst) {
+            return Err(AppError::Cancelled);
+        }
+        let chunk = chunk?;
+        file.write_all(&chunk).await?;
+        received += chunk.len() as u64;
+        let elapsed = window.0.elapsed().as_secs_f64();
+        if elapsed >= 0.5 {
+            window = (std::time::Instant::now(), received, ((received - window.1) as f64 / elapsed) as u64);
+        }
+        if received - last >= 256 * 1024 || received == total {
+            last = received;
+            progress(Progress { received, total, speed: window.2, connections: 1 });
+        }
+    }
+    file.flush().await?;
+    Ok(())
+}
+
+/// Size and SHA-256 (when GitHub lists one) of a finished download.
+async fn verify(file: &Path, asset: &UpdateAsset) -> AppResult<()> {
+    let received = tokio::fs::metadata(file).await?.len();
+    if asset.size > 0 && received != asset.size {
+        return Err(AppError::msg(format!("下载不完整（{received} / {} 字节），请重试", asset.size)));
+    }
+    let Some(want) = asset.sha256.clone() else { return Ok(()) };
+    let file = file.to_path_buf();
+    let got = tokio::task::spawn_blocking(move || -> std::io::Result<String> {
+        let mut hash = Sha256::new();
+        std::io::copy(&mut std::fs::File::open(file)?, &mut hash)?;
+        Ok(hex::encode(hash.finalize()))
+    })
+    .await
+    .map_err(|e| AppError::msg(e.to_string()))??;
+    if got != want {
+        return Err(AppError::msg("下载的文件校验失败，请重试"));
+    }
+    Ok(())
 }
 
 /// Can files be replaced in `dir`?
@@ -609,6 +670,132 @@ mod tests {
         let mut c = windows_helper(&work, &finished_pid(), "setup", &setup, &dir, &exe, &marker, false).unwrap();
         c.wait().unwrap();
         assert!(marker.is_file(), "{}", log());
+    }
+
+    /// Serves `data` at `/f.zip` with Range support (and 404 elsewhere).
+    async fn serve(data: Vec<u8>) -> String {
+        use axum::http::{header, HeaderMap, StatusCode};
+        use axum::response::IntoResponse;
+        let data = std::sync::Arc::new(data);
+        let app = axum::Router::new().route(
+            "/f.zip",
+            axum::routing::get(move |h: HeaderMap| {
+                let data = data.clone();
+                async move {
+                    let len = data.len();
+                    let range = h.get(header::RANGE).and_then(|v| v.to_str().ok()).and_then(|v| {
+                        let (a, b) = v.strip_prefix("bytes=")?.split_once('-')?;
+                        let a: usize = a.parse().ok()?;
+                        let b: usize = if b.is_empty() { len - 1 } else { b.parse::<usize>().ok()?.min(len - 1) };
+                        (a <= b).then_some((a, b))
+                    });
+                    let (a, b) = range.unwrap_or((0, len - 1));
+                    // Slow, like a throttled connection, so several are used at once.
+                    let chunks: Vec<Vec<u8>> = data[a..=b].chunks(64 * 1024).map(<[u8]>::to_vec).collect();
+                    let body = axum::body::Body::from_stream(futures_util::StreamExt::then(futures_util::stream::iter(chunks), |c| async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(15)).await;
+                        Ok::<_, std::io::Error>(c)
+                    }));
+                    let mut headers = vec![(header::ACCEPT_RANGES, "bytes".to_string()), (header::CONTENT_LENGTH, (b + 1 - a).to_string())];
+                    let status = if range.is_some() {
+                        headers.push((header::CONTENT_RANGE, format!("bytes {a}-{b}/{len}")));
+                        StatusCode::PARTIAL_CONTENT
+                    } else {
+                        StatusCode::OK
+                    };
+                    let mut resp = (status, body).into_response();
+                    for (k, v) in headers {
+                        resp.headers_mut().insert(k, v.parse().unwrap());
+                    }
+                    resp
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        format!("http://127.0.0.1:{port}")
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn downloads_with_aria2_and_falls_back() {
+        let data: Vec<u8> = (0..6_000_000u32).map(|i| (i.wrapping_mul(2_654_435_761) >> 13) as u8).collect();
+        let sha = hex::encode(Sha256::digest(&data));
+        let base = serve(data.clone()).await;
+        let asset = |path: &str, sha: &str| UpdateAsset {
+            name: "LightPlayer_9.9.9_test.zip".into(),
+            url: format!("{base}{path}"),
+            size: data.len() as u64,
+            sha256: Some(sha.into()),
+        };
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("updates");
+        let leftovers = || std::fs::read_dir(&dir).map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect::<Vec<_>>()).unwrap_or_default();
+        let cancel = AtomicBool::new(false);
+
+        match crate::tools::aria2() {
+            Some(aria2) => {
+                let mut most = 0;
+                let mut last = 0;
+                let file = download_with(Some(aria2), &asset("/f.zip", &sha), &dir, &cancel, |p| {
+                    most = most.max(p.connections);
+                    last = p.received;
+                })
+                .await
+                .unwrap();
+                assert_eq!(std::fs::read(&file).unwrap(), data);
+                assert_eq!(last, data.len() as u64);
+                assert!(most > 1, "aria2 used {most} connection(s)");
+                assert_eq!(leftovers(), vec!["LightPlayer_9.9.9_test.zip".to_string()]);
+                std::fs::remove_file(&file).unwrap();
+
+                // A wrong checksum: rejected, nothing left behind.
+                let e = download_with(Some(aria2), &asset("/f.zip", &"0".repeat(64)), &dir, &cancel, |_| {}).await.unwrap_err();
+                assert!(e.to_string().contains("校验失败"), "{e}");
+                assert!(leftovers().is_empty(), "{:?}", leftovers());
+
+                // Cancelled.
+                cancel.store(true, Ordering::SeqCst);
+                assert!(matches!(download_with(Some(aria2), &asset("/f.zip", &sha), &dir, &cancel, |_| {}).await, Err(AppError::Cancelled)));
+                assert!(leftovers().is_empty(), "{:?}", leftovers());
+                cancel.store(false, Ordering::SeqCst);
+
+                // A missing file: aria2 and the single connection both fail.
+                assert!(download_with(Some(aria2), &asset("/missing.zip", &sha), &dir, &cancel, |_| {}).await.is_err());
+                assert!(leftovers().is_empty(), "{:?}", leftovers());
+            }
+            None => eprintln!("no aria2c here: only the fallback is tested"),
+        }
+
+        // aria2 cannot start: one connection instead.
+        let mut conns = 0;
+        let file = download_with(Some(Path::new("/nonexistent/aria2c")), &asset("/f.zip", &sha), &dir, &cancel, |p| conns = p.connections).await.unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), data);
+        assert_eq!(conns, 1);
+    }
+
+    /// Downloads this platform's file from the newest final release with aria2,
+    /// then over one connection: `cargo test aria2_live -- --ignored --nocapture`.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore]
+    async fn aria2_live() {
+        let aria2 = crate::tools::aria2().expect("aria2c (bundled next to the app, or on PATH)");
+        let releases: Value = serde_json::from_slice(
+            &client().unwrap().get(format!("https://api.github.com/repos/{REPO}/releases?per_page=10")).send().await.unwrap().bytes().await.unwrap(),
+        )
+        .unwrap();
+        let kind = if cfg!(windows) { InstallKind::WindowsPortable } else { InstallKind::MacApp };
+        let asset = pick_update(&releases, "0.1.0", false, kind).and_then(|u| u.asset).expect("a release file");
+        let tmp = tempfile::tempdir().unwrap();
+        let cancel = AtomicBool::new(false);
+        for (label, program) in [("aria2", Some(aria2)), ("single connection", None)] {
+            let started = std::time::Instant::now();
+            let mut most = 0;
+            let file = download_with(program, &asset, tmp.path(), &cancel, |p| most = most.max(p.connections)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
+            let secs = started.elapsed().as_secs_f64();
+            println!("{label}: {} {:.1} MB in {secs:.1} s ({:.2} MB/s, up to {most} connections, sha256 checked: {})", asset.name, asset.size as f64 / 1e6, asset.size as f64 / 1e6 / secs, asset.sha256.is_some());
+            std::fs::remove_file(file).unwrap();
+        }
     }
 
     /// Talks to GitHub: `cargo test updater_live -- --ignored --nocapture`.

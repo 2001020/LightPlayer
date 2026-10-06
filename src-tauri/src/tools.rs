@@ -1,4 +1,4 @@
-//! Locates the ffmpeg / ffprobe executables.
+//! Locates the ffmpeg / ffprobe / aria2c executables.
 //!
 //! Bundled builds ship them as Tauri sidecars next to the main executable
 //! (`Contents/MacOS/ffmpeg`). During development we fall back to common
@@ -28,6 +28,19 @@ fn exe_name(name: &str) -> String {
     } else {
         name.to_string()
     }
+}
+
+/// aria2c for update downloads; None when there is none (or
+/// `LIGHTPLAYER_ARIA2=off`), and updates download over one connection.
+pub fn aria2() -> Option<&'static Path> {
+    static ARIA2: OnceCell<Option<PathBuf>> = OnceCell::new();
+    ARIA2
+        .get_or_init(|| {
+            let off = std::env::var("LIGHTPLAYER_ARIA2").is_ok_and(|v| matches!(v.as_str(), "0" | "off" | "false"));
+            let p = locate("aria2c");
+            (!off && p.is_file()).then_some(p)
+        })
+        .as_deref()
 }
 
 fn locate(name: &str) -> PathBuf {

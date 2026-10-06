@@ -2429,7 +2429,7 @@ dependencies = [
 
 [[package]]
 name = "lightplayer"
-version = "1.6.1"
+version = "1.6.2"
 dependencies = [
  "aes",
  "axum",

@@ -33,7 +33,7 @@ The design is described in [docs/PLAN.en.md](docs/PLAN.en.md).
 | NetEase Cloud Music (experimental) | Turn it on and sign in under Settings to play your playlists, liked songs and daily picks from the library sidebar, search, switch quality, use NetEase's lyrics and click the **heart** to add a song to the account's liked songs; while a NetEase song plays you can read its **comments** (popular / latest, threaded replies, shortcut `C`). Uses unofficial APIs that may stop working at any time |
 | **Plugins** | Install plugins to change the layout, styles, text and fonts of the interface, and the look and settings of the player and lyrics pages; a plugin holds only style sheets, fonts and text tables and cannot run code; install, enable, order and configure them under "Settings > Plugins". If a plugin messes up the interface, press `⌥⇧⌘P` (Windows: `Ctrl+Alt+Shift+P`) for safe mode. To make one, read the [plugin development standard](docs/plugins/README.en.md); examples are in [`examples/plugins`](examples/plugins) |
 | **Custom player page** | The cover can be a square or a spinning vinyl record (with an animated tonearm); three built-in layouts: "Default", "Turntable" and "Vinyl + two columns"; under "Layout > Edit layout…" on the player page, drag and resize elements, set fonts, colors and entrance animations, and add text, images, clocks, progress rings and more; your own layouts can be exported as plugins to share |
-| Automatic updates | Checks GitHub Releases for a new version at launch and every 12 hours (can be turned off, or pre-releases included or not, under "Settings > About"); shows the release notes, downloads with one click (size and SHA-256 checked), installs and reopens. Works for the macOS version and the Windows installer and portable versions |
+| Automatic updates | Checks GitHub Releases for a new version at launch and every 12 hours (can be turned off, or pre-releases included or not, under "Settings > About"); shows the release notes, downloads with one click (over several connections with the bundled aria2; size and SHA-256 checked), installs and reopens. Works for the macOS version and the Windows installer and portable versions |
 | Other | A-B loop, sleep timer (fade out / after this song), resume playback, external/embedded subtitles, **AI-generated video subtitles**, video screenshots, frame stepping, immersive full screen (controls and title bar hide), feature hints after hovering a button for 1 s, drag and drop to open, "Open with" in Finder / File Explorer, macOS Control Center / Windows media overlay and media keys |
 
 ### How every format plays
@@ -84,9 +84,10 @@ You need Node 20+, pnpm 10, Rust (stable) and CMake; on macOS also the Xcode Com
 ```bash
 pnpm install
 bash scripts/fetch-ffmpeg.sh          # downloads the ffmpeg/ffprobe sidecars to src-tauri/binaries/
+bash scripts/fetch-aria2.sh           # the aria2c sidecar for updates (built from source on macOS, a few minutes)
 pnpm tauri dev                         # development mode
 pnpm tauri build --bundles app,dmg     # package (macOS)
-pnpm tauri build --bundles nsis        # package (Windows; run fetch-ffmpeg.sh first for the .exe ffmpeg)
+pnpm tauri build --bundles nsis        # package (Windows; run fetch-ffmpeg.sh and fetch-aria2.sh first for the .exe sidecars)
 ```
 
 - `pnpm test`: frontend unit tests (LRC parsing, play queue, colors, UI languages and more)
@@ -102,4 +103,5 @@ caches are in `~/Library/Caches/com.lightplayer.app/` (Windows: `%LOCALAPPDATA%\
 
 The app's code can be used freely. The bundled static FFmpeg builds (from [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static)) contain GPL components
 and are only run as separate processes; if you distribute the app publicly, follow their licenses or switch to an LGPL build (`scripts/fetch-ffmpeg.sh` can change the source).
+The bundled [aria2](https://github.com/aria2/aria2) (for downloading updates) is licensed under GPL-2.0 and also only run as a separate process; the Windows build is the official one, and the macOS build is compiled from the official source by `scripts/fetch-aria2.sh`.
 The Whisper models and whisper.cpp are open source under the MIT license.

@@ -33,7 +33,7 @@
 | 网易云音乐（试验性） | 在设置中开启并登录后，在媒体库侧栏播放歌单、我喜欢的音乐和每日推荐，可搜索、切换音质，使用网易云提供的歌词，点**红心**即添加到账号的“我喜欢的音乐”；播放网易云歌曲时可查看这首歌的**评论区**（热门 / 最新、楼层回复，快捷键 `C`）。使用非官方接口，随时可能失效 |
 | **插件** | 安装插件改变界面布局、样式、文字和字体，以及播放页和歌词页的样式与设置；插件只包含样式表、字体和文字替换表，不能运行代码，可在“设置 > 插件”中安装、启用、排序和调整选项。插件把界面改乱时按 `⌥⇧⌘P`（Windows：`Ctrl+Alt+Shift+P`）进入安全模式。制作插件请看[插件开发标准](docs/plugins/README.md)，示例见 [`examples/plugins`](examples/plugins) |
 | **自定义播放页** | 封面可以是方形或会转的黑胶唱片（带唱臂动画）；内置“默认”“黑胶唱片机”“唱片 + 左右分栏”三种布局；在播放页“布局 > 编辑布局…”中拖动调整各元素的位置和大小，设置字体、颜色、入场动画，添加文字、图片、时钟、进度环等；自己的布局可以导出为插件分享 |
-| 自动更新 | 启动时和每隔 12 小时检查 GitHub Releases 上的新版本（可在“设置 > 关于”中关闭，或选择是否包括预发布版本）；有新版本时显示更新说明，一键下载（校验大小和 SHA-256）并安装，完成后自动重新打开。macOS 版、Windows 安装版和便携版都支持 |
+| 自动更新 | 启动时和每隔 12 小时检查 GitHub Releases 上的新版本（可在“设置 > 关于”中关闭，或选择是否包括预发布版本）；有新版本时显示更新说明，一键下载（内置 aria2 多线程下载，校验大小和 SHA-256）并安装，完成后自动重新打开。macOS 版、Windows 安装版和便携版都支持 |
 | 其他 | A-B 段落循环、睡眠定时（渐弱暂停/本曲结束后）、断点续播、外挂/内嵌字幕、**AI 生成视频字幕**、视频截图、逐帧步进、全屏沉浸式观影（控制栏与顶栏自动隐藏）、按钮悬停 1 秒显示功能提示、拖拽打开、Finder / 文件资源管理器“打开方式”、macOS 控制中心 / Windows 媒体浮窗与媒体键 |
 
 ### 全格式播放原理
@@ -84,9 +84,10 @@ xattr -dr com.apple.quarantine /Applications/LightPlayer.app
 ```bash
 pnpm install
 bash scripts/fetch-ffmpeg.sh          # 下载 ffmpeg/ffprobe sidecar 到 src-tauri/binaries/
+bash scripts/fetch-aria2.sh           # 下载更新用的 aria2c sidecar（macOS 从源码编译，约几分钟）
 pnpm tauri dev                         # 开发模式
 pnpm tauri build --bundles app,dmg     # 打包（macOS）
-pnpm tauri build --bundles nsis        # 打包（Windows，需先运行 fetch-ffmpeg.sh 下载 .exe 版 ffmpeg）
+pnpm tauri build --bundles nsis        # 打包（Windows，需先运行 fetch-ffmpeg.sh 和 fetch-aria2.sh 下载 .exe 版 sidecar）
 ```
 
 - `pnpm test`：前端单元测试（LRC 解析、播放队列、颜色、界面语言等）
@@ -102,4 +103,5 @@ pnpm tauri build --bundles nsis        # 打包（Windows，需先运行 fetch-f
 
 应用代码可自由使用。随包分发的 FFmpeg 静态构建（来自 [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static)）包含 GPL 组件，
 仅以独立进程方式调用；若要公开分发，请遵守相应许可证，或替换为 LGPL 构建（`scripts/fetch-ffmpeg.sh` 支持切换来源）。
+随包分发的 [aria2](https://github.com/aria2/aria2)（下载更新用）以 GPL-2.0 许可开源，同样以独立进程方式调用；Windows 版为官方构建，macOS 版由 `scripts/fetch-aria2.sh` 从官方源码编译。
 Whisper 模型与 whisper.cpp 以 MIT 许可开源。

@@ -1,3 +1,4 @@
+mod aria2;
 mod asr;
 mod cache;
 mod commands;

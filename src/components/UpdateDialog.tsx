@@ -125,6 +125,11 @@ export function UpdateDialog() {
               <span className="muted">
                 正在下载 {formatBytes(progress.received)} / {formatBytes(progress.total)}
               </span>
+              {!!progress.speed && (
+                <span className="muted update-speed" {...tip(progress.connections && progress.connections > 1 ? `aria2 多线程下载（${progress.connections} 个连接）` : "单线程下载")}>
+                  {`${formatBytes(progress.speed)}/s`}
+                </span>
+              )}
               <button className="btn" onClick={cancelUpdate}>
                 取消
               </button>

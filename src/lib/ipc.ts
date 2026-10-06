@@ -893,9 +893,9 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       for (let got = 0; got < total; got += 2_220_000) {
         await new Promise((r) => setTimeout(r, 100));
         if (mockUpdateCancel) throw new Error("已取消");
-        mockEmit("update://progress", { received: got, total });
+        mockEmit("update://progress", { received: got, total, speed: 22_200_000, connections: 16 });
       }
-      mockEmit("update://progress", { received: total, total });
+      mockEmit("update://progress", { received: total, total, speed: 0, connections: 0 });
       return "/mock/LightPlayer_1.6.1_aarch64.app.zip" as T;
     }
     case "update_startup":

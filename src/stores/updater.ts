@@ -5,12 +5,15 @@ import { api, isTauri, on, type AppInfo, type UpdateInfo } from "../lib/ipc";
 import { toast, useUI } from "./player";
 import { useSettings } from "./settings";
 
+/** speed: bytes per second; connections: several when aria2 downloads. */
+export type UpdateProgress = { received: number; total: number; speed?: number; connections?: number };
+
 export type UpdateStatus = "idle" | "checking" | "latest" | "available" | "downloading" | "installing" | "error";
 
 interface UpdaterState {
   status: UpdateStatus;
   info: UpdateInfo | null;
-  progress: { received: number; total: number } | null;
+  progress: UpdateProgress | null;
   error: string | null;
   /** Date.now() of the last finished check. */
   checkedAt: number | null;
@@ -90,7 +93,7 @@ export async function startUpdate(): Promise<void> {
     return;
   }
   useUpdater.setState({ status: "downloading", progress: { received: 0, total: info.asset.size }, error: null });
-  const off = await on<{ received: number; total: number }>("update://progress", (p) => useUpdater.setState({ progress: p }));
+  const off = await on<UpdateProgress>("update://progress", (p) => useUpdater.setState({ progress: p }));
   let path: string;
   try {
     path = await api.updateDownload(info.asset);

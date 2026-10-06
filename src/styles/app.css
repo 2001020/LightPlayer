@@ -5137,6 +5137,11 @@ html.desktop-lyrics #root {
   border-radius: 3px;
   transition: width 0.2s;
 }
+.update-speed {
+  min-width: 76px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .update-btn {
   position: relative;
   color: var(--accent-text);

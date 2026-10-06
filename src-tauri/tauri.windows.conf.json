@@ -17,7 +17,7 @@
     ]
   },
   "bundle": {
-    "externalBin": ["binaries/ffmpeg", "binaries/ffprobe"],
+    "externalBin": ["binaries/ffmpeg", "binaries/ffprobe", "binaries/aria2c"],
     "fileAssociations": [
       {
         "ext": ["mp3", "flac", "wav", "m4a", "aac", "ogg", "opus", "ape", "wma", "aiff", "aif", "alac", "wv", "dsf", "dff", "tta", "mka"],

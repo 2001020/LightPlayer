@@ -50,7 +50,7 @@ jobs:
           # man-db triggers make apt extremely slow on ubuntu-24.04 runners.
           sudo rm -f /var/lib/man-db/auto-update
           sudo -E apt-get update
-          sudo -E apt-get install -y --no-install-recommends -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev ffmpeg
+          sudo -E apt-get install -y --no-install-recommends -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev ffmpeg aria2
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -112,6 +112,13 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Fetch ffmpeg sidecars
         run: bash scripts/fetch-ffmpeg.sh aarch64-apple-darwin
+      # aria2 has no macOS release: built from source once, then cached.
+      - uses: actions/cache@v4
+        with:
+          path: src-tauri/binaries/aria2c-aarch64-apple-darwin
+          key: aria2c-aarch64-apple-darwin-${{ hashFiles('scripts/fetch-aria2.sh') }}
+      - name: Fetch aria2 sidecar (update downloads)
+        run: bash scripts/fetch-aria2.sh aarch64-apple-darwin
       - name: Build app bundle and dmg
         run: pnpm tauri build --target aarch64-apple-darwin --bundles app,dmg
       - name: Smoke test bundled ffmpeg
@@ -119,6 +126,8 @@ jobs:
           APP="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app"
           ls -la "$APP/Contents/MacOS"
           "$APP/Contents/MacOS/ffprobe" -hide_banner -version | head -1
+          "$APP/Contents/MacOS/aria2c" --version | head -1
+          otool -L "$APP/Contents/MacOS/aria2c"
           codesign -dv "$APP" 2>&1 | head -5 || true
       - name: Upload dmg
         uses: actions/upload-artifact@v4
@@ -168,8 +177,11 @@ jobs:
           export LIGHTPLAYER_FFMPEG_DIR="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app/Contents/MacOS"
           cd src-tauri
           cargo test --release --target aarch64-apple-darwin asr_smoke -- --ignored --nocapture
-      - name: Updater tests (bundle swap)
+      - name: Updater tests (bundle swap, aria2)
         working-directory: src-tauri
+        env:
+          # The bundled aria2c.
+          LIGHTPLAYER_FFMPEG_DIR: ${{ github.workspace }}/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app/Contents/MacOS
         run: |
           set +e
           out=$(cargo test --release --target aarch64-apple-darwin updater:: 2>&1); code=$?
@@ -177,6 +189,19 @@ jobs:
           sum=$(echo "$out" | grep -E '^test |test result|panicked' | head -12 | sed ':a;N;$!ba;s/\n/%0A/g')
           if [ $code -ne 0 ]; then echo "::error title=Updater tests (macOS)::$sum"; exit 1; fi
           echo "::notice title=Updater tests (macOS)::$sum"
+      # GitHub is a third-party service: report the speeds, never block.
+      - name: Update download from GitHub with aria2 (live, informational)
+        continue-on-error: true
+        working-directory: src-tauri
+        env:
+          LIGHTPLAYER_FFMPEG_DIR: ${{ github.workspace }}/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LightPlayer.app/Contents/MacOS
+        run: |
+          set +e
+          out=$(cargo test --release --target aarch64-apple-darwin aria2_live -- --ignored --nocapture 2>&1); code=$?
+          echo "$out"
+          sum=$(echo "$out" | grep -E '^(aria2|single connection):|panicked' | head -4 | sed ':a;N;$!ba;s/\n/%0A/g')
+          if [ $code -ne 0 ]; then echo "::warning title=aria2 (macOS)::$sum"; exit 1; fi
+          echo "::notice title=aria2 (macOS)::$sum"
 
   build-windows:
     name: Build installer (Windows x64)
@@ -207,6 +232,9 @@ jobs:
       - name: Fetch ffmpeg sidecars
         shell: bash
         run: bash scripts/fetch-ffmpeg.sh x86_64-pc-windows-msvc
+      - name: Fetch aria2 sidecar (update downloads)
+        shell: bash
+        run: bash scripts/fetch-aria2.sh x86_64-pc-windows-msvc
       - name: Build installer
         run: pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
       - name: Smoke test bundled ffmpeg and package the portable version
@@ -220,12 +248,15 @@ jobs:
           $ver = & "$rel/ffprobe.exe" -hide_banner -version 2>&1
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=ffprobe::exit $LASTEXITCODE $ver"; exit 1 }
           Write-Output "::notice title=ffprobe::$($ver | Select-Object -First 1)"
+          $a2 = & "$rel/aria2c.exe" --version 2>&1
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=aria2c::exit $LASTEXITCODE $a2"; exit 1 }
+          Write-Output "::notice title=aria2c::$($a2 | Select-Object -First 1)"
           $app = Get-ChildItem $rel -Filter *.exe | Where-Object { $_.Name -notmatch '^(ffmpeg|ffprobe)' } | Select-Object -First 1
           if (-not $app) { Write-Output "::error title=portable::app exe not found in $exes"; exit 1 }
           $dir = Join-Path $env:RUNNER_TEMP "portable/LightPlayer"
           New-Item -ItemType Directory -Force $dir | Out-Null
           Copy-Item $app.FullName (Join-Path $dir "LightPlayer.exe")
-          Copy-Item "$rel/ffmpeg.exe", "$rel/ffprobe.exe" $dir
+          Copy-Item "$rel/ffmpeg.exe", "$rel/ffprobe.exe", "$rel/aria2c.exe" $dir
           Compress-Archive -Path $dir -DestinationPath (Join-Path $env:RUNNER_TEMP "LightPlayer-portable.zip") -Force
           "LP_APP_EXE=$($app.FullName)" >> $env:GITHUB_ENV
           Get-Item (Join-Path $env:RUNNER_TEMP "LightPlayer-portable.zip")
@@ -306,6 +337,19 @@ jobs:
           $sum = ($out | Select-String 'test result|FAILED|panicked|left:|right:|update helper' | Select-Object -First 40) -join "%0A"
           if ($code -ne 0) { Write-Output "::error title=Rust tests on Windows::$sum"; exit 1 }
           Write-Output "::notice title=Rust tests on Windows::$sum"
+      - name: Update download from GitHub with aria2 (live, informational)
+        continue-on-error: true
+        working-directory: src-tauri
+        env:
+          LIGHTPLAYER_FFMPEG_DIR: ${{ github.workspace }}/src-tauri/target/x86_64-pc-windows-msvc/release
+        shell: pwsh
+        run: |
+          $out = cargo test --release --target x86_64-pc-windows-msvc aria2_live -- --ignored --nocapture 2>&1 | ForEach-Object { "$_" }
+          $code = $LASTEXITCODE
+          $out
+          $sum = ($out | Select-String '^(aria2|single connection):|panicked' | Select-Object -First 4) -join "%0A"
+          if ($code -ne 0) { Write-Output "::warning title=aria2 (Windows)::$sum"; exit 1 }
+          Write-Output "::notice title=aria2 (Windows)::$sum"
 
   release:
     name: Publish GitHub release
