@@ -251,8 +251,9 @@ jobs:
           $a2 = & "$rel/aria2c.exe" --version 2>&1
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=aria2c::exit $LASTEXITCODE $a2"; exit 1 }
           Write-Output "::notice title=aria2c::$($a2 | Select-Object -First 1)"
-          $app = Get-ChildItem $rel -Filter *.exe | Where-Object { $_.Name -notmatch '^(ffmpeg|ffprobe)' } | Select-Object -First 1
-          if (-not $app) { Write-Output "::error title=portable::app exe not found in $exes"; exit 1 }
+          # The app itself, not one of the sidecars next to it.
+          $app = Get-ChildItem $rel -Filter *.exe | Where-Object { $_.Name -notmatch '^(ffmpeg|ffprobe|aria2c)\.exe$' } | Select-Object -First 1
+          if (-not $app -or $app.Name -notmatch '^lightplayer\.exe$') { Write-Output "::error title=portable::app exe not found in $exes (picked $($app.Name))"; exit 1 }
           $dir = Join-Path $env:RUNNER_TEMP "portable/LightPlayer"
           New-Item -ItemType Directory -Force $dir | Out-Null
           Copy-Item $app.FullName (Join-Path $dir "LightPlayer.exe")
