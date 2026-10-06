@@ -1,8 +1,8 @@
 # LightPlayer
 
 轻量的 macOS 与 Windows 多媒体播放器。基于 **Tauri 2 + React + TypeScript**，
-借助内置 **FFmpeg** 几乎支持所有音视频格式，并内置基于 **whisper.cpp** 的**本地离线歌词识别**。
-使用Claude构建。
+借助内置 **FFmpeg** 几乎支持所有音视频格式，并内置基于 **whisper.cpp** 的 **本地离线歌词识别**。
+使用Claude编写代码。
 
 详细设计见 [docs/PLAN.md](docs/PLAN.md)。
 
@@ -64,15 +64,13 @@ Windows 上 `⌘` 对应 `Ctrl`、`⇧` 对应 `Shift`，例如 `Ctrl+O` 打开�
 | Windows 10 / 11（x64） | `LightPlayer_<版本>_x64-setup.exe` | 安装到当前用户，不需要管理员权限 |
 | Windows 10 / 11（x64） | `LightPlayer_<版本>_x64_portable.zip` | 便携版，解压后运行 `LightPlayer.exe` |
 
-每次推送也会在 [Actions](../../actions) 中构建两个平台的安装包（产物 `LightPlayer-macOS-arm64-dmg`、`LightPlayer-Windows-x64-setup`、`LightPlayer-Windows-x64-portable`）。
-
-**macOS**：构建使用 ad-hoc 签名（未经 Apple 公证），首次打开时 macOS 可能提示“无法验证开发者”或“已损坏”，可以：
+**macOS**：构建使用 ad-hoc 签名（未经 Apple 公证），首次打开时 macOS 大概率提示“无法验证开发者”或“已损坏”，只需执行：
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/LightPlayer.app
 ```
 
-或在 Finder 中右键 → 打开。
+或在 Finder 中右键 → 打开（适用于较旧的macOS版本）。
 
 **Windows**：安装程序未经代码签名，SmartScreen 提示“Windows 已保护你的电脑”时点“更多信息 → 仍要运行”。需要 Microsoft Edge WebView2 运行时（Windows 11 自带，安装版会自动安装）。Windows 不允许程序自己设为默认应用，可在“设置 > 媒体库 > 文件关联”中打开系统的“默认应用”设置选择 LightPlayer。
 
@@ -100,4 +98,4 @@ pnpm tauri build --bundles nsis        # 打包（Windows，需先运行 fetch-f
 
 应用代码可自由使用。随包分发的 FFmpeg 静态构建（来自 [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static)）包含 GPL 组件，
 仅以独立进程方式调用；若要公开分发，请遵守相应许可证，或替换为 LGPL 构建（`scripts/fetch-ffmpeg.sh` 支持切换来源）。
-Whisper 模型与 whisper.cpp 为 MIT 许可。
+Whisper 模型与 whisper.cpp 以 MIT 许可开源。
