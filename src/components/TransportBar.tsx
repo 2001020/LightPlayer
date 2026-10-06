@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as C from "../core/controller";
 import { formatTime } from "../lib/format";
 import { usePlayer, usePlaylist, useSubtitles, useUI } from "../stores/player";
 import { NETEASE_QUALITIES, useSettings } from "../stores/settings";
 import { isCloudPath } from "../lib/ipc";
 import { useLibrary } from "../stores/library";
+import { loadNeteaseLiked, useNetease, useNeteaseLiked } from "../stores/netease";
 import { Icon, SkipIcon, type IconName } from "./Icon";
 import { Popover } from "./Popover";
 import { togglePlaylist, usePlaylistShown } from "./PlaylistPanel";
@@ -283,7 +284,14 @@ function SubtitleMenu() {
 }
 
 function FavButton({ path }: { path: string }) {
-  const fav = useLibrary((s) => s.data.favorites.includes(path));
+  const cloud = isCloudPath(path);
+  const local = useLibrary((s) => s.data.favorites.includes(path));
+  const liked = useNeteaseLiked(path);
+  const fav = cloud ? liked : local;
+  const unknown = useNetease((s) => s.liked === null);
+  useEffect(() => {
+    if (cloud && unknown) void loadNeteaseLiked();
+  }, [cloud, unknown]);
   return (
     <button
       className={`icon-btn small fav ${fav ? "on" : ""}`}
@@ -291,7 +299,7 @@ function FavButton({ path }: { path: string }) {
         e.stopPropagation();
         void C.toggleFavorite(path, !fav);
       }}
-      {...tip(fav ? "取消收藏" : "收藏")}
+      {...tip(cloud ? (fav ? "从“我喜欢的音乐”中移除" : "添加到“我喜欢的音乐”") : fav ? "取消收藏" : "收藏")}
     >
       <Icon name={fav ? "heartFill" : "heart"} size={16} />
     </button>
@@ -324,10 +332,17 @@ export function TransportBar() {
           className="mini"
           data-lp="transport-now"
           onClick={() => {
-            if (media?.kind === "audio") useUI.setState({ page: page === "lyrics" ? "player" : "lyrics" });
+            // Audio: the player page first, the lyrics from there.
+            if (media?.kind === "audio") useUI.setState({ page: page === "player" ? "lyrics" : "player" });
             else if (media && page !== "player") useUI.setState({ page: "player" });
           }}
-          {...(media?.kind === "audio" ? tip("打开歌词", "Y") : media && page !== "player" ? tip("返回视频播放页") : {})}
+          {...(!media
+            ? {}
+            : page !== "player"
+              ? tip(isVideo ? "返回视频播放页" : "返回播放页")
+              : media.kind === "audio"
+                ? tip("打开歌词", "Y")
+                : {})}
         >
           <div className="thumb">
             {media?.meta?.cover ? <img src={media.meta.cover} alt="" /> : <Icon name={isVideo ? "film" : "music"} />}

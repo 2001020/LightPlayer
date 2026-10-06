@@ -4,7 +4,7 @@
 // double-clicking any) plays it. After a while the flow returns to the song
 // playing.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as C from "../core/controller";
 import { flowCoverSize, flowTransform } from "../core/flow";
 import { trackArtist, trackTitle } from "../core/library/views";
@@ -30,7 +30,7 @@ interface Info {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-export function CoverFlow({ peek }: { peek?: ReactNode }) {
+export function CoverFlow() {
   const queue = usePlaylist((s) => s.items);
   const index = usePlaylist((s) => s.index);
   const media = usePlayer((s) => s.media);
@@ -289,9 +289,7 @@ export function CoverFlow({ peek }: { peek?: ReactNode }) {
           </div>
         )}
         <div className="flow-peek">
-          {atCurrent ? (
-            peek
-          ) : (
+          {!atCurrent && (
             <div className="flow-hint">
               点击封面播放
               <span>

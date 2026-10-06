@@ -5,8 +5,8 @@
 //! whenever the site changes, and using it is against NetEase's terms; the UI
 //! keeps it off until the user turns it on and says so.
 //!
-//! Scope: the signed-in user's playlists, liked songs, daily recommendations,
-//! search, the stream URL NetEase itself hands out for a song (so VIP songs
+//! Scope: the signed-in user's playlists, liked songs (and the heart that adds
+//! to them), daily recommendations, search, the stream URL NetEase itself hands out for a song (so VIP songs
 //! only play in full for VIP accounts) and lyrics. Nothing is downloaded or
 //! decrypted.
 
@@ -634,6 +634,26 @@ impl Netease {
             return Ok(songs);
         }
         self.song_details(&ids).await
+    }
+
+    /// Ids of the songs in the account's "liked songs".
+    pub async fn liked_ids(&self) -> AppResult<Vec<u64>> {
+        let Some(me) = self.account().await? else {
+            return Err(AppError::msg("请先登录网易云音乐"));
+        };
+        let v = ok(self.call("song/like/get", json!({ "uid": me.id })).await?)?;
+        Ok(v["ids"].as_array().map(|a| a.iter().filter_map(Value::as_u64).collect()).unwrap_or_default())
+    }
+
+    /// Adds `id` to (or removes it from) the account's "liked songs", the
+    /// way the heart in NetEase's own clients does.
+    pub async fn like(&self, id: u64, on: bool) -> AppResult<()> {
+        if !self.signed_in() {
+            return Err(AppError::msg("请先登录网易云音乐"));
+        }
+        let data = json!({ "alg": "itembased", "trackId": id.to_string(), "like": on, "time": "3" });
+        ok(self.call("radio/like", data).await?)?;
+        Ok(())
     }
 
     pub async fn daily(&self) -> AppResult<Vec<Song>> {

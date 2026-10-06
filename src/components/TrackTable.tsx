@@ -8,6 +8,7 @@ import { sortTracks, trackArtist, trackTitle, type SortKey } from "../core/libra
 import { formatTime } from "../lib/format";
 import { api, isCloudPath, thumbUrl, type LibraryTrack } from "../lib/ipc";
 import { libraryAction, useLibrary } from "../stores/library";
+import { neteaseId, useNetease } from "../stores/netease";
 import { toast, usePlayer } from "../stores/player";
 import { Icon, type IconName } from "./Icon";
 import { tip } from "./Tooltip";
@@ -81,6 +82,7 @@ export function TrackTable({
   const playing = usePlayer((s) => s.playing);
   const favorites = useLibrary((s) => s.data.favorites);
   const favSet = useMemo(() => new Set(favorites), [favorites]);
+  const liked = useNetease((s) => s.liked);
   const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -171,7 +173,9 @@ export function TrackTable({
           {rows.slice(first, last).map((t, k) => {
             const i = first + k;
             const isCur = t.path === current;
-            const fav = favSet.has(t.path);
+            // NetEase songs: the account's "liked songs", once known.
+            const cloud = isCloudPath(t.path);
+            const fav = cloud ? !!liked?.has(neteaseId(t.path) ?? -1) : favSet.has(t.path);
             const offset = drag ? (i === drag.from ? (drag.to - drag.from) * ROW : i > drag.from && i <= drag.to ? -ROW : i < drag.from && i >= drag.to ? ROW : 0) : 0;
             return (
               <div
@@ -208,13 +212,13 @@ export function TrackTable({
                 {!hideAlbum && <div className="c-album" data-lp-raw={t.album ? "" : undefined}>{t.album || <span className="faint">未知</span>}</div>}
                 <div className="c-dur">{t.duration ? formatTime(t.duration) : ""}</div>
                 <div className="c-fav">
-                  {!isCloudPath(t.path) && <button
+                  {(!cloud || liked) && <button
                     className={`icon-btn small fav ${fav ? "on" : ""}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       void C.toggleFavorite(t.path, !fav);
                     }}
-                    {...tip(fav ? "取消收藏" : "收藏")}
+                    {...tip(cloud ? (fav ? "从“我喜欢的音乐”中移除" : "添加到“我喜欢的音乐”") : fav ? "取消收藏" : "收藏")}
                   >
                     <Icon name={fav ? "heartFill" : "heart"} size={16} />
                   </button>}

@@ -214,7 +214,7 @@ export function PlayerPage() {
             <StyleToggle />
           </div>
         )}
-        {nowPlaying && (style === "flow" ? <CoverFlow peek={<LyricPeek />} /> : free.classic ? <AudioNowPlaying /> : <FreeLayout layout={free} editing={editing} />)}
+        {nowPlaying && (style === "flow" ? <CoverFlow /> : free.classic ? <AudioNowPlaying /> : <FreeLayout layout={free} editing={editing} />)}
         {editing && <LayoutEditor />}
         {media?.kind === "video" && <VideoStage />}
         {media && !shown && <PlaylistHandle />}

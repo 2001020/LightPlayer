@@ -205,6 +205,8 @@ pub fn run() {
             commands::netease_playlist,
             commands::netease_daily,
             commands::netease_search,
+            commands::netease_liked_ids,
+            commands::netease_like,
             commands::netease_comments,
             commands::netease_comment_replies,
             commands::plugins_list,

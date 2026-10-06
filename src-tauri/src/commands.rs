@@ -1193,6 +1193,16 @@ pub async fn netease_daily(state: State<'_, AppState>) -> AppResult<Vec<netease:
 }
 
 #[tauri::command]
+pub async fn netease_liked_ids(state: State<'_, AppState>) -> AppResult<Vec<u64>> {
+    state.netease.liked_ids().await
+}
+
+#[tauri::command]
+pub async fn netease_like(state: State<'_, AppState>, id: u64, on: bool) -> AppResult<()> {
+    state.netease.like(id, on).await
+}
+
+#[tauri::command]
 pub async fn netease_search(state: State<'_, AppState>, query: String) -> AppResult<Vec<netease::Song>> {
     state.netease.search(&query).await
 }

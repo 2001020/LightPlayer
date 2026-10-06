@@ -938,19 +938,6 @@ input[type="range"] {
   margin-top: 10px;
   min-height: 52px;
 }
-.flow-peek .lyric-peek {
-  position: relative;
-  height: calc(15px * 1.5 * 2 + 6px + 13px * 1.5);
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-.flow-peek .peek-line {
-  inset: 0 0 auto 0;
-  width: auto;
-  text-align: center;
-}
 .flow-hint {
   display: flex;
   flex-direction: column;

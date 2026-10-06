@@ -33,6 +33,7 @@ import { stem } from "../lib/format";
 import { useLyrics, useModels, usePlayer, usePlaylist, useSubtitles, useUI, toast } from "../stores/player";
 import { useSettings, type NeteaseQuality } from "../stores/settings";
 import { initLibrary, libraryAction, useLibrary } from "../stores/library";
+import { neteaseId, setNeteaseLiked, useNetease } from "../stores/netease";
 import {
   addTasks,
   finish as finishTasks,
@@ -1216,6 +1217,11 @@ export async function addLibraryFolderWithDialog() {
 }
 
 export async function toggleFavorite(path: string, on?: boolean) {
+  if (isCloudPath(path)) {
+    // NetEase songs: the heart is the account's "liked songs".
+    const id = neteaseId(path);
+    return setNeteaseLiked(path, on ?? !(id !== null && useNetease.getState().liked?.has(id)));
+  }
   const fav = useLibrary.getState().data.favorites.includes(path);
   const next = on ?? !fav;
   if (next && !useLibrary.getState().data.tracks.some((t) => t.path === path)) {

@@ -616,6 +616,9 @@ const mockSongs = (seed: string, n: number): NeteaseSong[] =>
     vip: i % 4 === 1,
     unavailable: i % 9 === 7,
   }));
+/** The preview account's liked songs, which start as the liked playlist's. */
+let mockLikedIds: Set<number> | null = null;
+const mockLiked = () => (mockLikedIds ??= new Set(mockSongs("歌单11", 24).map((s) => s.id)));
 /** Pretend comments for the browser preview. */
 const MOCK_TEXTS = [
   "第一次听就单曲循环了一整晚",
@@ -817,7 +820,7 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
         { id: 13, name: "收藏的歌单", count: 30, cover: null, mine: false, liked: false },
       ] as T;
     case "netease_playlist":
-      return mockSongs(`歌单${args.id}`, Number(args.id) === 11 ? 24 : 12) as T;
+      return (Number(args.id) === 11 ? mockSongs("歌单11", 24).filter((s) => mockLiked().has(s.id)) : mockSongs(`歌单${args.id}`, 12)) as T;
     case "exact_audio":
       // Online songs: a decoded copy, ready a moment later.
       if (!isCloudPath(path)) return null as T;
@@ -832,6 +835,13 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
     }
     case "netease_daily":
       return mockSongs("推荐", 30) as T;
+    case "netease_liked_ids":
+      return [...mockLiked()] as T;
+    case "netease_like":
+      await new Promise((r) => setTimeout(r, 300));
+      if (args.on) mockLiked().add(Number(args.id));
+      else mockLiked().delete(Number(args.id));
+      return undefined as T;
     case "netease_search":
       return mockSongs(String(args.query ?? ""), 20) as T;
     case "netease_comments": {
@@ -978,6 +988,8 @@ export const api = {
   neteasePlaylist: (id: number) => call<NeteaseSong[]>("netease_playlist", { id }),
   neteaseDaily: () => call<NeteaseSong[]>("netease_daily"),
   neteaseSearch: (query: string) => call<NeteaseSong[]>("netease_search", { query }),
+  neteaseLikedIds: () => call<number[]>("netease_liked_ids"),
+  neteaseLike: (id: number, on: boolean) => call<void>("netease_like", { id, on }),
   neteaseComments: (id: number, hot: boolean, offset: number, before?: number | null) =>
     call<NeteaseCommentPage>("netease_comments", { id, hot, offset, before: before ?? null }),
   neteaseCommentReplies: (id: number, parent: number, time?: number | null) =>
