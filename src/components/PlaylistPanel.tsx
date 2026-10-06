@@ -144,7 +144,7 @@ export function PlaylistPanel({ floating = false }: { floating?: boolean }) {
   const kindLabel = mixed ? "项" : (items[0]?.kind ?? media?.kind) === "video" ? "个视频" : "首";
 
   return (
-    <aside ref={panelRef} className={`playlist panel ${floating ? "floating" : ""} ${drag ? "reordering" : ""}`}>
+    <aside ref={panelRef} className={`playlist panel ${floating ? "floating" : ""} ${drag ? "reordering" : ""}`} data-lp="playlist">
       <header>
         <div className="row">
           <h3>
@@ -196,7 +196,9 @@ export function PlaylistPanel({ floating = false }: { floating?: boolean }) {
                   )}
                 </span>
               </span>
-              <span className="name">{it.name}</span>
+              <span className="name" data-lp-raw>
+                {it.name}
+              </span>
               {!isCloudPath(it.path) && <span className="ext">{extOf(it.fileName)}</span>}
               {items.length > 1 && (
                 <button

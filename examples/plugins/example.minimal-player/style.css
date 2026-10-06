@@ -1,0 +1,45 @@
+/* 极简播放页（示例插件）
+   只使用公开接口：data-lp 锚点、<html> 上的状态属性和公开 CSS 变量。 */
+
+:root {
+  --cover-size: min(var(--mp-cover, 320px), 46vh, 60vw);
+  --cover-radius: var(--mp-radius, 24px);
+  --cover-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+}
+
+/* 封面在上，文字在下 */
+:root.mp-stack [data-lp="now-playing"] {
+  flex-direction: column;
+  gap: 22px;
+  text-align: center;
+}
+:root.mp-stack [data-lp="now-playing"] [data-lp="track-info"] {
+  align-items: center;
+  width: min(560px, 90vw);
+  max-width: none;
+}
+:root.mp-stack [data-lp="now-playing"] [data-lp="lyric-peek"] {
+  align-self: stretch;
+}
+:root.mp-stack [data-lp="now-playing"] [data-lp="lyric-peek-line"] {
+  inset: 0 0 auto 0;
+  width: auto;
+}
+
+/* 不显示专辑名和格式标签 */
+[data-lp="now-playing"] [data-lp="track-album"] {
+  display: none;
+}
+:root.mp-hide-chips [data-lp="chips"] {
+  display: none;
+}
+
+/* 精简播放栏：右侧只留音量 */
+:root.mp-slim [data-lp="transport-right"] > :not([data-lp="volume"]) {
+  display: none;
+}
+:root.mp-slim[data-page="player"] [data-lp="transport"] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}

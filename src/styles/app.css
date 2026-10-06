@@ -1,8 +1,25 @@
 /* ---------------------------------------------------------------- tokens */
+/* Tokens marked "public" are part of the plugin interface (docs/plugins/README.md):
+   keep their names and meaning stable. */
 :root {
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Helvetica Neue",
+  /* public: fonts */
+  --font-fallback: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Helvetica Neue",
     "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font: var(--font-fallback);
+  --title-font: var(--font);
+  --lyric-font: var(--font);
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* public: lyrics page */
+  --lyric-weight: 600;
+  --lyric-line-height: 1.45;
+  --lyric-gap: 2px;
+  --lyric-dim: 48%;
+  --lyric-near: 62%;
+  --lyric-active-scale: 1.08;
+  /* public: cover on the audio player page */
+  --cover-size: min(32vh, 28vw, 300px);
+  --cover-radius: 16px;
+  --cover-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.15);
   --radius-s: 8px;
   --radius: 12px;
   --radius-l: 18px;
@@ -870,6 +887,7 @@ input[type="range"] {
   z-index: 1;
 }
 .flow-info .title {
+  font-family: var(--title-font);
   font-size: 20px;
   font-weight: 700;
   color: var(--text);
@@ -1003,12 +1021,12 @@ input[type="range"] {
 }
 .cover {
   position: relative;
-  width: min(32vh, 28vw, 300px);
+  width: var(--cover-size);
   aspect-ratio: 1;
-  border-radius: 16px;
+  border-radius: var(--cover-radius);
   overflow: hidden;
   flex: none;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--cover-shadow);
   cursor: pointer;
   transition: transform 0.35s var(--ease), box-shadow 0.35s;
   background: linear-gradient(135deg, var(--accent), #3d8bff);
@@ -1060,6 +1078,7 @@ input[type="range"] {
   gap: 10px;
 }
 .track-info .title {
+  font-family: var(--title-font);
   font-size: clamp(22px, 3vw, 34px);
   font-weight: 700;
   line-height: 1.2;
@@ -1869,6 +1888,7 @@ button.cm-foot {
   flex: none;
 }
 .lyrics-head .who .t {
+  font-family: var(--title-font);
   font-weight: 700;
   font-size: 15px;
   white-space: nowrap;
@@ -1919,6 +1939,7 @@ button.cm-foot {
   justify-content: center;
 }
 .lyric-scroll {
+  font-family: var(--lyric-font);
   height: 100%;
   padding-bottom: 8px;
   overflow-y: auto;
@@ -1935,15 +1956,15 @@ button.cm-foot {
 }
 .lyric-line {
   padding: 10px 14px;
-  margin: 2px 0;
+  margin: var(--lyric-gap) 0;
   border-radius: 12px;
-  line-height: 1.45;
+  line-height: var(--lyric-line-height);
   transition: color 0.2s, transform 0.25s var(--ease), opacity 0.2s, filter 0.25s;
   transform-origin: center;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: var(--lyric-weight);
   /* Translucent text colour rather than grey: stays legible on tinted covers. */
-  color: color-mix(in srgb, var(--text) 48%, transparent);
+  color: color-mix(in srgb, var(--text) var(--lyric-dim), transparent);
 }
 .lyric-line:hover {
   background: var(--hover);
@@ -1952,11 +1973,11 @@ button.cm-foot {
   transform-origin: left center;
 }
 .lyric-line.near {
-  color: color-mix(in srgb, var(--text) 62%, transparent);
+  color: color-mix(in srgb, var(--text) var(--lyric-near), transparent);
 }
 .lyric-line.active {
   color: var(--lyric-hl, var(--text));
-  transform: scale(1.08);
+  transform: scale(var(--lyric-active-scale));
 }
 .lyric-line .tr {
   display: block;
@@ -1969,7 +1990,7 @@ button.cm-foot {
   transition: none;
 }
 .lyric-line.active.karaoke .w {
-  background-image: linear-gradient(90deg, var(--lyric-hl, var(--accent-strong)) 0 calc(var(--p, 0) * 100%), color-mix(in srgb, var(--text) 48%, transparent) calc(var(--p, 0) * 100%) 100%);
+  background-image: linear-gradient(90deg, var(--lyric-hl, var(--accent-strong)) 0 calc(var(--p, 0) * 100%), color-mix(in srgb, var(--text) var(--lyric-dim), transparent) calc(var(--p, 0) * 100%) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -2592,8 +2613,8 @@ kbd {
     text-align: center;
     gap: 18px;
   }
-  .cover {
-    width: min(28vh, 50vw, 260px);
+  :root {
+    --cover-size: min(28vh, 50vw, 260px);
   }
   .track-info {
     align-items: center;
@@ -3690,11 +3711,9 @@ kbd {
   color: var(--text-faint);
 }
 /* Lyrics over a moving sky need a little more weight. */
-:root[data-bg="weather"] .lyric-line {
-  color: color-mix(in srgb, var(--text) 66%, transparent);
-}
-:root[data-bg="weather"] .lyric-line.near {
-  color: color-mix(in srgb, var(--text) 80%, transparent);
+:root[data-bg="weather"] {
+  --lyric-dim: 66%;
+  --lyric-near: 80%;
 }
 
 /* ---------------------------------------------------------------- desktop lyrics */
@@ -3725,6 +3744,7 @@ html.desktop-lyrics #root {
   backdrop-filter: blur(8px);
 }
 .dl-line {
+  font-family: var(--lyric-font);
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -4151,4 +4171,144 @@ html.desktop-lyrics #root {
 .win-btn.close:active {
   background: #b22a1b;
   color: #fff;
+}
+
+/* ---------------------------------------------------------------- plugins (settings) */
+.plugin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+.plugin-toolbar .grow {
+  flex: 1;
+}
+.plugin-safe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: 13px;
+}
+.plugin-safe span {
+  flex: 1;
+}
+.plugin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plugin-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  transition: border-color 0.2s;
+}
+.plugin-card.on {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.plugin-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+}
+.plugin-art {
+  flex: none;
+  width: 72px;
+  height: 54px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--hover);
+  color: var(--text-faint);
+}
+.plugin-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.plugin-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.plugin-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.plugin-title b {
+  font-size: 14.5px;
+}
+.plugin-title .muted {
+  font-size: 12px;
+}
+.plugin-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+.plugin-id,
+.plugin-note {
+  font-size: 11.5px;
+}
+.plugin-id {
+  font-family: var(--mono);
+}
+.plugin-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--danger);
+}
+.plugin-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.plugin-actions .switch {
+  margin-left: 8px;
+}
+/* A broken plugin can still be turned off. */
+.plugin-card.bad:not(.on) .plugin-actions .switch {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.plugin-options {
+  border-top: 1px solid var(--border);
+  padding: 4px 14px 12px;
+}
+.plugin-options .row-actions {
+  margin: 8px 0 0;
+}
+.plugin-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  text-align: center;
+}
+.plugin-empty .link {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  color: var(--accent-text);
+  cursor: pointer;
+  font: inherit;
 }

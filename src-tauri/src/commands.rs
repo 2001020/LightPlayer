@@ -547,6 +547,40 @@ pub fn server_base(state: State<'_, AppState>) -> String {
     state.server.base()
 }
 
+// ------------------------------------------------------------ plugins ----
+
+#[tauri::command]
+pub async fn plugins_list(app: AppHandle, state: State<'_, AppState>) -> AppResult<Vec<crate::plugins::PluginEntry>> {
+    let dir = state.plugins_dir.clone();
+    let version = app.package_info().version.to_string();
+    Ok(tokio::task::spawn_blocking(move || crate::plugins::list(&dir, &version)).await.unwrap_or_default())
+}
+
+/// Installs a plugin folder or `.lpplugin` file; returns its id. Fails with
+/// `PLUGIN_EXISTS` when it is installed already and `replace` is off.
+#[tauri::command]
+pub async fn plugin_install(state: State<'_, AppState>, path: String, replace: bool) -> AppResult<String> {
+    let dir = state.plugins_dir.clone();
+    tokio::task::spawn_blocking(move || crate::plugins::install(Path::new(&path), &dir, replace))
+        .await
+        .map_err(|e| AppError::msg(e.to_string()))?
+        .map_err(AppError::Msg)
+}
+
+#[tauri::command]
+pub fn plugin_remove(state: State<'_, AppState>, id: String) -> AppResult<()> {
+    crate::plugins::remove(&state.plugins_dir, &id).map_err(AppError::Msg)
+}
+
+/// Opens the plugins folder in Finder / File Explorer.
+#[tauri::command]
+pub fn plugins_open_dir(app: AppHandle, state: State<'_, AppState>) -> AppResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_path(state.plugins_dir.to_string_lossy(), None::<&str>)
+        .map_err(|e| AppError::msg(e.to_string()))
+}
+
 /// Copies a user-chosen background image into the app data folder so it
 /// survives the original being moved.
 #[tauri::command]

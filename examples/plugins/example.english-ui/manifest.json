@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/2001020/LightPlayer/HEAD/docs/plugins/manifest.schema.json",
+  "manifestVersion": 1,
+  "id": "example.english-ui",
+  "name": "English UI",
+  "version": "1.0.0",
+  "author": "LightPlayer",
+  "description": "示例插件：用文字替换表把主要界面文字换成英文（演示 strings 与 {占位符}）。未收录的文字保持中文。",
+  "minAppVersion": "1.6.0",
+  "preview": "preview.svg",
+  "strings": "strings.json"
+}

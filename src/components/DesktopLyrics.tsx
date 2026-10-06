@@ -68,6 +68,7 @@ function DesktopLyricsView({ line, onClose, onColor, onMoveStart, onResizeStart,
   return (
     <div
       className={`dl-root ${palette ? "open" : ""}`}
+      data-lp="desktop-lyrics"
       {...drag}
       onPointerDown={onMoveStart}
       onPointerEnter={() => clearTimeout(leaveTimer.current)}
@@ -76,7 +77,7 @@ function DesktopLyricsView({ line, onClose, onColor, onMoveStart, onResizeStart,
         if (palette) leaveTimer.current = window.setTimeout(() => setPalette(false), 1500);
       }}
     >
-      <div key={line.key} className="dl-line" style={{ color: line.color }} {...drag}>
+      <div key={line.key} className="dl-line" data-lp="desktop-lyrics-line" data-lp-raw style={{ color: line.color }} {...drag}>
         {line.text}
       </div>
       <div className="dl-tools" onPointerDown={(e) => e.stopPropagation()}>

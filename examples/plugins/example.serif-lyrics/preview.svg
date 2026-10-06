@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
+  <defs><filter id="g"><feGaussianBlur stdDeviation="2.5"/></filter></defs>
+  <rect width="160" height="120" fill="#16161c"/>
+  <text x="18" y="34" font-family="Songti SC, SimSun, serif" font-size="13" fill="#6d6d78">窗外的麻雀</text>
+  <text x="18" y="62" font-family="Songti SC, SimSun, serif" font-size="17" fill="#ffd166" filter="url(#g)">在电线杆上多嘴</text>
+  <text x="18" y="62" font-family="Songti SC, SimSun, serif" font-size="17" fill="#fff6dc">在电线杆上多嘴</text>
+  <text x="18" y="90" font-family="Songti SC, SimSun, serif" font-size="13" fill="#6d6d78">你说这一句</text>
+</svg>

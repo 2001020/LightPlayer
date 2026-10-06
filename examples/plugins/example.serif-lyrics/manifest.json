@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/2001020/LightPlayer/HEAD/docs/plugins/manifest.schema.json",
+  "manifestVersion": 1,
+  "id": "example.serif-lyrics",
+  "name": "宋体歌词",
+  "version": "1.0.0",
+  "author": "LightPlayer",
+  "description": "示例插件：改变歌词页的样式与设置。宋体或楷体歌词，左对齐、大字号，当前行发光。",
+  "minAppVersion": "1.6.0",
+  "preview": "preview.svg",
+  "styles": ["style.css"],
+  "config": {
+    "lyricAlign": "left",
+    "lyricFontSize": 30,
+    "showTranslation": true
+  },
+  "options": [
+    { "id": "face", "label": "字体", "type": "select", "default": "song",
+      "choices": [
+        { "value": "song", "label": "宋体" },
+        { "value": "kai", "label": "楷体", "class": "sl-kai" }
+      ] },
+    { "id": "glow", "label": "发光强度", "type": "range", "min": 0, "max": 24, "step": 1, "unit": "px", "default": 10, "var": "--sl-glow" },
+    { "id": "glowColor", "label": "发光颜色", "type": "color", "default": "#ffd166", "var": "--sl-glow-color" },
+    { "id": "scale", "label": "放大当前行", "type": "toggle", "default": false, "class": "sl-scale" },
+    { "id": "title", "label": "歌名也用这个字体", "type": "toggle", "default": true, "class": "sl-title" }
+  ]
+}

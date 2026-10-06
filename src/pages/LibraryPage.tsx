@@ -74,7 +74,7 @@ function Sidebar() {
   const active = (v: string) =>
     nav.view === v || (nav.view === "album" && nav.from === v) || (nav.view === "artist" && v === "artists");
   return (
-    <aside className="lib-side">
+    <aside className="lib-side" data-lp="library-sidebar">
       <NowPlayingVideo />
       <div className="lib-nav">
         {NAV.map((n) => (
@@ -103,7 +103,9 @@ function Sidebar() {
             onClick={() => go({ view: "playlist", id: p.id })}
           >
             <Icon name="playlist" size={17} />
-            <span className="ell">{p.name}</span>
+            <span className="ell" data-lp-raw>
+              {p.name}
+            </span>
             <span className="n">{p.items.length}</span>
           </button>
         ))}
@@ -240,7 +242,9 @@ function NeteaseSidebar({ localRef }: { localRef: RefObject<HTMLDivElement | nul
             {playlists.map((p) => (
               <button key={p.id} className={`lib-link ${on(`pl:${p.id}`)}`} onClick={() => go({ view: "netease", list: `pl:${p.id}` })}>
                 <Icon name={p.liked ? "heart" : "playlist"} size={17} />
-                <span className="ell">{p.liked ? "我喜欢的音乐" : p.name}</span>
+                <span className="ell" data-lp-raw={p.liked ? undefined : ""}>
+                  {p.liked ? "我喜欢的音乐" : p.name}
+                </span>
                 <span className="n">{p.count}</span>
               </button>
             ))}
@@ -356,7 +360,7 @@ function AlbumCard({ a, onOpen }: { a: Album; onOpen: () => void }) {
           <Icon name="play" size={18} />
         </button>
       </div>
-      <div className="name" data-tip={a.title}>
+      <div className="name" data-lp-raw data-tip={a.title}>
         {a.title}
       </div>
       <div className="meta">{a.artist || `${a.tracks.length} 首`}</div>
@@ -406,7 +410,7 @@ function AlbumDetail({ album, from }: { album: Album | undefined; from: "albums"
         <Thumb path={album.tracks[0].path} size={256} icon="album" className="hero-art" />
         <div className="hero-info">
           <div className="kind">专辑</div>
-          <h1>{album.title}</h1>
+          <h1 data-lp-raw>{album.title}</h1>
           <div className="sub">{sub}</div>
           <div className="lib-actions">
             <button className="btn primary" onClick={() => playTracks(album.tracks, 0, source)}>
@@ -453,7 +457,7 @@ function ArtistsView({ artists }: { artists: Artist[] }) {
               <div className="avatar" style={{ "--h": hue(a.name) } as React.CSSProperties}>
                 {a.name === UNKNOWN_ARTIST ? <Icon name="user" size={15} /> : initial(a.name)}
               </div>
-              <div className="name" data-tip={a.name}>
+              <div className="name" data-lp-raw data-tip={a.name}>
                 {a.name}
               </div>
               <div className="meta">
@@ -521,7 +525,7 @@ function VideosView({ videos }: { videos: LibraryTrack[] }) {
                 <Thumb path={v.path} size={256} icon="film" />
                 {v.duration ? <span className="badge-dur">{formatTime(v.duration)}</span> : null}
               </div>
-              <div className="name" data-tip={stem(v.path)}>
+              <div className="name" data-lp-raw data-tip={stem(v.path)}>
                 {v.title || stem(v.path)}
               </div>
               <div className="meta">{v.width && v.height ? `${v.width} × ${v.height}` : "分辨率未知"}</div>
@@ -732,9 +736,9 @@ export function LibraryPage() {
   }
 
   return (
-    <div className="library-page">
+    <div className="library-page" data-lp="library">
       <Sidebar />
-      <section className="lib-main panel">
+      <section className="lib-main panel" data-lp="library-main">
         {libraryEmpty && nav.view !== "playlist" && nav.view !== "netease" ? (
           <>
             <Header title="媒体库" tracks={[]} source="" search={false} />

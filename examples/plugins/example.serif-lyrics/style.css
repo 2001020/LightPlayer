@@ -1,0 +1,35 @@
+/* 宋体歌词（示例插件）
+   字体用系统自带的宋体 / 楷体，插件本身不需要附带字体文件。 */
+
+:root {
+  --sl-face: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+  --lyric-font: var(--sl-face);
+  --lyric-weight: 500;
+  --lyric-line-height: 1.6;
+  --lyric-gap: 6px;
+  --lyric-dim: 40%;
+  --lyric-active-scale: 1;
+}
+:root.sl-kai {
+  --sl-face: "Kaiti SC", "STKaiti", "KaiTi", "Noto Serif CJK SC", serif;
+}
+:root.sl-scale {
+  --lyric-active-scale: 1.06;
+}
+:root.sl-title {
+  --title-font: var(--sl-face);
+}
+
+/* 当前行发光（drop-shadow 对逐字高亮的渐变文字也有效） */
+[data-lp="lyric-line"][data-active] {
+  filter: drop-shadow(0 0 var(--sl-glow, 10px) color-mix(in srgb, var(--sl-glow-color, #ffd166) 70%, transparent));
+}
+[data-lp="lyric-translation"] {
+  font-family: var(--font);
+  letter-spacing: 0.02em;
+}
+
+/* 桌面歌词同样使用宋体 */
+[data-lp="desktop-lyrics-line"] {
+  font-weight: 600;
+}

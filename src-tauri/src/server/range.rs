@@ -56,6 +56,13 @@ pub fn mime_for(path: &std::path::Path) -> &'static str {
         "webp" => "image/webp",
         "gif" => "image/gif",
         "heic" => "image/heic",
+        "svg" => "image/svg+xml",
+        "css" => "text/css; charset=utf-8",
+        "json" => "application/json",
+        "woff2" => "font/woff2",
+        "woff" => "font/woff",
+        "ttf" => "font/ttf",
+        "otf" => "font/otf",
         _ => "application/octet-stream",
     }
 }

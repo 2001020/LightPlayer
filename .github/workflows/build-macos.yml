@@ -318,8 +318,23 @@ jobs:
           ver="${TAG#v}"
           mv LightPlayer.app.zip "LightPlayer_${ver}_aarch64.app.zip"
           mv LightPlayer-portable.zip "LightPlayer_${ver}_x64_portable.zip"
+          # The installers carry the app version (1.6.0); a pre-release tag
+          # (v1.6.0b1) names the files after the tag instead.
+          for f in LightPlayer_*_aarch64.dmg; do
+            [ "$f" = "LightPlayer_${ver}_aarch64.dmg" ] || mv "$f" "LightPlayer_${ver}_aarch64.dmg"
+          done
+          for f in LightPlayer_*_x64-setup.exe; do
+            [ "$f" = "LightPlayer_${ver}_x64-setup.exe" ] || mv "$f" "LightPlayer_${ver}_x64-setup.exe"
+          done
+          # The example plugins, ready to install (.lpplugin is a zip).
+          for d in ../examples/plugins/*/; do
+            id="$(basename "$d")"
+            (cd "$d" && zip -qr "$OLDPWD/${id}.lpplugin" .)
+          done
           ls -la
+          test -f "LightPlayer_${ver}_aarch64.dmg"
           test -f "LightPlayer_${ver}_x64-setup.exe"
+          test "$(ls *.lpplugin | wc -l)" -eq 3
       - name: Replace an existing release
         if: github.event_name == 'workflow_dispatch' && inputs.replace
         env:
@@ -343,4 +358,5 @@ jobs:
             dist-release/*.dmg
             dist-release/*.zip
             dist-release/*.exe
+            dist-release/*.lpplugin
           fail_on_unmatched_files: true

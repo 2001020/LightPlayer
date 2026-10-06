@@ -13,6 +13,8 @@ import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZ
 import { ColorChoices } from "./ColorChoices";
 import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
+import { PluginSettings } from "./PluginSettings";
+import { Row, Seg, Switch } from "./SettingsControls";
 import { isWindows, keys, TRAY } from "../lib/platform";
 
 type Tab = UIState["settingsTab"];
@@ -23,37 +25,10 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: "lyrics", label: "歌词", icon: "lyrics" },
   { id: "asr", label: "歌词识别", icon: "sparkles" },
   { id: "netease", label: "网易云音乐", icon: "cloud" },
+  { id: "plugins", label: "插件", icon: "puzzle" },
   { id: "shortcuts", label: "快捷键", icon: "keyboard" },
   { id: "about", label: "关于", icon: "info" },
 ];
-
-function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return <button className={`switch ${on ? "on" : ""}`} onClick={() => onChange(!on)} role="switch" aria-checked={on} />;
-}
-
-function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div className="setting-row">
-      <div className="lbl">
-        {label}
-        {hint && <small>{hint}</small>}
-      </div>
-      <div className="ctl">{children}</div>
-    </div>
-  );
-}
-
-function Seg<T extends string | number>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
-  return (
-    <div className="seg">
-      {options.map(([v, l]) => (
-        <button key={String(v)} className={v === value ? "on" : ""} onClick={() => onChange(v)}>
-          {l}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function CitySearch({ onPick }: { onPick: (c: CityHit) => void }) {
   const [q, setQ] = useState("");
@@ -466,6 +441,7 @@ const SHORTCUTS: [string, string][] = [
   ["⌘L", "媒体库"],
   ["⌘,", "设置"],
   ["⇧⌘N", "开启 / 关闭无痕浏览"],
+  ["⌥⇧⌘P", "插件安全模式（临时停用所有插件）"],
   ["Y", "打开歌词页"],
   ["C", "网易云评论（仅网易云歌曲）"],
   ["E", "歌词编辑器"],
@@ -568,7 +544,7 @@ export function SettingsDialog() {
   }, []);
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="dialog wide" style={{ height: "min(680px, calc(100vh - 48px))" }}>
+      <div className="dialog wide" data-lp="settings" style={{ height: "min(680px, calc(100vh - 48px))" }}>
         <header>
           <h2>设置</h2>
           <button className="icon-btn" onClick={close}>
@@ -602,6 +578,7 @@ export function SettingsDialog() {
               </>
             )}
             {tab === "netease" && <NeteaseSettings />}
+            {tab === "plugins" && <PluginSettings />}
             {tab === "shortcuts" && <Shortcuts />}
             {tab === "about" && <About />}
           </div>

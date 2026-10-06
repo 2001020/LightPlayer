@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/2001020/LightPlayer/HEAD/docs/plugins/manifest.schema.json",
+  "title": "LightPlayer plugin manifest",
+  "description": "LightPlayer 插件的 manifest.json（manifestVersion 1）。规则说明见 docs/plugins/README.md。",
+  "type": "object",
+  "required": ["manifestVersion", "id", "name", "version"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "manifestVersion": { "const": 1, "description": "标准的版本，目前只能是 1" },
+    "id": {
+      "type": "string",
+      "pattern": "^(?!.*\\.\\.)[a-z0-9][a-z0-9.-]{1,62}[a-z0-9]$",
+      "description": "唯一标识，小写字母、数字、. 和 -，3–64 个字符；安装后作为文件夹名。建议用反向域名，例如 com.example.my-theme"
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 40, "description": "显示名称" },
+    "version": { "type": "string", "pattern": "^v?\\d+(\\.\\d+){0,2}", "description": "插件版本，例如 1.0.0" },
+    "minAppVersion": { "type": "string", "pattern": "^v?\\d+(\\.\\d+){0,2}", "description": "需要的最低 LightPlayer 版本，例如 1.6.0" },
+    "author": { "type": "string", "maxLength": 64 },
+    "description": { "type": "string", "maxLength": 300 },
+    "homepage": { "type": "string", "pattern": "^https?://" },
+    "preview": { "$ref": "#/$defs/path", "description": "插件列表中的缩略图：png / jpg / webp / gif / svg" },
+    "styles": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "allOf": [{ "$ref": "#/$defs/path" }, { "pattern": "\\.css$" }] },
+      "description": "样式表，按顺序加载在 App 样式之后"
+    },
+    "fonts": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["family", "src"],
+        "properties": {
+          "family": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[^\"';{}\\\\]+$" },
+          "src": { "allOf": [{ "$ref": "#/$defs/path" }, { "pattern": "\\.(woff2|woff|ttf|otf)$" }] },
+          "weight": { "type": ["string", "number"] },
+          "style": { "type": "string", "enum": ["normal", "italic", "oblique"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "strings": {
+      "description": "文字替换表：.json 文件路径，或 {\"原文\": \"替换文字\"} 对象；原文可含 {占位符}",
+      "oneOf": [
+        { "allOf": [{ "$ref": "#/$defs/path" }, { "pattern": "\\.json$" }] },
+        { "type": "object", "maxProperties": 5000, "additionalProperties": { "type": "string" } }
+      ]
+    },
+    "config": {
+      "type": "object",
+      "description": "启用插件时写入的 App 设置，停用后恢复",
+      "properties": {
+        "theme": { "enum": ["system", "light", "dark", "weather"] },
+        "accent": { "$ref": "#/$defs/color" },
+        "dynamicAccent": { "type": "boolean" },
+        "coverBackground": { "type": "boolean" },
+        "playerStyle": { "enum": ["classic", "flow"] },
+        "lyricFontSize": { "type": "number", "minimum": 14, "maximum": 56 },
+        "lyricAlign": { "enum": ["center", "left"] },
+        "showTranslation": { "type": "boolean" },
+        "karaoke": { "type": "boolean" },
+        "lyricHighlight": { "oneOf": [{ "$ref": "#/$defs/color" }, { "type": "null" }] },
+        "desktopLyrics.color": { "$ref": "#/$defs/color" }
+      },
+      "additionalProperties": false
+    },
+    "options": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/option" }
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.{1,2}(/|$))[^\\\\:]+$",
+      "description": "插件文件夹内的相对路径，用 / 分隔"
+    },
+    "color": { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$" },
+    "ident": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_-]{0,63}$" },
+    "cssVar": { "type": "string", "pattern": "^--[A-Za-z_][A-Za-z0-9_-]{0,61}$" },
+    "option": {
+      "type": "object",
+      "required": ["id", "label", "type", "default"],
+      "properties": {
+        "id": { "$ref": "#/$defs/ident" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "description": { "type": "string", "maxLength": 200 },
+        "type": { "enum": ["range", "color", "select", "toggle"] },
+        "var": { "$ref": "#/$defs/cssVar" },
+        "class": { "$ref": "#/$defs/ident" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "type": "string", "maxLength": 8 },
+        "default": { "type": ["number", "string", "boolean"] },
+        "choices": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "required": ["value", "label"],
+            "properties": {
+              "value": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1, "maxLength": 40 },
+              "class": { "$ref": "#/$defs/ident" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "range" } } },
+          "then": { "required": ["min", "max", "var"], "properties": { "default": { "type": "number" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "color" } } },
+          "then": { "required": ["var"], "properties": { "default": { "$ref": "#/$defs/color" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "toggle" } } },
+          "then": { "properties": { "default": { "type": "boolean" } }, "anyOf": [{ "required": ["class"] }, { "required": ["var"] }] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "select" } } },
+          "then": { "required": ["choices"], "properties": { "default": { "type": "string" } } }
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

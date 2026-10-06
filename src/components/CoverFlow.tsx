@@ -224,7 +224,7 @@ export function CoverFlow({ peek }: { peek?: ReactNode }) {
   const atCurrent = centre === current;
 
   return (
-    <div className="flow" ref={root} style={{ "--flow-size": `${size}px` } as React.CSSProperties}>
+    <div className="flow" data-lp="flow" ref={root} style={{ "--flow-size": `${size}px` } as React.CSSProperties}>
       <div className="flow-stage" onPointerDown={onPointerDown}>
         {shown.map((i) => {
           const d = i - pos;
@@ -269,14 +269,22 @@ export function CoverFlow({ peek }: { peek?: ReactNode }) {
           );
         })}
       </div>
-      <div className="flow-info">
-        <div className="title" onClick={() => onCoverClick(centre)}>
+      <div className="flow-info" data-lp="track-info">
+        <div className="title" data-lp="track-title" data-lp-raw onClick={() => onCoverClick(centre)}>
           {info.title}
         </div>
-        {info.artist && <div className="artist">{info.artist}</div>}
-        {info.album && <div className="album">{info.album}</div>}
+        {info.artist && (
+          <div className="artist" data-lp="track-artist" data-lp-raw>
+            {info.artist}
+          </div>
+        )}
+        {info.album && (
+          <div className="album" data-lp="track-album" data-lp-raw>
+            {info.album}
+          </div>
+        )}
         {atCurrent && (
-          <div className="flow-chips">
+          <div className="flow-chips" data-lp="chips">
             <CommentsChip />
           </div>
         )}

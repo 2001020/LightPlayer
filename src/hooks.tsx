@@ -6,7 +6,8 @@ import * as C from "./core/controller";
 import { engine } from "./core/player/engine";
 import { accentPalette } from "./lib/color";
 import { isCloudPath, localFileUrl } from "./lib/ipc";
-import { usePlayer, useUI } from "./stores/player";
+import { toast, usePlayer, useUI } from "./stores/player";
+import { setSafeMode, usePlugins } from "./stores/plugins";
 import { clampLyricSize, useSettings } from "./stores/settings";
 import { lastFullscreenToggle, toggleFullscreen } from "./components/TransportBar";
 import { toggleComments } from "./components/CommentsPanel";
@@ -179,6 +180,14 @@ export function useKeyboard() {
       if (mod && e.shiftKey && e.key.toLowerCase() === "n") {
         e.preventDefault();
         C.setPrivateMode(!s.privateMode);
+        return;
+      }
+      // Safe mode: every plugin off for this run, in case one broke the UI.
+      if (mod && e.altKey && e.shiftKey && e.code === "KeyP") {
+        e.preventDefault();
+        const on = !usePlugins.getState().safeMode;
+        setSafeMode(on);
+        toast(on ? "插件安全模式：已临时停用所有插件（再按一次恢复）" : "已退出插件安全模式", "info", 5000);
         return;
       }
       if (mod && e.key === ",") {

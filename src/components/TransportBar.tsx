@@ -28,7 +28,7 @@ function ProgressRow() {
   const buffered = usePlayer((s) => s.buffered);
   const ab = usePlayer((s) => s.abLoop);
   return (
-    <div className="progress-row">
+    <div className="progress-row" data-lp="progress">
       <span>{formatTime(position)}</span>
       <Slider
         value={position}
@@ -49,7 +49,7 @@ function Volume() {
   const muted = useSettings((s) => s.muted);
   const icon: IconName = muted || volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume";
   return (
-    <div className="volume">
+    <div className="volume" data-lp="volume">
       <button className="icon-btn" onClick={C.toggleMute} {...tip(muted ? "取消静音" : "静音", "M")}>
         <Icon name={icon} />
       </button>
@@ -317,11 +317,12 @@ export function TransportBar() {
   const m = MODE_META[mode];
 
   return (
-    <footer className="transport panel">
+    <footer className="transport panel" data-lp="transport">
       <ProgressRow />
-      <div className="controls">
+      <div className="controls" data-lp="transport-controls">
         <div
           className="mini"
+          data-lp="transport-now"
           onClick={() => {
             if (media?.kind === "audio") useUI.setState({ page: page === "lyrics" ? "player" : "lyrics" });
             else if (media && page !== "player") useUI.setState({ page: "player" });
@@ -331,14 +332,14 @@ export function TransportBar() {
           <div className="thumb">
             {media?.meta?.cover ? <img src={media.meta.cover} alt="" /> : <Icon name={isVideo ? "film" : "music"} />}
           </div>
-          <div className="meta">
+          <div className="meta" data-lp-raw>
             <div className="t">{title}</div>
             {artist && <div className="a">{artist}</div>}
           </div>
           {media && <FavButton path={media.path} />}
         </div>
 
-        <div className="center">
+        <div className="center" data-lp="transport-center">
           <button className="icon-btn" onClick={C.cycleMode} {...tip(`${m.label}（点击切换）`)}>
             <Icon name={m.icon} />
           </button>
@@ -367,7 +368,7 @@ export function TransportBar() {
           </button>
         </div>
 
-        <div className="right">
+        <div className="right" data-lp="transport-right">
           {isCloudPath(media?.path) && <QualityMenu />}
           {isCloudPath(media?.path) && (
             <button

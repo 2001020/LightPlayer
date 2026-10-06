@@ -137,6 +137,8 @@ export function LyricsView({ lines: all, synced, offset = 0, fontSize, align = "
   return (
     <div
       className={`lyric-scroll align-${align}`}
+      data-lp="lyric-scroll"
+      data-lp-raw
       ref={scrollRef}
       style={style}
       onWheel={onUserScroll}
@@ -155,11 +157,15 @@ export function LyricsView({ lines: all, synced, offset = 0, fontSize, align = "
           <div
             key={i}
             data-i={i}
+            data-lp="lyric-line"
+            data-active={i === active ? "" : undefined}
             className={cls}
             onClick={() => jump(i, l)}
           >
             {i === active && karaoke && l.words?.length ? <KaraokeWords line={l} offset={offset} /> : l.text || "\u00a0"}
-            {showTranslation && l.translation && <span className="tr">{l.translation}</span>}
+            {showTranslation && l.translation && <span className="tr" data-lp="lyric-translation">
+                {l.translation}
+              </span>}
           </div>
         );
       })}

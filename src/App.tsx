@@ -68,17 +68,27 @@ export default function App() {
   const listBeside = showLyrics && listShown && listLayout === "side";
   const commentsOpen = useUI((s) => s.commentsOpen);
   const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive;
+  const playerStyle = useSettings((s) => s.playerStyle);
+
+  // State plugins can style by (see docs/plugins/README.md).
+  useEffect(() => {
+    const root = document.documentElement.dataset;
+    root.page = showLyrics ? "lyrics" : showLibrary ? "library" : "player";
+    root.media = media?.kind ?? "none";
+    root.playerStyle = playerStyle;
+    root.fullscreen = fullscreen ? "true" : "false";
+  }, [showLyrics, showLibrary, media?.kind, playerStyle, fullscreen]);
 
   return (
     <div className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""}`}>
       <Background />
-      <header className="titlebar" data-tauri-drag-region>
+      <header className="titlebar" data-lp="titlebar" data-tauri-drag-region>
         <div className="brand" data-tauri-drag-region>
           <span className="dot" /> LightPlayer
         </div>
         <div className="spacer" data-tauri-drag-region />
         {media && (
-          <div className="now-title" data-tauri-drag-region>
+          <div className="now-title" data-lp-raw data-tauri-drag-region>
             {media.fileName}
           </div>
         )}
@@ -105,7 +115,7 @@ export default function App() {
         </button>
         <WindowControls />
       </header>
-      <main className="main">
+      <main className="main" data-lp="main">
         {showLyrics ? (
           <div className={`lyrics-host ${listBeside ? "with-list" : ""}`}>
             <LyricsPage />

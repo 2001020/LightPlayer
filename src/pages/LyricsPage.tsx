@@ -182,14 +182,14 @@ export function LyricsPage() {
   const nudge = (d: number) => s.setLyricOffset(media.path, offset + d);
 
   return (
-    <div className="lyrics-page" style={s.lyricHighlight ? ({ "--lyric-hl": s.lyricHighlight } as React.CSSProperties) : undefined}>
-      <div className="lyrics-head">
+    <div className="lyrics-page" data-lp="lyrics-page" style={s.lyricHighlight ? ({ "--lyric-hl": s.lyricHighlight } as React.CSSProperties) : undefined}>
+      <div className="lyrics-head" data-lp="lyrics-head">
         <div>
           <button className="btn ghost" onClick={() => useUI.setState({ page: "player" })} {...tip("返回播放页", "Esc")}>
             <Icon name="chevronLeft" size={18} /> 返回
           </button>
         </div>
-        <div className="who">
+        <div className="who" data-lp-raw>
           <div style={{ minWidth: 0 }}>
             <div className="t">{meta.title || media.name}</div>
             {meta.artist && <div className="a">{meta.artist}</div>}
@@ -241,7 +241,7 @@ export function LyricsPage() {
         )}
       </div>
 
-      <div className="lyrics-body">
+      <div className="lyrics-body" data-lp="lyrics-body">
         <div style={{ minHeight: 0, minWidth: 0 }}>
           {taskHere ? (
             <div className="lyric-empty">

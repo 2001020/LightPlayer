@@ -145,7 +145,7 @@ export function TrackTable({
   };
 
   return (
-    <div className={`track-table ${hideAlbum ? "no-album" : ""}`}>
+    <div className={`track-table ${hideAlbum ? "no-album" : ""}`} data-lp="track-table">
       <div className="tt-head">
         {cols.map((c) => (
           <div
@@ -199,13 +199,13 @@ export function TrackTable({
                 </div>
                 <div className="c-title">
                   <Thumb path={t.path} size={64} icon={t.kind === "video" ? "film" : "music"} />
-                  <span className="t" data-tip={trackTitle(t)}>
+                  <span className="t" data-lp-raw data-tip={trackTitle(t)}>
                     {trackTitle(t)}
                   </span>
                   {t.badge && <span className={`tt-badge ${t.unavailable ? "off" : ""}`}>{t.badge}</span>}
                 </div>
-                <div className="c-artist">{trackArtist(t) || <span className="faint">未知</span>}</div>
-                {!hideAlbum && <div className="c-album">{t.album || <span className="faint">未知</span>}</div>}
+                <div className="c-artist" data-lp-raw={trackArtist(t) ? "" : undefined}>{trackArtist(t) || <span className="faint">未知</span>}</div>
+                {!hideAlbum && <div className="c-album" data-lp-raw={t.album ? "" : undefined}>{t.album || <span className="faint">未知</span>}</div>}
                 <div className="c-dur">{t.duration ? formatTime(t.duration) : ""}</div>
                 <div className="c-fav">
                   {!isCloudPath(t.path) && <button

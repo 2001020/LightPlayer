@@ -96,9 +96,9 @@ function LyricPeek() {
   }, [key, cur, next, synced]);
   if (!synced) return null;
   return (
-    <div className="lyric-peek" onClick={() => useUI.setState({ page: "lyrics" })}>
+    <div className="lyric-peek" data-lp="lyric-peek" data-lp-raw onClick={() => useUI.setState({ page: "lyrics" })}>
       {lines.map((l) => (
-        <div key={l.key} className={`peek-line ${l.leaving ? "out" : "in"}`}>
+        <div key={l.key} className={`peek-line ${l.leaving ? "out" : "in"}`} data-lp="lyric-peek-line">
           {l.cur && <span className="cur">{l.cur}</span>}
           {l.next && <span className="next">{l.next}</span>}
         </div>
@@ -116,8 +116,8 @@ function AudioNowPlaying() {
   const toLyrics = () => useUI.setState({ page: "lyrics" });
   const strat = STRATEGY_LABEL[media.strategy];
   return (
-    <div className="now-playing">
-      <div className={`cover ${playing ? "" : "paused"}`} onClick={toLyrics}>
+    <div className="now-playing" data-lp="now-playing">
+      <div className={`cover ${playing ? "" : "paused"}`} data-lp="cover" onClick={toLyrics}>
         {meta.cover ? (
           <img src={meta.cover} alt="" draggable={false} />
         ) : (
@@ -127,13 +127,21 @@ function AudioNowPlaying() {
         )}
         <div className="hint">点击查看歌词</div>
       </div>
-      <div className="track-info">
-        <div className="title" onClick={toLyrics} {...tip("查看歌词", "Y")}>
+      <div className="track-info" data-lp="track-info">
+        <div className="title" data-lp="track-title" data-lp-raw onClick={toLyrics} {...tip("查看歌词", "Y")}>
           {meta.title || media.name}
         </div>
-        {meta.artist && <div className="artist">{meta.artist}</div>}
-        {meta.album && <div className="album">{meta.album}</div>}
-        <div className="chips">
+        {meta.artist && (
+          <div className="artist" data-lp="track-artist" data-lp-raw>
+            {meta.artist}
+          </div>
+        )}
+        {meta.album && (
+          <div className="album" data-lp="track-album" data-lp-raw>
+            {meta.album}
+          </div>
+        )}
+        <div className="chips" data-lp="chips">
           <span className="chip">{media.fileName.split(".").pop()?.toUpperCase()}</span>
           {strat && <span className="chip accent">{strat}</span>}
           {status === "loaded" && origin === "ai" && <span className="chip">AI 歌词</span>}
@@ -153,7 +161,7 @@ function SubtitleOverlay() {
   const cue = findActiveCue(cues.lines, position);
   if (!cue) return null;
   return (
-    <div className="subtitle-overlay">
+    <div className="subtitle-overlay" data-lp="subtitles" data-lp-raw>
       <span>{cue.text}</span>
       {cue.translation && <span className="sub2">{cue.translation}</span>}
     </div>
@@ -189,7 +197,7 @@ function VideoStage() {
     void toggleFullscreen();
   };
   return (
-    <div className="video-stage" onDoubleClick={onDoubleClick}>
+    <div className="video-stage" data-lp="video" onDoubleClick={onDoubleClick}>
       <div className="video-host" ref={host} onClick={onClick} />
       <SubtitleOverlay />
       {strat && <div className="video-badge">{strat}</div>}
@@ -246,7 +254,7 @@ export function PlayerPage() {
   const showList = !!media && shown && layout === "side";
   const style = useSettings((s) => s.playerStyle);
   return (
-    <div className={`player-page ${showList ? "with-list" : ""}`}>
+    <div className={`player-page ${showList ? "with-list" : ""}`} data-lp="player">
       <div className={`stage ${media?.kind === "video" ? "is-video" : ""}`}>
         <BackButton />
         {!media && !loading && <EmptyState />}

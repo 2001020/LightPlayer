@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
+  <rect width="160" height="120" fill="#f4f4f7"/>
+  <text x="80" y="56" text-anchor="middle" font-family="-apple-system, Segoe UI, sans-serif" font-size="30" font-weight="700" fill="#16161a">Aa</text>
+  <text x="80" y="84" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="13" fill="#9a9aa6">中文 → English</text>
+</svg>

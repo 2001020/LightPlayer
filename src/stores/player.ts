@@ -102,7 +102,7 @@ export interface Toast {
 export interface UIState {
   page: Page;
   overlay: Overlay;
-  settingsTab: "appearance" | "playback" | "lyrics" | "asr" | "netease" | "shortcuts" | "about";
+  settingsTab: "appearance" | "playback" | "lyrics" | "asr" | "netease" | "plugins" | "shortcuts" | "about";
   /** The floating play queue (narrow windows). */
   playlistFloat: boolean;
   /** The NetEase comments panel. */

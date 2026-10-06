@@ -1,6 +1,6 @@
 [package]
 name = "lightplayer"
-version = "1.5.0"
+version = "1.6.0"
 description = "LightPlayer desktop media player"
 edition = "2021"
 rust-version = "1.80"
@@ -42,6 +42,7 @@ ecb = { version = "0.1", features = ["alloc"] }
 md-5 = "0.10"
 num-bigint = "0.4"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 whisper-rs = { version = "0.16", features = ["metal"] }

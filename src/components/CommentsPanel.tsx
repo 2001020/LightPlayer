@@ -63,16 +63,18 @@ function CommentItem({ c, reply = false }: { c: NeteaseComment; reply?: boolean 
       <Avatar name={c.user.nickname} url={c.user.avatar} />
       <div className="cm-body">
         <div className="cm-head">
-          <span className="cm-name">{c.user.nickname || "网易云用户"}</span>
+          <span className="cm-name" data-lp-raw>{c.user.nickname || "网易云用户"}</span>
           <span className="cm-likes" {...tip(`${c.likedCount} 人点赞`)}>
             <Icon name="heart" size={13} />
             {c.likedCount > 0 && formatCount(c.likedCount)}
           </span>
         </div>
-        <div className="cm-text">{c.content}</div>
+        <div className="cm-text" data-lp-raw>
+          {c.content}
+        </div>
         {c.replied && (
           <div className="cm-quote">
-            <b>@{c.replied.nickname}</b>：{c.replied.content ?? <i>该评论已删除</i>}
+            <b data-lp-raw>@{c.replied.nickname}</b>：{c.replied.content ? <span data-lp-raw>{c.replied.content}</span> : <i>该评论已删除</i>}
           </div>
         )}
         <div className="cm-meta">
@@ -133,7 +135,7 @@ export function CommentsPanel() {
   if (songId === null) return null;
   const title = media?.meta?.title || media?.name;
   return (
-    <aside className="comments panel" aria-label="网易云评论">
+    <aside className="comments panel" data-lp="comments" aria-label="网易云评论">
       <header>
         <div className="row">
           <h3>

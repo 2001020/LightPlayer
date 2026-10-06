@@ -261,6 +261,58 @@ export interface NeteaseCommentPage {
   cursor?: number | null;
 }
 
+export type PluginOptionValue = number | string | boolean;
+
+export interface PluginOption {
+  id: string;
+  label: string;
+  description?: string;
+  type: "range" | "color" | "select" | "toggle";
+  default: PluginOptionValue;
+  /** CSS variable that receives the value. */
+  var?: string;
+  /** toggle: class put on <html> while on. */
+  class?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+  choices?: { value: string; label: string; class?: string }[];
+}
+
+export interface PluginFont {
+  family: string;
+  src: string;
+  weight?: string | number;
+  style?: string;
+}
+
+/** A plugin's manifest.json (see docs/plugins/README.md). */
+export interface PluginManifest {
+  manifestVersion: 1;
+  id: string;
+  name: string;
+  version: string;
+  author?: string;
+  description?: string;
+  homepage?: string;
+  minAppVersion?: string;
+  preview?: string;
+  styles?: string[];
+  fonts?: PluginFont[];
+  strings?: string | Record<string, string>;
+  config?: Record<string, unknown>;
+  options?: PluginOption[];
+}
+
+export interface PluginEntry {
+  /** Folder name; equal to the manifest id when the plugin is valid. */
+  id: string;
+  manifest: PluginManifest | null;
+  error: string | null;
+  incompatible: boolean;
+}
+
 export interface LibraryFolder {
   path: string;
   addedAt: number;
@@ -608,6 +660,18 @@ function mockCloudMedia(path: string, level: string): OpenedMedia {
 
 let mockCacheBytes = 734_003_200;
 
+/** The example plugins in `examples/plugins`, served by the Vite dev server. */
+const examplePlugins = import.meta.glob<PluginManifest>("/examples/plugins/*/manifest.json", { import: "default" });
+let mockRemovedPlugins = new Set<string>();
+
+async function mockPlugins(): Promise<PluginEntry[]> {
+  const list = await Promise.all(Object.values(examplePlugins).map((load) => load()));
+  return list
+    .filter((m) => !mockRemovedPlugins.has(m.id))
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((m) => ({ id: m.id, manifest: m, error: null, incompatible: false }));
+}
+
 async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const path = (args.path ?? args.mediaPath) as string | undefined;
   if (cmd.startsWith("library_") || cmd.startsWith("playlist_")) return mockLibrary(cmd, args) as T;
@@ -760,6 +824,19 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
     }
     case "server_base":
       return "" as T;
+    case "plugins_list":
+      return (await mockPlugins()) as T;
+    case "plugin_remove":
+      mockRemovedPlugins.add(String(args.id));
+      return undefined as T;
+    case "plugin_install":
+      if (String(args.path) === "restore") {
+        mockRemovedPlugins = new Set();
+        return "example.minimal-player" as T;
+      }
+      throw new Error("浏览器预览中不能安装插件");
+    case "plugins_open_dir":
+      return undefined as T;
     case "ffmpeg_available":
       return true as T;
     case "weather_locate":
@@ -853,6 +930,11 @@ export const api = {
   asrStart: (path: string, options: AsrOptions) => call<void>("asr_start", { path, options }),
   asrCancel: () => call<void>("asr_cancel"),
   serverBase: () => call<string>("server_base"),
+  pluginsList: () => call<PluginEntry[]>("plugins_list"),
+  /** Installs a plugin folder or .lpplugin file; fails with "PLUGIN_EXISTS" unless `replace`. */
+  pluginInstall: (path: string, replace: boolean) => call<string>("plugin_install", { path, replace }),
+  pluginRemove: (id: string) => call<void>("plugin_remove", { id }),
+  pluginsOpenDir: () => call<void>("plugins_open_dir"),
   importBackground: (path: string) => call<string>("import_background", { path }),
   takePendingOpen: () => call<string[]>("take_pending_open"),
   fileAssociations: () => call<FileAssociations>("file_associations"),
@@ -908,6 +990,13 @@ export async function localFileUrl(path: string): Promise<string> {
   if (!isTauri) return browserFiles.has(path) ? browserUrl(path) : path;
   if (serverBaseCache === null) serverBaseCache = await api.serverBase();
   return `${serverBaseCache}/file?p=${encodeURIComponent(path)}`;
+}
+
+/** Base URL of an installed plugin's files (ends with "/"). */
+export async function pluginBaseUrl(id: string): Promise<string> {
+  if (!isTauri) return `/examples/plugins/${encodeURIComponent(id)}/`;
+  if (serverBaseCache === null) serverBaseCache = await api.serverBase();
+  return `${serverBaseCache}/plugin/${encodeURIComponent(id)}/`;
 }
 
 /** Thumbnail (album art or video frame) for a library item; null in browser mode. */

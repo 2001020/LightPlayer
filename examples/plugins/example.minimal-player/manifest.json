@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/2001020/LightPlayer/HEAD/docs/plugins/manifest.schema.json",
+  "manifestVersion": 1,
+  "id": "example.minimal-player",
+  "name": "极简播放页",
+  "version": "1.0.0",
+  "author": "LightPlayer",
+  "description": "示例插件：改变播放页布局。封面放大并居中、歌曲信息移到封面下方，隐藏标签和专辑名，精简底部播放栏。",
+  "minAppVersion": "1.6.0",
+  "preview": "preview.svg",
+  "styles": ["style.css"],
+  "options": [
+    { "id": "layout", "label": "布局", "type": "select", "default": "stack",
+      "choices": [
+        { "value": "stack", "label": "封面在上", "class": "mp-stack" },
+        { "value": "side", "label": "左右并排" }
+      ] },
+    { "id": "cover", "label": "封面大小", "type": "range", "min": 200, "max": 420, "step": 10, "unit": "px", "default": 320, "var": "--mp-cover" },
+    { "id": "radius", "label": "封面圆角", "type": "range", "min": 0, "max": 60, "step": 2, "unit": "px", "default": 24, "var": "--mp-radius" },
+    { "id": "hideChips", "label": "隐藏格式标签", "type": "toggle", "default": true, "class": "mp-hide-chips" },
+    { "id": "slim", "label": "精简播放栏", "description": "隐藏播放栏右侧除音量以外的按钮", "type": "toggle", "default": false, "class": "mp-slim" }
+  ]
+}

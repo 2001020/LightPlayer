@@ -25,6 +25,8 @@ pub struct ServerState {
     pub token: String,
     pub hls: Arc<HlsManager>,
     pub thumbs: PathBuf,
+    /// Installed plugins (`/plugin/{id}/{path}`).
+    pub plugins: PathBuf,
     /// For `/remote` (online music streams and covers).
     pub http: reqwest::Client,
 }
@@ -74,20 +76,21 @@ pub fn urlencode(s: &str) -> String {
     out
 }
 
-pub async fn start(hls: Arc<HlsManager>, thumbs: PathBuf) -> std::io::Result<ServerInfo> {
+pub async fn start(hls: Arc<HlsManager>, thumbs: PathBuf, plugins: PathBuf) -> std::io::Result<ServerInfo> {
     let token = format!("{:032x}", rand::random::<u128>());
     let http = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15")
         .build()
         .map_err(std::io::Error::other)?;
-    let state = ServerState { token: token.clone(), hls, thumbs, http };
+    let state = ServerState { token: token.clone(), hls, thumbs, plugins, http };
     let app = Router::new()
         .route("/{token}/file", get(file_handler))
         .route("/{token}/hls/{id}/{name}", get(hls_handler))
         .route("/{token}/sub", get(subtitle_handler))
         .route("/{token}/thumb", get(thumb_handler))
         .route("/{token}/remote", get(remote_handler))
+        .route("/{token}/plugin/{id}/{*path}", get(plugin_handler))
         .layer(middleware::from_fn(cors))
         .with_state(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
@@ -172,6 +175,24 @@ async fn remote_handler(
     }
     let body = Body::from_stream(resp.bytes_stream());
     out.body(body).unwrap_or_else(|_| StatusCode::BAD_GATEWAY.into_response())
+}
+
+/// A plugin's style sheets, fonts, images and string table.
+async fn plugin_handler(
+    State(st): State<ServerState>,
+    AxPath((token, id, path)): AxPath<(String, String, String)>,
+    headers: HeaderMap,
+) -> Response {
+    if token != st.token {
+        return forbidden();
+    }
+    let Some(file) = crate::plugins::served_file(&st.plugins, &id, &path) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let mut r = range::serve_file(file, &headers).await;
+    // Edited plugins show up on "reload" without restarting the app.
+    r.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+    r
 }
 
 #[derive(Deserialize)]
@@ -312,8 +333,23 @@ mod tests {
     async fn serves_ranges_hls_and_subtitles() {
         let dir = tempfile::tempdir().unwrap();
         let hls = Arc::new(HlsManager::new(dir.path()));
-        let info = start(hls.clone(), dir.path().join("thumbs")).await.unwrap();
+        let plugins = dir.path().join("plugins");
+        std::fs::create_dir_all(plugins.join("com.test.p/css")).unwrap();
+        std::fs::write(plugins.join("com.test.p/css/a.css"), "a{}").unwrap();
+        std::fs::write(dir.path().join("secret.txt"), "x").unwrap();
+        let info = start(hls.clone(), dir.path().join("thumbs"), plugins).await.unwrap();
         let client = reqwest::Client::new();
+
+        // Plugin files, and nothing outside the plugin's folder.
+        let r = client.get(format!("{}/plugin/com.test.p/css/a.css", info.base())).send().await.unwrap();
+        assert_eq!(r.status(), 200);
+        assert_eq!(r.headers()["content-type"], "text/css; charset=utf-8");
+        assert_eq!(r.headers()["access-control-allow-origin"], "*");
+        assert_eq!(r.text().await.unwrap(), "a{}");
+        for bad in ["com.test.p/..%2F..%2Fsecret.txt", "com.test.p/css/..%2F..%2F..%2Fsecret.txt", "..%2F/secret.txt", "com.test.p/missing.css"] {
+            let r = client.get(format!("{}/plugin/{bad}", info.base())).send().await.unwrap();
+            assert_ne!(r.status(), 200, "{bad}");
+        }
 
         let file = dir.path().join("数据 file.bin");
         std::fs::write(&file, (0u8..=255).collect::<Vec<_>>()).unwrap();
