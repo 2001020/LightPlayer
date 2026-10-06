@@ -646,6 +646,23 @@ pub fn plugins_open_dir(app: AppHandle, state: State<'_, AppState>) -> AppResult
         .map_err(|e| AppError::msg(e.to_string()))
 }
 
+/// Copies a picture for a player layout into the app data folder; returns
+/// its "asset:<name>" source.
+#[tauri::command]
+pub fn layout_asset_add(state: State<'_, AppState>, path: String) -> AppResult<String> {
+    crate::layouts::add_asset(Path::new(&path), &state.assets_dir).map_err(AppError::Msg)
+}
+
+/// Writes a player layout and its pictures as a `.lpplugin` file.
+#[tauri::command]
+pub async fn layout_export(state: State<'_, AppState>, dest: String, layout: serde_json::Value) -> AppResult<()> {
+    let (assets, plugins) = (state.assets_dir.clone(), state.plugins_dir.clone());
+    tokio::task::spawn_blocking(move || crate::layouts::export(&layout, Path::new(&dest), &assets, &plugins))
+        .await
+        .map_err(|e| AppError::msg(e.to_string()))?
+        .map_err(AppError::Msg)
+}
+
 /// Copies a user-chosen background image into the app data folder so it
 /// survives the original being moved.
 #[tauri::command]

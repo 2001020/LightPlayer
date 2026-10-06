@@ -1,0 +1,19 @@
+/* 复古唱机：微调布局中的元素。按 data-id 选择，只影响这个布局。 */
+
+[data-lp="layout-item"][data-id="rt-now"] {
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+/* 播放时进度环更醒目一些。 */
+[data-lp="layout-item"][data-id="rt-ring"] {
+  opacity: 0.55;
+  transition: opacity 0.4s;
+}
+:root[data-player-layout="free"]:has([data-lp="vinyl"].playing) [data-lp="layout-item"][data-id="rt-ring"] {
+  opacity: 1;
+}
+
+[data-lp="layout-item"][data-id="rt-clock"] {
+  color: var(--text-faint);
+}

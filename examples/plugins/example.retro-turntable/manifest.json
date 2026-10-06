@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/2001020/LightPlayer/HEAD/docs/plugins/manifest.schema.json",
+  "manifestVersion": 1,
+  "id": "example.retro-turntable",
+  "name": "复古唱机",
+  "version": "1.0.0",
+  "author": "LightPlayer",
+  "description": "示例插件：提供一个播放页布局。唱片在左、外圈是播放进度，右侧是歌曲信息、歌词和播放时间，角落有时钟和贴纸。启用后在播放页右上角的“布局”菜单中选用。",
+  "minAppVersion": "1.6.0",
+  "preview": "preview.svg",
+  "styles": ["style.css"],
+  "layouts": ["layouts/turntable.json"]
+}

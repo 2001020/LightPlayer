@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CONFIG_KEYS } from "./manifest";
+import { BUILTIN_KINDS, EXTRA_KINDS } from "../layout/model";
 
 const root = join(__dirname, "../..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -58,5 +59,21 @@ describe("plugin standard", () => {
       const key = a.replace(/^data-/, "").replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
       expect(code, a).toMatch(new RegExp(`\\.${key} =`));
     }
+  });
+
+  it("documents the layout element kinds the code knows", () => {
+    const kinds = [...BUILTIN_KINDS, ...EXTRA_KINDS].sort();
+    expect(firstColumn(section("layout-kinds")).sort()).toEqual(kinds);
+    const schema = JSON.parse(read("docs/plugins/layout.schema.json"));
+    expect([...schema.$defs.element.properties.kind.enum].sort()).toEqual(kinds);
+    const rust = /const KINDS: &\[&str\] = &\[([\s\S]*?)\];/.exec(read("src-tauri/src/layouts.rs"))![1];
+    expect([...rust.matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort()).toEqual(kinds);
+  });
+
+  it("example layouts follow the layout schema's fields", () => {
+    const schema = JSON.parse(read("docs/plugins/layout.schema.json"));
+    const allowed = Object.keys(schema.$defs.element.properties);
+    const file = JSON.parse(read("examples/plugins/example.retro-turntable/layouts/turntable.json"));
+    for (const e of file.elements) for (const k of Object.keys(e)) expect(allowed, `${e.id}.${k}`).toContain(k);
   });
 });

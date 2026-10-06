@@ -8,13 +8,17 @@ import { confirmDialog } from "../lib/confirm";
 import { formatBytes } from "../lib/format";
 import { neteaseLogout, refreshNetease, useNetease } from "../stores/netease";
 import { NETEASE_QUALITIES, type NeteaseQuality } from "../stores/settings";
-import { toast, useUI, type UIState } from "../stores/player";
+import { toast, usePlayer, useUI, type UIState } from "../stores/player";
+import { activeLayout, setActiveLayout, useLayouts } from "../stores/layout";
+import { BUILTIN_LAYOUTS } from "../layout/model";
+import { editActiveLayout } from "../layout/LayoutEditor";
 import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZE_MIN } from "../stores/settings";
 import { ColorChoices } from "./ColorChoices";
 import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
 import { PluginSettings } from "./PluginSettings";
 import { Row, Seg, Switch } from "./SettingsControls";
+import { tip } from "./Tooltip";
 import { UpdateSettings } from "./UpdateSettings";
 import { isWindows, keys, TRAY } from "../lib/platform";
 
@@ -178,6 +182,7 @@ function Appearance() {
       <Row label="播放器样式" hint="Flow：仿早年 Coverflow 的封面墙，左右翻看播放列表">
         <Seg value={s.playerStyle} options={[["classic", "经典"], ["flow", "Flow"]]} onChange={(playerStyle) => s.set({ playerStyle })} />
       </Row>
+      {s.playerStyle === "classic" && <LayoutRow />}
       <Row label="主题色" hint="用于按钮、进度条、高亮歌词等">
         <div className="swatches">
           {ACCENT_PRESETS.map((c) => (
@@ -533,6 +538,40 @@ function About() {
         </button>
       </Row>
     </>
+  );
+}
+
+/** Settings > 外观: which player page layout, and a way into the editor. */
+function LayoutRow() {
+  const active = useLayouts((st) => activeLayout(st).id);
+  const custom = useLayouts((st) => st.custom);
+  const plugin = useLayouts((st) => st.plugin);
+  const hasAudio = usePlayer((st) => st.media?.kind === "audio");
+  const list = [...BUILTIN_LAYOUTS, ...custom, ...plugin];
+  return (
+    <Row label="播放页布局" hint="唱片形封面、元素位置与样式等；在播放页的“布局”菜单中编辑">
+      <div className="layout-row">
+        <select value={active} onChange={(e) => setActiveLayout(e.target.value)}>
+          {list.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+              {l.plugin ? "（插件）" : ""}
+            </option>
+          ))}
+        </select>
+        <button
+          className="btn small"
+          disabled={!hasAudio}
+          onClick={() => {
+            useUI.setState({ overlay: null, page: "player" });
+            requestAnimationFrame(() => requestAnimationFrame(editActiveLayout));
+          }}
+          {...(hasAudio ? {} : tip("先播放一首歌曲"))}
+        >
+          编辑…
+        </button>
+      </div>
+    </Row>
   );
 }
 

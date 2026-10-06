@@ -303,6 +303,8 @@ export interface PluginManifest {
   strings?: string | Record<string, string>;
   config?: Record<string, unknown>;
   options?: PluginOption[];
+  /** Player page layouts (JSON files, see src/layout/model.ts). */
+  layouts?: string[];
 }
 
 export interface PluginEntry {
@@ -905,6 +907,9 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       throw new Error("浏览器预览中不能安装插件");
     case "plugins_open_dir":
       return undefined as T;
+    case "layout_asset_add":
+    case "layout_export":
+      throw new Error("浏览器预览中不能使用此功能");
     case "ffmpeg_available":
       return true as T;
     case "weather_locate":
@@ -1012,6 +1017,10 @@ export const api = {
   pluginInstall: (path: string, replace: boolean) => call<string>("plugin_install", { path, replace }),
   pluginRemove: (id: string) => call<void>("plugin_remove", { id }),
   pluginsOpenDir: () => call<void>("plugins_open_dir"),
+  /** Copies a picture for a player layout into the app's data; returns its "asset:" name. */
+  layoutAssetAdd: (path: string) => call<string>("layout_asset_add", { path }),
+  /** Writes a layout (and its pictures) as a .lpplugin file. */
+  layoutExport: (dest: string, layout: unknown) => call<void>("layout_export", { dest, layout }),
   importBackground: (path: string) => call<string>("import_background", { path }),
   takePendingOpen: () => call<string[]>("take_pending_open"),
   fileAssociations: () => call<FileAssociations>("file_associations"),
@@ -1074,6 +1083,19 @@ export async function pluginBaseUrl(id: string): Promise<string> {
   if (!isTauri) return `/examples/plugins/${encodeURIComponent(id)}/`;
   if (serverBaseCache === null) serverBaseCache = await api.serverBase();
   return `${serverBaseCache}/plugin/${encodeURIComponent(id)}/`;
+}
+
+/** URL of a player layout picture: "asset:<name>", "plugin:<id>/<path>" or a data: URL. */
+export function layoutImageUrl(src: string): string | null {
+  if (src.startsWith("data:image/")) return src;
+  const asset = /^asset:([0-9a-f]+\.[a-z]+)$/.exec(src);
+  const plugin = /^plugin:([a-z0-9.-]+)\/(.+)$/.exec(src);
+  const path = (p: string) => p.split("/").map(encodeURIComponent).join("/");
+  if (!isTauri) return plugin ? `/examples/plugins/${plugin[1]}/${path(plugin[2])}` : null;
+  if (serverBaseCache === null) return null;
+  if (asset) return `${serverBaseCache}/asset/${asset[1]}`;
+  if (plugin) return `${serverBaseCache}/plugin/${plugin[1]}/${path(plugin[2])}`;
+  return null;
 }
 
 /** Thumbnail (album art or video frame) for a library item; null in browser mode. */

@@ -70,6 +70,12 @@
       "type": "array",
       "maxItems": 50,
       "items": { "$ref": "#/$defs/option" }
+    },
+    "layouts": {
+      "type": "array",
+      "maxItems": 10,
+      "items": { "allOf": [{ "$ref": "#/$defs/path" }, { "pattern": "\\.json$" }] },
+      "description": "播放页布局文件（格式见 layout.schema.json），出现在播放页的“布局”菜单中"
     }
   },
   "$defs": {

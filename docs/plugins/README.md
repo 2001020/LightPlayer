@@ -82,7 +82,8 @@ com.example.my-theme/          ← 安装后的文件夹名 = id
 ├── style.css                  ← styles 中列出的样式表
 ├── strings.json               ← 可选：文字替换表
 ├── fonts/MyFont.woff2         ← 可选：字体
-├── images/bg.png              ← 可选：CSS 中引用的图片
+├── layouts/turntable.json     ← 可选：播放页布局
+├── images/bg.png              ← 可选：CSS 或布局中引用的图片
 └── preview.png                ← 可选：插件列表中的缩略图（建议 4:3）
 ```
 
@@ -109,6 +110,7 @@ com.example.my-theme/          ← 安装后的文件夹名 = id
 | `strings` | string 或 object | 否 | 文字替换表：`.json` 文件路径，或直接写成对象，见[改变界面文字](#改变界面文字) |
 | `config` | object | 否 | 启用时调整的 App 设置，见 [config](#改变播放页--歌词页的设置config) |
 | `options` | object[] | 否 | 用户可调的选项，最多 50 个，见 [options](#可调选项options) |
+| `layouts` | string[] | 否 | 播放页布局（`.json`），最多 10 个，见[播放页布局](#播放页布局layouts)。需要 LightPlayer 1.6.0b2 或更新版本 |
 
 其他字段（例如 `$schema`）会被忽略。完整的 JSON Schema 见 [`manifest.schema.json`](manifest.schema.json)，在 VS Code 等编辑器中写上 `$schema` 就能获得补全和检查。
 
@@ -127,7 +129,7 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 | `main` | 标题栏与播放栏之间的主区域 |
 | `player` | 播放页（音频和视频） |
 | `now-playing` | 经典样式的音频播放区：封面 + 歌曲信息 |
-| `cover` | 经典样式的封面 |
+| `cover` | 封面：经典样式的封面；自由布局中的方形封面，或唱片中间的封面 |
 | `flow` | Flow 样式（封面墙）的整个区域 |
 | `track-info` | 歌曲信息区（经典样式和 Flow 样式都有） |
 | `track-title` | 歌名 |
@@ -136,6 +138,11 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 | `chips` | 歌曲信息下的标签（格式、AI 歌词、评论等） |
 | `lyric-peek` | 播放页上的两行歌词预览 |
 | `lyric-peek-line` | 歌词预览中的一组行（切换时有进出动画） |
+| `player-layout` | 自由布局（除“默认”外的播放页布局）的整个舞台 |
+| `layout-item` | 自由布局中的一个元素。另有 `data-kind`（元素类型，见[播放页布局](#播放页布局layouts)）和 `data-id` 属性 |
+| `vinyl` | 唱片形封面（含唱片、封面和唱臂）。播放时带有 `playing` class |
+| `tonearm` | 唱片的唱臂 |
+| `layout-editor` | 编辑布局时的设置面板 |
 | `video` | 视频画面区域 |
 | `subtitles` | 视频字幕 |
 | `lyrics-page` | 歌词页 |
@@ -180,6 +187,7 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 | `data-media` | `audio` / `video` / `none` | 正在播放的媒体类型 |
 | `data-player-style` | `classic` / `flow` | 音频播放页样式 |
 | `data-fullscreen` | `true` / `false` | 是否全屏 |
+| `data-player-layout` | `classic` / `free` | 经典样式的播放页用的是默认布局，还是自由布局（内置的唱片布局、用户或插件的布局） |
 <!-- /root-attrs -->
 
 例如只在深色模式的歌词页生效：
@@ -372,11 +380,78 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 - 变量写在 `:root` 上，在插件样式表之后生成，所以可以在 CSS 中直接使用。最好再给一个后备值，例如 `var(--mt-cover, 320px)`。
 - 用户的选项值保存在 App 中。插件更新后，如果原来的值不再有效（超出范围、选项被删除），会使用新的默认值。
 
+## 播放页布局（layouts）
+
+除了用 CSS 调整，插件还可以提供完整的**播放页布局**：封面（方形或唱片形）、歌名、歌手、专辑、标签、歌词预览放在哪里、多大、什么样式、换歌时怎样入场，还可以加上文字、图片、时钟、进度条或进度环、播放时间。启用插件后，布局出现在播放页右上角的 **布局** 菜单中（“来自插件”一组），用户可以选用，也可以在它的基础上编辑、另存为自己的布局。
+
+**最简单的做法是在 App 里做好再导出**：播放页右上角 **布局 > 编辑布局…**，拖动元素、在右侧面板中调整，点“完成”保存；然后 **布局 > 导出为插件…**，得到的 `.lpplugin` 就是一个只含这个布局（和它用到的图片）的插件，可以直接分享，也可以解压后加上 CSS、改名再发布。
+
+布局文件是 JSON：
+
+```json
+{
+  "name": "复古唱机",
+  "elements": [
+    { "id": "cover", "kind": "cover", "x": 50, "y": 44, "w": 62,
+      "cover": { "shape": "vinyl", "spin": true, "speed": 20, "arm": true, "grooves": true, "label": 66, "shadow": true, "radius": 4 },
+      "enter": { "type": "zoom", "duration": 700, "delay": 0 } },
+    { "id": "title", "kind": "title", "x": 50, "y": 83, "w": 90, "text": { "size": 4.2, "weight": 700 } },
+    { "id": "now", "kind": "text", "x": 50, "y": 6, "w": 60, "content": "正在播放：{artist}", "text": { "size": 1.8, "spacing": 0.3 } },
+    { "id": "logo", "kind": "image", "x": 8, "y": 8, "w": 10, "src": "images/logo.svg" }
+  ]
+}
+```
+
+**坐标与单位**：`x`、`y` 是元素中心在播放区域中的位置，单位是百分比（0–100，可以略超出）；`w`（宽度）和文字大小的单位是 **u**，1u 等于播放区域短边的 1%。所以布局在任何窗口大小下都保持比例。元素按数组顺序叠放，后面的在上层。
+
+**元素类型**（`kind`）：
+
+<!-- layout-kinds -->
+| kind | 说明 |
+| --- | --- |
+| `cover` | 封面，`cover.shape` 为 `square`（方形）或 `vinyl`（唱片）。点击打开歌词页 |
+| `title` | 歌名。点击打开歌词页 |
+| `artist` | 歌手 |
+| `album` | 专辑 |
+| `chips` | 标签：格式、播放方式、AI 歌词、评论数 |
+| `lyric` | 歌词预览（当前句，`next` 为 true 时加上下一句） |
+| `text` | 自定义文字 `content`，可包含 `{title}` `{artist}` `{album}` `{elapsed}` `{duration}` `{remaining}` `{time}` `{date}` |
+| `image` | 图片 `src`：插件文件夹内的相对路径（png / jpg / webp / gif / svg），或 `data:image/…` |
+| `clock` | 时钟，`clock` 为 `HH:mm` / `HH:mm:ss` / `date` / `datetime` |
+| `progress` | 播放进度，`progress.style` 为 `bar`（进度条，可点击跳转）或 `ring`（圆环） |
+| `time` | 播放时间，`time` 为 `elapsed` / `remaining` / `both` |
+<!-- /layout-kinds -->
+
+`cover`、`title`、`artist`、`album`、`chips`、`lyric` 每种只能有一个，缺少的会自动补上并隐藏；其余类型可以有多个（最多共 60 个元素）。每个元素都有唯一的 `id`（字母、数字、`-`、`_`）。
+
+**通用字段**：
+
+| 字段 | 说明 |
+| --- | --- |
+| `x` / `y` | 中心位置，百分比 |
+| `w` | 宽度，u |
+| `rotate` | 旋转角度 |
+| `opacity` | 不透明度 0–1 |
+| `hidden` | 隐藏 |
+| `enter` | 换歌时的入场动画：`type` 为 `none` / `fade` / `up` / `down` / `left` / `right` / `zoom` / `blur`，`duration`、`delay` 单位为毫秒 |
+| `text` | 文字样式（文字类元素）：`size`（u）、`weight`（100–900）、`color`（`#RRGGBB`，`null` 为跟随主题）、`font`（空为默认，`serif` / `rounded` / `mono`，或字体名称）、`italic`、`shadow`、`spacing`（字间距，em）、`align`（`left` / `center` / `right`） |
+| `cover` | 封面：`shape`、`radius`（方形的圆角，宽度的百分比）、`shadow`；唱片另有 `spin`（播放时旋转）、`speed`（转一圈的秒数）、`arm`（唱臂）、`grooves`（纹路与光泽）、`label`（封面占唱片直径的百分比） |
+| `progress` | `style`、`thickness`（u）、`color`（`null` 为主题色） |
+
+其余字段会被忽略，超出范围的数值会被限制在范围内。完整格式见 [`layout.schema.json`](layout.schema.json)。
+
+布局中的元素也可以用 CSS 进一步调整，例如：
+
+```css
+[data-lp="layout-item"][data-kind="text"] { text-transform: uppercase; }
+[data-lp="vinyl"] .vinyl-label { filter: saturate(1.2); }  /* 内部 class 不保证稳定 */
+```
+
 ## 规则与限制
 
 App 在安装和加载插件时会检查以下规则，不符合的插件无法启用，设置中会显示具体原因。
 
-1. **只有声明式内容**。可以包含 CSS、字体、图片和 JSON。插件中的其他文件不会被使用。
+1. **只有声明式内容**。可以包含 CSS、字体、图片和 JSON（文字替换表、布局）。插件中的其他文件不会被使用。
 2. **不引用外部资源**。CSS 中不能出现指向插件文件夹以外的地址，包括 `http:`、`https:`、`//` 开头的地址、`file:` 等，`@import` 也不行。只允许相对路径和 `data:`。这样插件不能联网追踪用户，也能离线使用。
 3. **路径限制**。路径必须是插件文件夹内的相对路径：用 `/` 分隔，不能包含 `..`，不能以 `/` 开头，插件中不能包含符号链接。
 4. **大小限制**。单个 CSS 不超过 1 MB；整个插件不超过 30 MB、1000 个文件。
@@ -420,10 +495,11 @@ LightPlayer 的源码仓库中自带浏览器预览（`pnpm dev`），会列出 
 
 ## 示例插件
 
-仓库的 [`examples/plugins`](../../examples/plugins) 中有三个示例。每个 Release 也附带它们打包好的 `.lpplugin`：
+仓库的 [`examples/plugins`](../../examples/plugins) 中有四个示例。每个 Release 也附带它们打包好的 `.lpplugin`：
 
 | 示例 | 演示内容 |
 | --- | --- |
 | [`example.minimal-player`](../../examples/plugins/example.minimal-player) 极简播放页 | 改变布局：封面在上、隐藏标签、精简播放栏；`select` / `range` / `toggle` 选项 |
 | [`example.serif-lyrics`](../../examples/plugins/example.serif-lyrics) 宋体歌词 | 改变歌词页的字体与样式：当前行发光；`config` 调整歌词对齐和字号；`color` 选项 |
 | [`example.english-ui`](../../examples/plugins/example.english-ui) English UI | 用 `strings.json` 把主要界面文字换成英文，包括占位符用法 |
+| [`example.retro-turntable`](../../examples/plugins/example.retro-turntable) 复古唱机 | 播放页布局：唱片、进度环、时钟、自定义文字和图片，再用 CSS 微调布局中的元素 |

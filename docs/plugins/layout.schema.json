@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/2001020/LightPlayer/HEAD/docs/plugins/layout.schema.json",
+  "title": "LightPlayer player page layout",
+  "description": "插件 layouts 中列出的播放页布局文件。说明见 docs/plugins/README.md 的“播放页布局”。",
+  "type": "object",
+  "required": ["name", "elements"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "description": "在“布局”菜单中显示的名称"
+    },
+    "elements": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 60,
+      "items": {
+        "$ref": "#/$defs/element"
+      },
+      "description": "按叠放顺序排列，后面的在上层"
+    }
+  },
+  "$defs": {
+    "color": {
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+    },
+    "element": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+        },
+        "kind": {
+          "enum": [
+            "cover",
+            "title",
+            "artist",
+            "album",
+            "chips",
+            "lyric",
+            "text",
+            "image",
+            "clock",
+            "progress",
+            "time"
+          ]
+        },
+        "x": {
+          "type": "number",
+          "minimum": -50,
+          "maximum": 150,
+          "description": "中心的横向位置（播放区域宽度的百分比）"
+        },
+        "y": {
+          "type": "number",
+          "minimum": -50,
+          "maximum": 150,
+          "description": "中心的纵向位置（播放区域高度的百分比）"
+        },
+        "w": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 400,
+          "description": "宽度，单位 u（播放区域短边的 1%）"
+        },
+        "rotate": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "enter": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "none",
+                "fade",
+                "up",
+                "down",
+                "left",
+                "right",
+                "zoom",
+                "blur"
+              ]
+            },
+            "duration": {
+              "type": "number",
+              "minimum": 100,
+              "maximum": 5000,
+              "description": "毫秒"
+            },
+            "delay": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000,
+              "description": "毫秒"
+            }
+          },
+          "additionalProperties": false
+        },
+        "text": {
+          "type": "object",
+          "properties": {
+            "size": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 40,
+              "description": "字号，单位 u"
+            },
+            "weight": {
+              "type": "number",
+              "minimum": 100,
+              "maximum": 900
+            },
+            "color": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "font": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "空为默认；serif / rounded / mono；或字体名称"
+            },
+            "italic": {
+              "type": "boolean"
+            },
+            "shadow": {
+              "type": "boolean"
+            },
+            "spacing": {
+              "type": "number",
+              "minimum": -0.2,
+              "maximum": 1,
+              "description": "字间距，单位 em"
+            },
+            "align": {
+              "enum": ["left", "center", "right"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "cover": {
+          "type": "object",
+          "properties": {
+            "shape": {
+              "enum": ["square", "vinyl"]
+            },
+            "radius": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 50
+            },
+            "shadow": {
+              "type": "boolean"
+            },
+            "spin": {
+              "type": "boolean"
+            },
+            "speed": {
+              "type": "number",
+              "minimum": 2,
+              "maximum": 120,
+              "description": "转一圈的秒数"
+            },
+            "arm": {
+              "type": "boolean"
+            },
+            "grooves": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "number",
+              "minimum": 30,
+              "maximum": 90,
+              "description": "封面占唱片直径的百分比"
+            }
+          },
+          "additionalProperties": false
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "src": {
+          "type": "string",
+          "description": "插件文件夹内的图片路径，或 data:image/…"
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "clock": {
+          "enum": ["HH:mm", "HH:mm:ss", "date", "datetime"]
+        },
+        "time": {
+          "enum": ["elapsed", "remaining", "both"]
+        },
+        "next": {
+          "type": "boolean"
+        },
+        "progress": {
+          "type": "object",
+          "properties": {
+            "style": {
+              "enum": ["bar", "ring"]
+            },
+            "thickness": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 20
+            },
+            "color": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

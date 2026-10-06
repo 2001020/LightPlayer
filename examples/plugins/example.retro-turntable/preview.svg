@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
+  <rect width="160" height="120" rx="10" fill="#e9efe6"/>
+  <circle cx="52" cy="62" r="40" fill="none" stroke="#66ccff" stroke-width="2" stroke-dasharray="180 260" transform="rotate(-90 52 62)"/>
+  <circle cx="52" cy="62" r="36" fill="#141416"/>
+  <circle cx="52" cy="62" r="34" fill="none" stroke="#2a2a2e" stroke-width="0.6"/>
+  <circle cx="52" cy="62" r="29" fill="none" stroke="#2a2a2e" stroke-width="0.6"/>
+  <circle cx="52" cy="62" r="20" fill="#5bbf7a"/>
+  <circle cx="52" cy="62" r="1.8" fill="#141416"/>
+  <path d="M70 14 C 74 20 80 28 82 36" fill="none" stroke="#f3f3f5" stroke-width="2.4" stroke-linecap="round"/>
+  <rect x="79" y="35" width="6" height="8" rx="1" fill="#f3f3f5" transform="rotate(-30 82 39)"/>
+  <circle cx="70" cy="14" r="4" fill="#f3f3f5"/>
+  <circle cx="18" cy="22" r="9" fill="#f2c94c" stroke="#1c1c1e" stroke-width="1.2"/>
+  <rect x="100" y="40" width="44" height="7" rx="3" fill="#1c1c1e"/>
+  <rect x="100" y="52" width="30" height="5" rx="2.5" fill="#8a8f88"/>
+  <rect x="100" y="66" width="40" height="4" rx="2" fill="#b4b9b1"/>
+  <rect x="100" y="74" width="34" height="4" rx="2" fill="#c9cdc6"/>
+  <text x="148" y="16" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#8a8f88">20:46</text>
+</svg>

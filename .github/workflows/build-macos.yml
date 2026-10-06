@@ -358,7 +358,7 @@ jobs:
           ls -la
           test -f "LightPlayer_${ver}_aarch64.dmg"
           test -f "LightPlayer_${ver}_x64-setup.exe"
-          test "$(ls *.lpplugin | wc -l)" -eq 3
+          test "$(ls *.lpplugin | wc -l)" -eq 4
       - name: Replace an existing release
         if: github.event_name == 'workflow_dispatch' && inputs.replace
         env:

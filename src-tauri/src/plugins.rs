@@ -88,7 +88,7 @@ fn rel_path(s: &str) -> Result<PathBuf, String> {
 }
 
 /// The file a manifest path names, which must exist and stay inside `dir`.
-fn plugin_file(dir: &Path, s: &str, exts: &[&str]) -> Result<PathBuf, String> {
+pub fn plugin_file(dir: &Path, s: &str, exts: &[&str]) -> Result<PathBuf, String> {
     let rel = rel_path(s)?;
     let ext = rel.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
     if !exts.contains(&ext.as_str()) {
@@ -409,6 +409,14 @@ pub fn validate_dir(dir: &Path) -> Result<Value, String> {
     if let Some(o) = m.get("options") {
         check_options(o)?;
     }
+    if let Some(layouts) = m.get("layouts") {
+        let list = layouts.as_array().filter(|l| l.len() <= 10).ok_or("layouts 应为最多 10 个文件的数组")?;
+        for l in list {
+            let s = l.as_str().ok_or("layouts 中应为文件路径")?;
+            let path = plugin_file(dir, s, &["json"])?;
+            crate::layouts::check_plugin_layout(dir, &path, s)?;
+        }
+    }
     Ok(v)
 }
 
@@ -678,7 +686,7 @@ mod tests {
             assert_eq!(m["id"].as_str(), e.file_name().to_str(), "folder name = id");
             n += 1;
         }
-        assert_eq!(n, 3);
+        assert_eq!(n, 4);
     }
 
     fn zip_file(path: &Path, entries: &[(&str, &str)]) {

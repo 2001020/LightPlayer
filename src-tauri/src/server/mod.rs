@@ -27,6 +27,8 @@ pub struct ServerState {
     pub thumbs: PathBuf,
     /// Installed plugins (`/plugin/{id}/{path}`).
     pub plugins: PathBuf,
+    /// Pictures added to player layouts (`/asset/{name}`).
+    pub assets: PathBuf,
     /// For `/remote` (online music streams and covers).
     pub http: reqwest::Client,
 }
@@ -76,14 +78,14 @@ pub fn urlencode(s: &str) -> String {
     out
 }
 
-pub async fn start(hls: Arc<HlsManager>, thumbs: PathBuf, plugins: PathBuf) -> std::io::Result<ServerInfo> {
+pub async fn start(hls: Arc<HlsManager>, thumbs: PathBuf, plugins: PathBuf, assets: PathBuf) -> std::io::Result<ServerInfo> {
     let token = format!("{:032x}", rand::random::<u128>());
     let http = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15")
         .build()
         .map_err(std::io::Error::other)?;
-    let state = ServerState { token: token.clone(), hls, thumbs, plugins, http };
+    let state = ServerState { token: token.clone(), hls, thumbs, plugins, assets, http };
     let app = Router::new()
         .route("/{token}/file", get(file_handler))
         .route("/{token}/hls/{id}/{name}", get(hls_handler))
@@ -91,6 +93,7 @@ pub async fn start(hls: Arc<HlsManager>, thumbs: PathBuf, plugins: PathBuf) -> s
         .route("/{token}/thumb", get(thumb_handler))
         .route("/{token}/remote", get(remote_handler))
         .route("/{token}/plugin/{id}/{*path}", get(plugin_handler))
+        .route("/{token}/asset/{name}", get(asset_handler))
         .layer(middleware::from_fn(cors))
         .with_state(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
@@ -192,6 +195,19 @@ async fn plugin_handler(
     let mut r = range::serve_file(file, &headers).await;
     // Edited plugins show up on "reload" without restarting the app.
     r.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+    r
+}
+
+/// A picture added to a player layout. Named by its content, so it never changes.
+async fn asset_handler(State(st): State<ServerState>, AxPath((token, name)): AxPath<(String, String)>, headers: HeaderMap) -> Response {
+    if token != st.token {
+        return forbidden();
+    }
+    let Some(file) = crate::layouts::asset_file(&st.assets, &name) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let mut r = range::serve_file(file, &headers).await;
+    r.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("max-age=31536000, immutable"));
     r
 }
 
@@ -337,7 +353,10 @@ mod tests {
         std::fs::create_dir_all(plugins.join("com.test.p/css")).unwrap();
         std::fs::write(plugins.join("com.test.p/css/a.css"), "a{}").unwrap();
         std::fs::write(dir.path().join("secret.txt"), "x").unwrap();
-        let info = start(hls.clone(), dir.path().join("thumbs"), plugins).await.unwrap();
+        let assets = dir.path().join("assets");
+        std::fs::create_dir_all(&assets).unwrap();
+        std::fs::write(assets.join("0123456789abcdef0123456789abcdef.png"), "png").unwrap();
+        let info = start(hls.clone(), dir.path().join("thumbs"), plugins, assets).await.unwrap();
         let client = reqwest::Client::new();
 
         // Plugin files, and nothing outside the plugin's folder.
@@ -348,6 +367,14 @@ mod tests {
         assert_eq!(r.text().await.unwrap(), "a{}");
         for bad in ["com.test.p/..%2F..%2Fsecret.txt", "com.test.p/css/..%2F..%2F..%2Fsecret.txt", "..%2F/secret.txt", "com.test.p/missing.css"] {
             let r = client.get(format!("{}/plugin/{bad}", info.base())).send().await.unwrap();
+            assert_ne!(r.status(), 200, "{bad}");
+        }
+        // Layout pictures by name only.
+        let r = client.get(format!("{}/asset/0123456789abcdef0123456789abcdef.png", info.base())).send().await.unwrap();
+        assert_eq!(r.status(), 200);
+        assert_eq!(r.headers()["content-type"], "image/png");
+        for bad in ["..%2Fplugins%2Fcom.test.p%2Fcss%2Fa.css", "0123456789abcdef0123456789abcdef.css", "missing.png"] {
+            let r = client.get(format!("{}/asset/{bad}", info.base())).send().await.unwrap();
             assert_ne!(r.status(), 200, "{bad}");
         }
 

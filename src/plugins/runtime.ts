@@ -6,6 +6,8 @@
 import { isTauri, on, pluginBaseUrl, type PluginManifest } from "../lib/ipc";
 import { PLUGINS_CHANGED, WINDOW_TOKEN, refreshPlugins, setPluginError, usable, usePlugins } from "../stores/plugins";
 import { optionEffects } from "./manifest";
+import { checkLayout, type PlayerLayout } from "../layout/model";
+import { setPluginLayouts } from "../stores/layout";
 import { TextReplacer } from "./text";
 
 const LINK_ATTR = "data-plugin";
@@ -21,6 +23,8 @@ let classes: string[] = [];
 let stylesKey = "";
 let stringsKey = "";
 let generation = 0;
+let layoutsKey = "";
+let layoutGeneration = 0;
 
 function styleEl(name: string): HTMLStyleElement {
   let el = document.head.querySelector<HTMLStyleElement>(`style[${LINK_ATTR}="${name}"]`);
@@ -110,6 +114,32 @@ async function applyStrings(active: Active[], rev: number) {
   replacer.set(Object.keys(merged).length ? merged : null);
 }
 
+/** Player page layouts the plugins ship (`layouts`), offered in the layout menu. */
+async function applyLayouts(active: Active[], rev: number) {
+  // Only the main window has a player page. (Writing the layout store from the
+  // desktop lyrics window would also save its stale copy of the user's layouts.)
+  if (document.documentElement.dataset.window !== "main") return;
+  const key = JSON.stringify([rev, active.map((a) => [a.id, a.manifest.layouts])]);
+  if (key === layoutsKey) return;
+  layoutsKey = key;
+  const gen = ++layoutGeneration;
+  const out: PlayerLayout[] = [];
+  for (const a of active) {
+    for (const [i, file] of (a.manifest.layouts ?? []).entries()) {
+      try {
+        const r = await fetch(fileUrl(a.base, file, rev));
+        if (!r.ok) throw new Error(String(r.status));
+        const l = checkLayout(await r.json(), "", a.id);
+        if (!l) throw new Error("invalid");
+        out.push({ ...l, id: `plugin:${a.id}:${i}` });
+      } catch {
+        setPluginError(a.id, `无法加载布局 ${file}`);
+      }
+    }
+  }
+  if (gen === layoutGeneration) setPluginLayouts(out);
+}
+
 async function apply() {
   const s = usePlugins.getState();
   const ids = s.safeMode || !s.installed ? [] : s.enabled;
@@ -119,7 +149,7 @@ async function apply() {
     if (usable(entry)) active.push({ id, manifest: entry.manifest, base: await pluginBaseUrl(id) });
   }
   applyStyles(active, s.rev);
-  await applyStrings(active, s.rev);
+  await Promise.all([applyStrings(active, s.rev), applyLayouts(active, s.rev)]);
 }
 
 let started = false;

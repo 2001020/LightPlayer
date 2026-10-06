@@ -149,6 +149,7 @@ function PluginCard({ p, index, count }: { p: PluginEntry; index: number; count:
             </div>
           )}
           {enabled && config.length > 0 && <div className="plugin-note muted">启用时调整了 {config.length} 项设置，停用后会恢复（你之后手动改过的除外）</div>}
+          {enabled && (m?.layouts?.length ?? 0) > 0 && <div className="plugin-note muted">提供 {m!.layouts!.length} 个播放页布局，在播放页右上角的“布局”菜单中选用</div>}
         </div>
         <div className="plugin-actions">
           {enabled && count > 1 && (

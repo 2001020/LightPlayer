@@ -26,6 +26,7 @@ import { LyricsPage } from "./pages/LyricsPage";
 import { PlayerPage } from "./pages/PlayerPage";
 import { usePlayer, useUI } from "./stores/player";
 import { useSettings } from "./stores/settings";
+import { activeLayout, useLayouts } from "./stores/layout";
 
 function Toasts() {
   const toasts = useUI((s) => s.toasts);
@@ -72,6 +73,7 @@ export default function App() {
   const commentsOpen = useUI((s) => s.commentsOpen);
   const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive;
   const playerStyle = useSettings((s) => s.playerStyle);
+  const freeLayout = useLayouts((s) => !activeLayout(s).classic || !!s.draft);
 
   // State plugins can style by (see docs/plugins/README.md).
   useEffect(() => {
@@ -80,7 +82,8 @@ export default function App() {
     root.media = media?.kind ?? "none";
     root.playerStyle = playerStyle;
     root.fullscreen = fullscreen ? "true" : "false";
-  }, [showLyrics, showLibrary, media?.kind, playerStyle, fullscreen]);
+    root.playerLayout = playerStyle === "classic" && freeLayout ? "free" : "classic";
+  }, [showLyrics, showLibrary, media?.kind, playerStyle, fullscreen, freeLayout]);
 
   return (
     <div className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""}`}>

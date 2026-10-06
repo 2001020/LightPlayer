@@ -6,6 +6,7 @@ mod library;
 mod lyrics;
 mod media;
 mod netease;
+mod layouts;
 mod plugins;
 mod nowplaying;
 mod file_assoc;
@@ -36,6 +37,8 @@ pub struct AppState {
     pub data_dir: PathBuf,
     pub models_dir: PathBuf,
     pub plugins_dir: PathBuf,
+    /// Pictures added to player layouts.
+    pub assets_dir: PathBuf,
     pub probes: Mutex<HashMap<String, Probe>>,
     pub pending_open: Mutex<Vec<String>>,
     pub frontend_ready: AtomicBool,
@@ -111,7 +114,8 @@ pub fn run() {
             let plugins_dir = data_dir.join("plugins");
             std::fs::create_dir_all(&plugins_dir)?;
             let hls = Arc::new(HlsManager::new(&cache_dir));
-            let server = tauri::async_runtime::block_on(server::start(hls.clone(), library::thumb::thumbs_dir(&cache_dir), plugins_dir.clone()))?;
+            let assets_dir = data_dir.join("layout-assets");
+            let server = tauri::async_runtime::block_on(server::start(hls.clone(), library::thumb::thumbs_dir(&cache_dir), plugins_dir.clone(), assets_dir.clone()))?;
             let cwd = std::env::current_dir().unwrap_or_default();
             let mut pending = file_args(std::env::args().skip(1), &cwd);
             pending.append(&mut EARLY_OPEN.lock().unwrap());
@@ -125,6 +129,7 @@ pub fn run() {
                 data_dir,
                 models_dir,
                 plugins_dir,
+                assets_dir,
                 probes: Mutex::new(HashMap::new()),
                 pending_open: Mutex::new(pending),
                 frontend_ready: AtomicBool::new(false),
@@ -206,6 +211,8 @@ pub fn run() {
             commands::plugin_install,
             commands::plugin_remove,
             commands::plugins_open_dir,
+            commands::layout_asset_add,
+            commands::layout_export,
             commands::app_info,
             commands::update_check,
             commands::update_download,

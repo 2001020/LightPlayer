@@ -1,24 +1,20 @@
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 import * as C from "../core/controller";
 import { engine } from "../core/player/engine";
-import { findActiveCue, findLineIndex, spokenLines } from "../core/lyrics/lrc";
+import { findActiveCue } from "../core/lyrics/lrc";
 import { Icon } from "../components/Icon";
 import { PlaylistPanel, togglePlaylist, usePlaylistLayout, usePlaylistShown } from "../components/PlaylistPanel";
 import { tip } from "../components/Tooltip";
 import { toggleFullscreen } from "../components/TransportBar";
 import { CoverFlow } from "../components/CoverFlow";
-import { CommentsChip } from "../components/CommentsPanel";
+import { LyricPeek, STRATEGY_LABEL, TrackChips } from "../components/NowPlayingParts";
 import { basename } from "../lib/format";
-import { useLyrics, usePlayer, useSubtitles, useUI } from "../stores/player";
+import { usePlayer, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
 import { keys } from "../lib/platform";
-
-const STRATEGY_LABEL: Record<string, string> = {
-  direct: "",
-  audioTranscode: "实时转换播放",
-  hlsRemux: "转封装播放",
-  hlsTranscode: "实时转码播放",
-};
+import { FreeLayout } from "../layout/FreeLayout";
+import { LayoutEditor, LayoutMenu } from "../layout/LayoutEditor";
+import { useActiveLayout, useLayouts } from "../stores/layout";
 
 function EmptyState() {
   const recent = useSettings((s) => s.recent);
@@ -58,63 +54,11 @@ function EmptyState() {
   );
 }
 
-interface PeekLine {
-  key: string;
-  cur: string;
-  next: string;
-  leaving: boolean;
-}
-
-/**
- * Current and next lyric line. The box has a fixed size so changing lines
- * never moves the cover or the song info; lines slide and fade in and out.
- */
-function LyricPeek() {
-  const lyrics = useLyrics((s) => s.lyrics);
-  const position = usePlayer((s) => s.position);
-  const media = usePlayer((s) => s.media);
-  const offset = useSettings((s) => (media ? s.lyricOffsets[media.path] ?? 0 : 0));
-  const synced = !!lyrics?.synced;
-  const said = synced ? spokenLines(lyrics!.lines) : [];
-  const i = synced ? findLineIndex(said, position + offset) : -1;
-  // Before the first line only the upcoming one is shown.
-  const cur = said[i]?.text || said[i]?.translation || "";
-  const next = said[i + 1]?.text || said[i + 1]?.translation || "";
-  const key = `${media?.path}|${i}`;
-  const [lines, setLines] = useState<PeekLine[]>([]);
-  useEffect(() => {
-    if (!synced) {
-      setLines([]);
-      return;
-    }
-    setLines((prev) => {
-      if (prev[0]?.key === key) return prev;
-      return [{ key, cur, next, leaving: false }, ...prev.filter((l) => !l.leaving).slice(0, 1).map((l) => ({ ...l, leaving: true }))];
-    });
-    const t = window.setTimeout(() => setLines((prev) => prev.filter((l) => !l.leaving)), 450);
-    return () => clearTimeout(t);
-  }, [key, cur, next, synced]);
-  if (!synced) return null;
-  return (
-    <div className="lyric-peek" data-lp="lyric-peek" data-lp-raw onClick={() => useUI.setState({ page: "lyrics" })}>
-      {lines.map((l) => (
-        <div key={l.key} className={`peek-line ${l.leaving ? "out" : "in"}`} data-lp="lyric-peek-line">
-          {l.cur && <span className="cur">{l.cur}</span>}
-          {l.next && <span className="next">{l.next}</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function AudioNowPlaying() {
   const media = usePlayer((s) => s.media)!;
   const playing = usePlayer((s) => s.playing);
-  const origin = useLyrics((s) => s.origin);
-  const status = useLyrics((s) => s.status);
   const meta = media.meta ?? {};
   const toLyrics = () => useUI.setState({ page: "lyrics" });
-  const strat = STRATEGY_LABEL[media.strategy];
   return (
     <div className="now-playing" data-lp="now-playing">
       <div className={`cover ${playing ? "" : "paused"}`} data-lp="cover" onClick={toLyrics}>
@@ -141,13 +85,7 @@ function AudioNowPlaying() {
             {meta.album}
           </div>
         )}
-        <div className="chips" data-lp="chips">
-          <span className="chip">{media.fileName.split(".").pop()?.toUpperCase()}</span>
-          {strat && <span className="chip accent">{strat}</span>}
-          {status === "loaded" && origin === "ai" && <span className="chip">AI 歌词</span>}
-          {status === "loaded" && origin === "ai_reviewed" && <span className="chip">AI 歌词（已校对）</span>}
-          <CommentsChip />
-        </div>
+        <TrackChips />
         <LyricPeek />
       </div>
     </div>
@@ -253,18 +191,27 @@ export function PlayerPage() {
   const shown = usePlaylistShown();
   const showList = !!media && shown && layout === "side";
   const style = useSettings((s) => s.playerStyle);
+  const free = useActiveLayout();
+  const audio = media?.kind === "audio";
+  const editing = useLayouts((s) => !!s.draft) && audio && style !== "flow";
   return (
     <div className={`player-page ${showList ? "with-list" : ""}`} data-lp="player">
-      <div className={`stage ${media?.kind === "video" ? "is-video" : ""}`}>
-        <BackButton />
+      <div className={`stage ${media?.kind === "video" ? "is-video" : ""} ${editing ? "layout-editing" : ""}`}>
+        {!editing && <BackButton />}
         {!media && !loading && <EmptyState />}
         {!media && loading && (
           <div className="empty">
             <div className="spinner dark" />
           </div>
         )}
-        {media?.kind === "audio" && <StyleToggle />}
-        {media?.kind === "audio" && (style === "flow" ? <CoverFlow peek={<LyricPeek />} /> : <AudioNowPlaying />)}
+        {audio && !editing && (
+          <div className="stage-tools">
+            {style !== "flow" && <LayoutMenu />}
+            <StyleToggle />
+          </div>
+        )}
+        {audio && (style === "flow" ? <CoverFlow peek={<LyricPeek />} /> : free.classic ? <AudioNowPlaying /> : <FreeLayout layout={free} editing={editing} />)}
+        {editing && <LayoutEditor />}
         {media?.kind === "video" && <VideoStage />}
         {media && !shown && <PlaylistHandle />}
       </div>

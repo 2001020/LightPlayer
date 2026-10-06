@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/2001020/LightPlayer/HEAD/docs/plugins/layout.schema.json",
+  "name": "复古唱机",
+  "elements": [
+    { "id": "rt-ring", "kind": "progress", "x": 31, "y": 52, "w": 71, "progress": { "style": "ring", "thickness": 0.45, "color": null } },
+    { "id": "cover", "kind": "cover", "x": 31, "y": 52, "w": 66,
+      "cover": { "shape": "vinyl", "spin": true, "speed": 12, "arm": true, "grooves": true, "label": 58, "shadow": true },
+      "enter": { "type": "zoom", "duration": 800, "delay": 0 } },
+    { "id": "rt-badge", "kind": "image", "x": 9, "y": 19, "w": 13, "rotate": -14, "src": "images/badge.svg",
+      "enter": { "type": "fade", "duration": 600, "delay": 400 } },
+    { "id": "rt-now", "kind": "text", "x": 75, "y": 25, "w": 52, "content": "Now playing",
+      "text": { "size": 1.6, "weight": 600, "spacing": 0.32, "align": "left" } },
+    { "id": "title", "kind": "title", "x": 75, "y": 33.5, "w": 52,
+      "text": { "size": 5.2, "weight": 800, "align": "left" },
+      "enter": { "type": "right", "duration": 650, "delay": 60 } },
+    { "id": "artist", "kind": "artist", "x": 75, "y": 42, "w": 52,
+      "text": { "size": 2.8, "align": "left" },
+      "enter": { "type": "right", "duration": 650, "delay": 140 } },
+    { "id": "album", "kind": "album", "x": 75, "y": 47, "w": 52,
+      "text": { "size": 2.1, "align": "left", "italic": true },
+      "enter": { "type": "right", "duration": 650, "delay": 200 } },
+    { "id": "chips", "kind": "chips", "x": 75, "y": 52, "w": 52, "hidden": true, "text": { "size": 1.8, "align": "left" } },
+    { "id": "lyric", "kind": "lyric", "x": 75, "y": 60, "w": 52, "next": true, "text": { "size": 2.6, "align": "left" } },
+    { "id": "rt-time", "kind": "time", "x": 75, "y": 71, "w": 52, "time": "both", "text": { "size": 1.8, "font": "mono", "align": "left" } },
+    { "id": "rt-clock", "kind": "clock", "x": 91, "y": 8, "w": 22, "clock": "HH:mm", "text": { "size": 2.4, "weight": 300, "align": "right" } }
+  ]
+}
