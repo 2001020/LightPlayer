@@ -4,8 +4,6 @@
 借助内置 **FFmpeg** 几乎支持所有音视频格式，并内置基于 **whisper.cpp** 的 **本地离线歌词识别**。
 使用Claude编写代码。
 
-详细设计见 [docs/PLAN.md](docs/PLAN.md)。
-
 ## 功能
 
 | 功能 | 说明 |
