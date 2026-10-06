@@ -1,14 +1,17 @@
 // Applies the enabled plugins to this window: their style sheets (linked after
 // the app's own, in cascade order), fonts, option variables and classes on
-// <html>, and string tables. Runs in the main and the desktop lyrics window;
-// only what changed is touched, so options update live.
+// <html>, and string tables (on top of the UI language's table). Runs in the
+// main and the desktop lyrics window; only what changed is touched, so options
+// and the language update live.
 
-import { isTauri, on, pluginBaseUrl, type PluginManifest } from "../lib/ipc";
+import { api, isTauri, on, pluginBaseUrl, type PluginManifest } from "../lib/ipc";
 import { PLUGINS_CHANGED, WINDOW_TOKEN, refreshPlugins, setPluginError, usable, usePlugins } from "../stores/plugins";
 import { optionEffects } from "./manifest";
 import { checkLayout, type PlayerLayout } from "../layout/model";
 import { setPluginLayouts } from "../stores/layout";
 import { TextReplacer } from "./text";
+import { isLangSetting, loadLocale, resolveLang, setActiveStrings, type Lang, type LangSetting } from "../i18n";
+import { useSettings } from "../stores/settings";
 
 const LINK_ATTR = "data-plugin";
 
@@ -101,17 +104,37 @@ async function loadStrings(a: Active, rev: number): Promise<Record<string, strin
   }
 }
 
+/** The language setting. Only the main window writes settings; the others read what it saved. */
+function langSetting(): LangSetting {
+  if (document.documentElement.dataset.window === "main") return useSettings.getState().language;
+  try {
+    const saved = JSON.parse(localStorage.getItem(useSettings.persist.getOptions().name!) ?? "{}")?.state?.language;
+    return isLangSetting(saved) ? saved : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+/** The menu bar / notification area menu, which the page's replacer cannot reach. */
+const TRAY_LABELS = ["未在播放", "播放", "暂停", "上一首", "下一首", "无痕浏览模式", "显示 LightPlayer", "退出 LightPlayer"];
+
 async function applyStrings(active: Active[], rev: number) {
-  const key = JSON.stringify([rev, active.map((a) => [a.id, a.manifest.strings])]);
+  const lang: Lang = resolveLang(langSetting());
+  const key = JSON.stringify([rev, lang, active.map((a) => [a.id, a.manifest.strings])]);
   if (key === stringsKey) return;
   stringsKey = key;
   const gen = ++generation;
-  const tables = await Promise.all(active.map((a) => loadStrings(a, rev)));
+  const [base, ...tables] = await Promise.all([loadLocale(lang), ...active.map((a) => loadStrings(a, rev))]);
   if (gen !== generation) return;
-  // Later plugins win, like their style sheets.
-  const merged: Record<string, string> = Object.assign({}, ...tables);
+  // Plugins win over the language, later plugins over earlier ones (like their style sheets).
+  const merged: Record<string, string> = Object.assign({}, base, ...tables);
+  const any = Object.keys(merged).length > 0;
+  setActiveStrings(lang, any ? merged : null);
   replacer ??= new TextReplacer(document.body);
-  replacer.set(Object.keys(merged).length ? merged : null);
+  replacer.set(any ? merged : null);
+  if (isTauri && document.documentElement.dataset.window === "main") {
+    void api.uiLanguage(lang, Object.fromEntries(TRAY_LABELS.map((k) => [k, (merged[k] ?? k).trim()]))).catch(() => {});
+  }
 }
 
 /** Player page layouts the plugins ship (`layouts`), offered in the layout menu. */
@@ -169,6 +192,11 @@ export function startPlugins() {
   usePlugins.subscribe((s, prev) => {
     if (s.enabled !== prev.enabled || s.options !== prev.options || s.installed !== prev.installed || s.safeMode !== prev.safeMode || s.rev !== prev.rev) schedule();
   });
+  useSettings.subscribe((s, prev) => {
+    if (s.language !== prev.language) schedule();
+  });
+  // "Same as the system": the system language changed.
+  window.addEventListener("languagechange", schedule);
   void refreshPlugins();
   // The other window changed something.
   const sync = async () => {
@@ -177,6 +205,8 @@ export function startPlugins() {
   };
   window.addEventListener("storage", (e) => {
     if (e.key === usePlugins.persist.getOptions().name) void sync();
+    // The main window changed the language.
+    else if (e.key === useSettings.persist.getOptions().name) schedule();
   });
   if (isTauri) void on<string>(PLUGINS_CHANGED, (from) => from !== WINDOW_TOKEN && void sync());
 }

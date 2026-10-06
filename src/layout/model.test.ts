@@ -94,7 +94,7 @@ describe("player layouts", () => {
     const f = { title: "晴天", artist: "周杰伦", album: "叶惠美", position: 65, duration: 269, now };
     expect(fillTemplate("{title} - {artist}《{album}》", f)).toBe("晴天 - 周杰伦《叶惠美》");
     expect(fillTemplate("{elapsed}/{duration} {remaining} {time} {nope}", f)).toBe("1:05/4:29 -3:24 09:05 {nope}");
-    expect(fillTemplate("{date}", f)).toBe("10月6日 星期二");
+    expect(fillTemplate("{date}", f)).toBe("10月6日星期二");
     expect(formatClock(now, "HH:mm:ss")).toBe("09:05:07");
     expect(formatTimeEl("both", 3725, 4000)).toBe("1:02:05 / 1:06:40");
   });

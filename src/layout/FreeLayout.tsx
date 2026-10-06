@@ -4,7 +4,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import * as C from "../core/controller";
 import { Icon } from "../components/Icon";
-import { LyricPeek, TrackChips, usePlaying, useProgress, useTrack } from "../components/NowPlayingParts";
+import { LyricPeek, SAMPLE_TRACK, TrackChips, usePlaying, useProgress, useTrack } from "../components/NowPlayingParts";
 import { tip } from "../components/Tooltip";
 import { ensureServerBase, layoutImageUrl } from "../lib/ipc";
 import { useUI } from "../stores/player";
@@ -189,24 +189,27 @@ function Picture({ e, editing }: { e: LayoutElement; editing: boolean }) {
 function Content({ e, editing }: { e: LayoutElement; editing: boolean }) {
   const media = useTrack();
   const meta = media?.meta ?? {};
+  // The song's own text is left untranslated; the sample's and placeholders are UI text.
+  const isSample = media === SAMPLE_TRACK;
+  const raw = (own: unknown) => (own && !isSample ? { "data-lp-raw": "" } : {});
   switch (e.kind) {
     case "cover":
       return <Cover e={e} editing={editing} />;
     case "title":
       return (
-        <div className="fl-title" data-lp="track-title" data-lp-raw onClick={editing ? undefined : toLyrics}>
+        <div className="fl-title" data-lp="track-title" {...raw(true)} onClick={editing ? undefined : toLyrics}>
           {meta.title || media?.name}
         </div>
       );
     case "artist":
       return meta.artist || editing ? (
-        <div className="fl-artist" data-lp="track-artist" data-lp-raw>
+        <div className="fl-artist" data-lp="track-artist" {...raw(meta.artist)}>
           {meta.artist || "歌手"}
         </div>
       ) : null;
     case "album":
       return meta.album || editing ? (
-        <div className="fl-album" data-lp="track-album" data-lp-raw>
+        <div className="fl-album" data-lp="track-album" {...raw(meta.album)}>
           {meta.album || "专辑"}
         </div>
       ) : null;

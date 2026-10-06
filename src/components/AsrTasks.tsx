@@ -10,6 +10,7 @@ import { Icon } from "./Icon";
 import { tip } from "./Tooltip";
 import { Thumb } from "./TrackTable";
 import { FILE_MANAGER } from "../lib/platform";
+import { locale, monthDay, relativeDay } from "../i18n";
 
 export const ASR_STAGES: Record<AsrTask["stage"], string> = {
   preparing: "准备中…",
@@ -24,9 +25,9 @@ function when(ts?: number): string {
   if (!ts) return "";
   const d = new Date(ts);
   const now = new Date();
-  const hm = d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-  if (d.toDateString() === now.toDateString()) return `今天 ${hm}`;
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`;
+  const hm = d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return `${relativeDay(0)} ${hm}`;
+  return `${monthDay(d)} ${hm}`;
 }
 
 function TaskRow({ task, first }: { task: AsrTask; first?: boolean }) {

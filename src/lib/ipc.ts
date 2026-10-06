@@ -437,6 +437,7 @@ export function kindOf(path: string): MediaKind | null {
 }
 
 // ------------------------------------------------------------------ browser mock
+// i18n-ignore-start: pretend data for the browser preview, not UI text.
 
 const browserFiles = new Map<string, File>();
 const browserUrls = new Map<string, string>();
@@ -956,6 +957,8 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
   }
 }
 
+// i18n-ignore-end
+
 function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   return isTauri ? invoke<T>(cmd, args) : mock<T>(cmd, args);
 }
@@ -1029,6 +1032,8 @@ export const api = {
   nowPlayingMetadata: (m: { title: string; artist?: string | null; album?: string | null; duration?: number | null; cover?: string | null }) =>
     call<void>("now_playing_metadata", m),
   nowPlayingState: (playing: boolean, position?: number) => call<void>("now_playing_state", { playing, position }),
+  /** The UI language and the menu bar menu's labels in it. */
+  uiLanguage: (lang: string, labels: Record<string, string>) => call<void>("ui_language", { lang, labels }),
   ffmpegAvailable: () => call<boolean>("ffmpeg_available"),
   setBackgroundPrefs: (runInBackground: boolean, showTitle: boolean, privateMode: boolean) =>
     call<void>("set_background_prefs", { runInBackground, showTitle, privateMode }),

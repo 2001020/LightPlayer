@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { PlayMode } from "../core/playlist/queue";
+import { isLangSetting, type LangSetting } from "../i18n";
 
 export type ThemeMode = "system" | "light" | "dark" | "weather";
 
@@ -56,6 +57,8 @@ export const NETEASE_QUALITIES: [NeteaseQuality, string][] = [
 ];
 
 export interface Settings {
+  /** UI language; "auto" follows the system. */
+  language: LangSetting;
   theme: ThemeMode;
   accent: string;
   dynamicAccent: boolean;
@@ -123,6 +126,7 @@ export const clampLyricSize = (v: number) => Math.min(LYRIC_SIZE_MAX, Math.max(L
 export const ACCENT_PRESETS = ["#66ccff", "#7c5cff", "#13ce66", "#ff7849", "#ff4d8d", "#f7b500", "#00b8a9", "#8e8e93"];
 
 export const defaultSettings: Settings = {
+  language: "auto",
   theme: "system",
   accent: ACCENT_PRESETS[0],
   dynamicAccent: false,
@@ -200,7 +204,7 @@ export const useSettings = create<SettingsStore>()(
     }),
     {
       name: "lightplayer-settings",
-      version: 5,
+      version: 6,
       migrate: (persisted, version) => {
         const p = (persisted ?? {}) as Partial<Settings> & { waveform?: unknown; waveformStyle?: unknown };
         // v2: default accent changed from purple to light blue.
@@ -208,6 +212,8 @@ export const useSettings = create<SettingsStore>()(
         // v4: the sound-wave animation was removed.
         delete p.waveform;
         delete p.waveformStyle;
+        // v6: UI languages. Whoever used the Chinese UI keeps it; new installs follow the system.
+        if (version < 6) p.language = "zh-Hans";
         return p as SettingsStore;
       },
       storage: createJSONStorage(() => {
@@ -227,6 +233,7 @@ export const useSettings = create<SettingsStore>()(
         return {
           ...current,
           ...p,
+          language: isLangSetting(p.language) ? p.language : current.language,
           asr: { ...current.asr, ...(p.asr ?? {}) },
           background: { ...current.background, ...(p.background ?? {}) },
           weather: { ...current.weather, ...(p.weather ?? {}) },

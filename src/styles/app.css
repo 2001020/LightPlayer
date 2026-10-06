@@ -1023,6 +1023,16 @@ input[type="range"] {
 .playlist-handle svg {
   margin-bottom: 2px;
 }
+.playlist-handle .handle-label {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 2px;
+}
+/* Latin text runs sideways, read from the top. */
+:root[lang="en"] .playlist-handle .handle-label {
+  text-orientation: mixed;
+  letter-spacing: 0.5px;
+}
 .playlist-handle:hover {
   opacity: 1;
   color: var(--text);

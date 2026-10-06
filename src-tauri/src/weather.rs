@@ -8,7 +8,26 @@
 
 use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
+use std::sync::RwLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+/// The UI language's code for place names ("zh", "en", "ja", "ko").
+static PLACE_LANG: RwLock<&'static str> = RwLock::new("zh");
+
+/// Place names follow the UI language (`zh-Hans`, `en`, …).
+pub fn set_language(ui: &str) {
+    let code = match ui {
+        "en" => "en",
+        "ja" => "ja",
+        "ko" => "ko",
+        _ => "zh",
+    };
+    *PLACE_LANG.write().unwrap() = code;
+}
+
+fn place_lang() -> &'static str {
+    *PLACE_LANG.read().unwrap()
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -225,7 +244,8 @@ struct Reverse {
 
 async fn place_name(client: &reqwest::Client, lat: f64, lon: f64) -> Option<String> {
     let url = format!(
-        "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat}&longitude={lon}&localityLanguage=zh"
+        "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat}&longitude={lon}&localityLanguage={}",
+        place_lang()
     );
     let r: Reverse = get_json(client, &url).await.map_err(|e| log::warn!("reverse geocode: {e}")).ok()?;
     [r.city, r.locality, r.subdivision].into_iter().flatten().find(|s| !s.trim().is_empty())
@@ -291,7 +311,7 @@ pub async fn search(query: &str) -> AppResult<Vec<CityHit>> {
     }
     let client = client()?;
     let mut url = reqwest::Url::parse("https://geocoding-api.open-meteo.com/v1/search").expect("static url");
-    url.query_pairs_mut().append_pair("name", q).append_pair("count", "8").append_pair("language", "zh").append_pair("format", "json");
+    url.query_pairs_mut().append_pair("name", q).append_pair("count", "8").append_pair("language", place_lang()).append_pair("format", "json");
     let resp = client.get(url).send().await?;
     if !resp.status().is_success() {
         return Err(AppError::msg(format!("城市搜索失败：HTTP {}", resp.status())));

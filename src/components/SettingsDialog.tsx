@@ -21,6 +21,7 @@ import { Row, Seg, Switch } from "./SettingsControls";
 import { tip } from "./Tooltip";
 import { UpdateSettings } from "./UpdateSettings";
 import { isWindows, keys, TRAY } from "../lib/platform";
+import { LANGS, locale, systemLang, type LangSetting } from "../i18n";
 
 type Tab = UIState["settingsTab"];
 
@@ -97,7 +98,7 @@ function WeatherOptions() {
   const error = useWeather((s) => s.error);
   const preview = useWeather((s) => s.preview);
   const busy = status === "locating" || status === "loading";
-  const time = (sec: number) => new Date(sec * 1000).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  const time = (sec: number) => new Date(sec * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
   let state: string;
   if (status === "locating") state = "正在定位…";
   else if (status === "loading") state = "正在获取天气…";
@@ -161,7 +162,7 @@ function Appearance() {
       if (p) s.setBackground({ path: p });
       return;
     }
-    const { open } = await import("@tauri-apps/plugin-dialog");
+    const { open } = await import("../lib/dialog");
     const res = await open({ multiple: false, filters: [{ name: "图片", extensions: ["jpg", "jpeg", "png", "webp", "gif", "heic", "bmp"] }] });
     if (typeof res === "string") {
       const stored = await api.importBackground(res).catch(() => res);
@@ -171,6 +172,16 @@ function Appearance() {
 
   return (
     <>
+      <Row label="语言" hint="界面文字的语言；歌词、歌名等内容不会翻译">
+        <select value={s.language} onChange={(e) => s.set({ language: e.target.value as LangSetting })}>
+          <option value="auto">跟随系统（{LANGS.find((l) => l.id === systemLang())?.name}）</option>
+          {LANGS.map((l) => (
+            <option key={l.id} value={l.id} data-lp-raw>
+              {l.name}
+            </option>
+          ))}
+        </select>
+      </Row>
       <h3>主题</h3>
       <Row label="外观模式">
         <Seg

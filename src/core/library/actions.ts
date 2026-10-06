@@ -231,7 +231,7 @@ export async function importFolderAsPlaylist(): Promise<string | undefined> {
     if (id) toast(`已导入 ${files.length} 个文件，并建立歌单“导入的文件夹”`, "success");
     return id;
   }
-  const { open } = await import("@tauri-apps/plugin-dialog");
+  const { open } = await import("../../lib/dialog");
   const dir = await open({ directory: true, multiple: false, title: "选择要导入为歌单的文件夹" });
   if (typeof dir !== "string") return undefined;
   toast("正在导入文件夹…");

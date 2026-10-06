@@ -7,7 +7,7 @@ import { PlaylistPanel, togglePlaylist, usePlaylistLayout, usePlaylistShown } fr
 import { tip } from "../components/Tooltip";
 import { toggleFullscreen } from "../components/TransportBar";
 import { CoverFlow } from "../components/CoverFlow";
-import { LyricPeek, STRATEGY_LABEL, TrackChips, usePlaying, useSample, useTrack } from "../components/NowPlayingParts";
+import { LyricPeek, SAMPLE_TRACK, STRATEGY_LABEL, TrackChips, usePlaying, useSample, useTrack } from "../components/NowPlayingParts";
 import { basename } from "../lib/format";
 import { usePlayer, useSubtitles, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
@@ -59,6 +59,8 @@ function AudioNowPlaying() {
   const playing = usePlaying();
   const meta = media.meta ?? {};
   const toLyrics = () => useUI.setState({ page: "lyrics" });
+  // The sample song's text is UI text, so it is translated.
+  const raw = media === SAMPLE_TRACK ? {} : { "data-lp-raw": "" };
   return (
     <div className="now-playing" data-lp="now-playing">
       <div className={`cover ${playing ? "" : "paused"}`} data-lp="cover" onClick={toLyrics}>
@@ -72,16 +74,16 @@ function AudioNowPlaying() {
         <div className="hint">点击查看歌词</div>
       </div>
       <div className="track-info" data-lp="track-info">
-        <div className="title" data-lp="track-title" data-lp-raw onClick={toLyrics} {...tip("查看歌词", "Y")}>
+        <div className="title" data-lp="track-title" {...raw} onClick={toLyrics} {...tip("查看歌词", "Y")}>
           {meta.title || media.name}
         </div>
         {meta.artist && (
-          <div className="artist" data-lp="track-artist" data-lp-raw>
+          <div className="artist" data-lp="track-artist" {...raw}>
             {meta.artist}
           </div>
         )}
         {meta.album && (
-          <div className="album" data-lp="track-album" data-lp-raw>
+          <div className="album" data-lp="track-album" {...raw}>
             {meta.album}
           </div>
         )}
@@ -178,8 +180,7 @@ function PlaylistHandle() {
       {...tip("显示播放列表")}
     >
       <Icon name="chevronLeft" size={16} />
-      <span>列</span>
-      <span>表</span>
+      <span className="handle-label">列表</span>
     </button>
   );
 }

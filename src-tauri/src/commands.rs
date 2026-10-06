@@ -748,6 +748,13 @@ pub fn now_playing_state(state: State<'_, AppState>, playing: bool, position: Op
     state.tray.set_playing(playing);
 }
 
+/// The UI language, and the menu bar / notification area menu's labels in it.
+#[tauri::command]
+pub fn ui_language(state: State<'_, AppState>, lang: String, labels: std::collections::HashMap<String, String>) {
+    crate::weather::set_language(&lang);
+    state.tray.set_labels(labels);
+}
+
 /// "Run in background" (closing the window hides it) and the menu bar title.
 #[tauri::command]
 pub fn set_background_prefs(state: State<'_, AppState>, run_in_background: bool, show_title: bool, private_mode: bool) {

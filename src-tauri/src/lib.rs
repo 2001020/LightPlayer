@@ -222,6 +222,7 @@ pub fn run() {
             commands::set_file_associations,
             commands::now_playing_metadata,
             commands::now_playing_state,
+            commands::ui_language,
             commands::set_background_prefs,
             commands::desktop_lyrics_set,
             commands::library_trash_tracks,

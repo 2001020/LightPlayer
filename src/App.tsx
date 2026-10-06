@@ -8,6 +8,7 @@ import { LibraryFolders } from "./components/LibraryFolders";
 import { NeteaseLogin } from "./components/NeteaseLogin";
 import { PlaylistPanel, usePlaylistLayout, usePlaylistShown } from "./components/PlaylistPanel";
 import { useSample } from "./components/NowPlayingParts";
+import { useUILang } from "./i18n";
 import { PromptHost } from "./components/Prompt";
 import { DesktopLyricsOverlay } from "./components/DesktopLyrics";
 import { isTauri } from "./lib/ipc";
@@ -43,6 +44,8 @@ function Toasts() {
 }
 
 export default function App() {
+  // Text made in code (dates, lists) follows the language.
+  useUILang();
   useTheme();
   useKeyboard();
   useFullscreenSync();

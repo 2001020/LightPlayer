@@ -7,12 +7,13 @@ import { useUI } from "../stores/player";
 import { useWeather } from "../stores/weather";
 import { Icon } from "./Icon";
 import { Popover } from "./Popover";
+import { locale } from "../i18n";
 
 const deg = (v: number | null | undefined) => (v === null || v === undefined ? "--" : `${Math.round(v)}°`);
 
 function hm(sec?: number | null) {
   if (!sec) return "--";
-  return new Date(sec * 1000).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  return new Date(sec * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 export function WeatherChip() {

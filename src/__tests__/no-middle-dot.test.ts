@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const DOT = "·";
 
 const sources = {
-  ...import.meta.glob("/src/**/*.{ts,tsx,css}", { query: "?raw", import: "default", eager: true }),
+  ...import.meta.glob("/src/**/*.{ts,tsx,css,json}", { query: "?raw", import: "default", eager: true }),
   ...import.meta.glob("/src-tauri/src/**/*.rs", { query: "?raw", import: "default", eager: true }),
   ...import.meta.glob("/index.html", { query: "?raw", import: "default", eager: true }),
 } as Record<string, string>;

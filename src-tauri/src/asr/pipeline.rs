@@ -100,6 +100,7 @@ pub fn decode_pcm(media: &Path, vocal_focus: bool, cancel: &AtomicBool) -> AppRe
         .collect())
 }
 
+// i18n-ignore-start: Whisper prompts, not UI text.
 fn initial_prompt(lang: &str) -> Option<&'static str> {
     match lang {
         "zh" => Some("以下是一首中文歌曲的歌词，使用简体中文。"),
@@ -110,6 +111,7 @@ fn initial_prompt(lang: &str) -> Option<&'static str> {
         _ => None,
     }
 }
+// i18n-ignore-end
 
 /// Abort hook for whisper.cpp; `data` points at the job's cancel flag.
 ///

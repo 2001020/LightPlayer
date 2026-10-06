@@ -24,6 +24,7 @@ import { loadNeteaseList, refreshNetease, searchNetease, useNetease } from "../s
 import { usePlayer, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
 import { TRASH } from "../lib/platform";
+import { joinParts } from "../i18n";
 
 const NAV: { view: "songs" | "albums" | "artists" | "videos" | "favorites" | "recent"; label: string; icon: IconName }[] = [
   { view: "songs", label: "歌曲", icon: "music" },
@@ -45,7 +46,7 @@ function totalDuration(tracks: LibraryTrack[]) {
 }
 
 /** Joins the non-empty parts of a subtitle with Chinese commas. */
-const parts = (...xs: (string | number | false | null | undefined)[]) => xs.filter(Boolean).join("，");
+const parts = (...xs: (string | number | false | null | undefined)[]) => joinParts(xs);
 
 /** A video keeps playing behind the library; this is the way back to it. */
 function NowPlayingVideo() {

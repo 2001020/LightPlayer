@@ -6,6 +6,7 @@
 //! "Now Playing" controls already send to the UI.
 
 use serde::Serialize;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::image::Image;
@@ -23,8 +24,15 @@ pub struct Tray {
     icon: TrayIcon,
     now: MenuItem<Wry>,
     toggle: MenuItem<Wry>,
+    prev: MenuItem<Wry>,
+    next: MenuItem<Wry>,
     private: CheckMenuItem<Wry>,
+    show: MenuItem<Wry>,
+    quit: MenuItem<Wry>,
     title: Mutex<String>,
+    /// Something is open (the "now playing" line shows it, not the idle label).
+    has_now: AtomicBool,
+    playing: AtomicBool,
 }
 
 pub struct TrayState {
@@ -33,11 +41,35 @@ pub struct TrayState {
     pub background: AtomicBool,
     /// Show the song title next to the menu bar icon (macOS).
     pub show_title: AtomicBool,
+    /// The menu's labels in the UI language, keyed by their Chinese text.
+    labels: Mutex<HashMap<String, String>>,
 }
 
 impl TrayState {
     pub fn new() -> Self {
-        TrayState { tray: Mutex::new(None), background: AtomicBool::new(true), show_title: AtomicBool::new(false) }
+        TrayState { tray: Mutex::new(None), background: AtomicBool::new(true), show_title: AtomicBool::new(false), labels: Mutex::new(HashMap::new()) }
+    }
+
+    /// A menu label in the UI language.
+    fn label(&self, zh: &str) -> String {
+        self.labels.lock().unwrap().get(zh).cloned().unwrap_or_else(|| zh.to_string())
+    }
+
+    /// The UI language's labels for the menu (from the frontend, which has the tables).
+    pub fn set_labels(&self, labels: HashMap<String, String>) {
+        *self.labels.lock().unwrap() = labels;
+        if let Some(t) = self.tray.lock().unwrap().as_ref() {
+            let playing = t.playing.load(Ordering::SeqCst);
+            let _ = t.toggle.set_text(self.label(if playing { "暂停" } else { "播放" }));
+            let _ = t.prev.set_text(self.label("上一首"));
+            let _ = t.next.set_text(self.label("下一首"));
+            let _ = t.private.set_text(self.label("无痕浏览模式"));
+            let _ = t.show.set_text(self.label("显示 LightPlayer"));
+            let _ = t.quit.set_text(self.label("退出 LightPlayer"));
+            if !t.has_now.load(Ordering::SeqCst) {
+                let _ = t.now.set_text(self.label("未在播放"));
+            }
+        }
     }
 
     pub fn set_prefs(&self, background: bool, show_title: bool, private_mode: bool) {
@@ -55,6 +87,7 @@ impl TrayState {
             _ => title.to_string(),
         };
         if let Some(t) = self.tray.lock().unwrap().as_ref() {
+            t.has_now.store(true, Ordering::SeqCst);
             let _ = t.now.set_text(&text);
             let _ = t.icon.set_tooltip(Some(format!("LightPlayer\n{text}")));
             *t.title.lock().unwrap() = title.to_string();
@@ -64,7 +97,8 @@ impl TrayState {
 
     pub fn set_playing(&self, playing: bool) {
         if let Some(t) = self.tray.lock().unwrap().as_ref() {
-            let _ = t.toggle.set_text(if playing { "暂停" } else { "播放" });
+            t.playing.store(playing, Ordering::SeqCst);
+            let _ = t.toggle.set_text(self.label(if playing { "暂停" } else { "播放" }));
         }
     }
 }
@@ -155,5 +189,17 @@ pub fn create(app: &AppHandle) -> tauri::Result<Tray> {
             _ => {}
         })
         .build(app)?;
-    Ok(Tray { icon, now, toggle, private, title: Mutex::new(String::new()) })
+    Ok(Tray {
+        icon,
+        now,
+        toggle,
+        prev,
+        next,
+        private,
+        show,
+        quit,
+        title: Mutex::new(String::new()),
+        has_now: AtomicBool::new(false),
+        playing: AtomicBool::new(false),
+    })
 }

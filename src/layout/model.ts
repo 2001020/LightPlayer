@@ -7,6 +7,8 @@
 // sizes are in `u`, where 1u is 1% of the stage's shorter side, so a layout
 // keeps its proportions in any window size.
 
+import { longDate } from "../i18n";
+
 export type BuiltinKind = "cover" | "title" | "artist" | "album" | "chips" | "lyric";
 export type ExtraKind = "text" | "image" | "clock" | "progress" | "time";
 export type ElementKind = BuiltinKind | ExtraKind;
@@ -393,7 +395,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 export function formatClock(d: Date, f: ClockFormat): string {
   const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  const date = `${d.getMonth() + 1}月${d.getDate()}日 星期${"日一二三四五六"[d.getDay()]}`;
+  const date = longDate(d);
   switch (f) {
     case "HH:mm":
       return hm;

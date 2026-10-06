@@ -7,6 +7,7 @@ import { useSettings } from "../stores/settings";
 import { cancelUpdate, openReleasePage, skipUpdate, startUpdate, useUpdater } from "../stores/updater";
 import { Icon } from "./Icon";
 import { tip } from "./Tooltip";
+import { locale, releaseNotesFor, tr, useUILang } from "../i18n";
 
 /** **bold**, `code` and [links](…) inside a line of release notes. */
 function inline(text: string): ReactNode[] {
@@ -80,8 +81,9 @@ export function UpdateDialog() {
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, []);
+  const lang = useUILang();
   if (!info) return null;
-  const date = info.published ? new Date(info.published).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" }) : null;
+  const date = info.published ? new Date(info.published).toLocaleDateString(locale(), { year: "numeric", month: "long", day: "numeric" }) : null;
   const pct = progress && progress.total ? Math.min(100, (progress.received / progress.total) * 100) : 0;
   const auto = !!info.asset && info.kind !== "manual";
   const skipped = useSettings.getState().update.skip === info.version;
@@ -112,7 +114,7 @@ export function UpdateDialog() {
           </div>
         </div>
         <div className="update-notes" data-lp-raw>
-          <ReleaseNotes text={info.notes || "（没有更新说明）"} />
+          <ReleaseNotes text={info.notes ? releaseNotesFor(info.notes, lang) : tr("（没有更新说明）")} />
         </div>
         <footer className="update-foot">
           {status === "downloading" && progress ? (

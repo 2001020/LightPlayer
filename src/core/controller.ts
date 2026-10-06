@@ -1,6 +1,6 @@
 // Application actions: wires the playback engine, stores and backend together.
 
-import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save as saveDialog } from "../lib/dialog";
 import { engine } from "./player/engine";
 import { startWeather } from "./weather/service";
 import { startDesktopLyrics } from "./desktopLyrics";

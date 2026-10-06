@@ -103,7 +103,7 @@ export function LyricPeek({ showNext = true, interactive = true, placeholder = f
   }, [key, cur, next, synced]);
   if (sample || (placeholder && !synced)) {
     return (
-      <div className={`lyric-peek ${showNext ? "" : "single"}`} data-lp="lyric-peek" data-lp-raw>
+      <div className={`lyric-peek ${showNext ? "" : "single"}`} data-lp="lyric-peek">
         <div className="peek-line" data-lp="lyric-peek-line">
           <span className="cur">{SAMPLE_LYRIC.cur}</span>
           {showNext && <span className="next">{SAMPLE_LYRIC.next}</span>}

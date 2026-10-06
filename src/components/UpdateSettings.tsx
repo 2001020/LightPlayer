@@ -5,6 +5,7 @@ import { useSettings } from "../stores/settings";
 import { useUI } from "../stores/player";
 import { checkForUpdates, includePrerelease, loadAppInfo, openReleasePage, useUpdater } from "../stores/updater";
 import { Row, Switch } from "./SettingsControls";
+import { locale } from "../i18n";
 
 const KIND: Record<string, string> = {
   macApp: "macOS 版，可自动更新",
@@ -18,7 +19,7 @@ function ago(t: number) {
   if (min < 1) return "刚刚";
   if (min < 60) return `${min} 分钟前`;
   const h = Math.round(min / 60);
-  return h < 24 ? `${h} 小时前` : new Date(t).toLocaleDateString("zh-CN");
+  return h < 24 ? `${h} 小时前` : new Date(t).toLocaleDateString(locale());
 }
 
 export function UpdateSettings() {

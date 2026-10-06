@@ -332,9 +332,16 @@ export function TransportBar() {
           <div className="thumb">
             {media?.meta?.cover ? <img src={media.meta.cover} alt="" /> : <Icon name={isVideo ? "film" : "music"} />}
           </div>
-          <div className="meta" data-lp-raw>
-            <div className="t">{title}</div>
-            {artist && <div className="a">{artist}</div>}
+          <div className="meta">
+            <div className="t" data-lp-raw>
+              {title}
+            </div>
+            {/* "Not playing" is UI text, the rest is the song's. */}
+            {artist && (
+              <div className="a" data-lp-raw={media ? "" : undefined}>
+                {artist}
+              </div>
+            )}
           </div>
           {media && <FavButton path={media.path} />}
         </div>

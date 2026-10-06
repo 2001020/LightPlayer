@@ -6,22 +6,30 @@
 // element whose children are all text nodes (JSX like `共 {n} 条` renders
 // three of them) is matched as a whole. Keys may contain `{name}` placeholders.
 // User content (lyrics, titles, file names, comments) is marked
-// `data-lp-raw` and left alone, as are inputs and editable text.
+// `data-lp-raw` and left alone, as are inputs and editable text. The built-in
+// UI languages (src/i18n) are tables of the same kind.
 
 const ATTRS = ["title", "placeholder", "aria-label", "data-tip"];
-const SKIP = "[data-lp-raw], input, textarea, select, [contenteditable], script, style, svg";
+const SKIP = "[data-lp-raw], input, textarea, [contenteditable], script, style, svg";
+const CJK = /[\u3400-\u9fff\uf900-\ufaff]/;
 
 export interface StringTable {
   exact: Map<string, string>;
-  patterns: { re: RegExp; names: string[]; out: string }[];
+  /** Most specific (longest fixed text) first. */
+  patterns: { re: RegExp; names: string[]; out: string; fixed: number }[];
+  /** Every key holds Chinese, so text without any never matches. */
+  cjkOnly: boolean;
 }
 
 export function compileStrings(table: Record<string, string>): StringTable {
   const exact = new Map<string, string>();
   const patterns: StringTable["patterns"] = [];
+  let cjkOnly = true;
   for (const [rawKey, out] of Object.entries(table)) {
-    const key = rawKey.trim();
+    // Line breaks and runs of spaces count as one space (as on the page).
+    const key = rawKey.replace(/\s+/g, " ").trim();
     if (!key || typeof out !== "string") continue;
+    if (!CJK.test(key)) cjkOnly = false;
     if (!/\{[A-Za-z_][\w]*\}/.test(key)) {
       exact.set(key, out);
       continue;
@@ -36,24 +44,32 @@ export function compileStrings(table: Record<string, string>): StringTable {
         return "(.+?)";
       })
       .join("");
-    patterns.push({ re: new RegExp(`^${src}$`, "s"), names, out });
+    patterns.push({ re: new RegExp(`^${src}$`, "s"), names, out, fixed: key.replace(/\{[A-Za-z_]\w*\}/g, "").length });
   }
-  return { exact, patterns };
+  patterns.sort((a, b) => b.fixed - a.fixed);
+  return { exact, patterns, cjkOnly };
 }
 
-/** The replacement for `text` (whitespace around it kept), or null. */
-export function translate(t: StringTable, text: string): string | null {
+/**
+ * The replacement for `text` (whitespace around it kept), or null. What a
+ * placeholder stands for is translated too, so `保存失败：{a}` also
+ * translates the message in it.
+ */
+export function translate(t: StringTable, text: string, depth = 0): string | null {
   const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(text)!;
   const core = m[2];
-  if (!core) return null;
-  let out = t.exact.get(core);
+  if (!core || (t.cjkOnly && !CJK.test(core))) return null;
+  const flat = /\s\s|[\n\t\r]/.test(core) ? core.replace(/\s+/g, " ") : core;
+  let out = t.exact.get(flat);
   if (out === undefined) {
     for (const p of t.patterns) {
-      const hit = p.re.exec(core);
+      const hit = p.re.exec(flat);
       if (!hit) continue;
       out = p.out.replace(/\{([A-Za-z_]\w*)\}/g, (all, name: string) => {
         const i = p.names.indexOf(name);
-        return i >= 0 ? hit[i + 1] : all;
+        if (i < 0) return all;
+        const v = hit[i + 1];
+        return depth < 2 ? translate(t, v, depth + 1) ?? v : v;
       });
       break;
     }

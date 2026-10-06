@@ -369,12 +369,23 @@ jobs:
           fi
           # The tag may exist without a release.
           git push origin ":refs/tags/$TAG" 2>/dev/null || true
+      - name: Release notes
+        run: |
+          # Chinese, then English after a marker; the app's update window
+          # shows the part for its language. The language links are dropped.
+          strip() { grep -v -E '^(简体中文 \| \[English\]|\[简体中文\]\(.*\) \| English$)' "$1"; }
+          strip "docs/releases/${TAG}.md" > dist-release/notes.md
+          if [ -f "docs/releases/${TAG}.en.md" ]; then
+            printf '\n<!-- en -->\n\n---\n\n' >> dist-release/notes.md
+            strip "docs/releases/${TAG}.en.md" >> dist-release/notes.md
+          fi
+          head -5 dist-release/notes.md
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
-          name: ${{ (github.event_name == 'workflow_dispatch' && !inputs.prerelease) && format('LightPlayer {0}', env.TAG) || format('LightPlayer {0} 预发布', env.TAG) }}
-          body_path: docs/releases/${{ env.TAG }}.md
+          name: ${{ (github.event_name == 'workflow_dispatch' && !inputs.prerelease) && format('LightPlayer {0}', env.TAG) || format('LightPlayer {0} 预发布 / Pre-release', env.TAG) }}
+          body_path: dist-release/notes.md
           # Tag pushes stay prereleases; a manual run can publish a full release.
           prerelease: ${{ github.event_name != 'workflow_dispatch' || inputs.prerelease }}
           make_latest: ${{ (github.event_name == 'workflow_dispatch' && !inputs.prerelease) && 'true' || 'false' }}

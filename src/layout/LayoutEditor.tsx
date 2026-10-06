@@ -13,6 +13,7 @@ import { api, isTauri } from "../lib/ipc";
 import { keys } from "../lib/platform";
 import { toast, usePlayer } from "../stores/player";
 import { useSettings } from "../stores/settings";
+import { tr } from "../i18n";
 import {
   activeLayout,
   addElement,
@@ -224,7 +225,7 @@ function CoverControls({ e }: { e: LayoutElement }) {
 
 async function chooseImage(): Promise<string | null> {
   if (isTauri) {
-    const { open } = await import("@tauri-apps/plugin-dialog");
+    const { open } = await import("../lib/dialog");
     const path = await open({ multiple: false, title: "选择图片", filters: [{ name: "图片", extensions: ["png", "jpg", "jpeg", "webp", "gif", "svg"] }] });
     if (typeof path !== "string") return null;
     try {
@@ -534,7 +535,8 @@ function Toolbar() {
       <Icon name="layout" size={16} />
       <input
         className="le-name"
-        value={name}
+        // Built-in and generated names ("我的布局", "…（自定义）") in the UI language.
+        value={tr(name)}
         maxLength={40}
         onChange={(e) => updateDraft((l) => (l.name = e.target.value), true, "name")}
         onBlur={() => !name.trim() && updateDraft((l) => (l.name = "我的布局"))}
@@ -650,7 +652,7 @@ async function exportLayout(id: string) {
     toast("浏览器预览中不能导出", "error");
     return;
   }
-  const { save } = await import("@tauri-apps/plugin-dialog");
+  const { save } = await import("../lib/dialog");
   const dest = await save({ title: "导出为插件", defaultPath: `${l.name.replace(/[\\/:*?"<>|]/g, "")}.lpplugin`, filters: [{ name: "LightPlayer 插件", extensions: ["lpplugin"] }] });
   if (!dest) return;
   try {

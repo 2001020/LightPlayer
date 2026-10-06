@@ -1,5 +1,7 @@
 # LightPlayer 插件开发标准
 
+简体中文 | [English](README.en.md)
+
 > 适用版本：LightPlayer 1.6.0 及以上，`manifestVersion: 1`
 
 LightPlayer 插件可以改变：
@@ -188,6 +190,7 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 | `data-player-style` | `classic` / `flow` | 音频播放页样式 |
 | `data-fullscreen` | `true` / `false` | 是否全屏 |
 | `data-player-layout` | `classic` / `free` | 经典样式的播放页用的是默认布局，还是自由布局（内置的唱片布局、用户或插件的布局） |
+| `lang` | `zh-Hans` / `zh-Hant` / `en` / `ja` / `ko` | 界面语言（1.6.0b4 起） |
 <!-- /root-attrs -->
 
 例如只在深色模式的歌词页生效：
@@ -273,6 +276,8 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 
 也可以直接在 manifest 中写成对象。
 
+**原文始终是简体中文。** LightPlayer 自带的繁體中文、English、日本語、한국어 界面也是用同样的文字替换实现的（[src/i18n/locales](../../src/i18n/locales)）。无论用户选择哪种界面语言，插件文字表的原文都写界面的简体中文原文；插件的条目优先于内置语言。只想在某种语言下生效的样式，可以用 `:root[lang="en"]` 这样的选择器。
+
 匹配规则：
 
 - **整段完全匹配**：界面上一段文字去掉首尾空白后与原文完全相同才会替换，原有的首尾空白会保留。不做部分替换，所以“媒体库”不会改到“从媒体库移除”。后者需要单独写一条。
@@ -280,10 +285,12 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 - 同时替换按钮的提示文字和无障碍名称（`title`、`placeholder`、`aria-label`、`data-tip`）。
 - 一个元素只包含文字时，按整个元素的文字匹配。所以像“共 12,345 条”这样由几段拼成的文字也能整体匹配。
 - 多个插件替换同一段文字时，靠下的插件优先。
+- 占位符代表的文字也会再查一次表，所以“保存失败：{a}”中的错误信息也能被替换。
+- 菜单栏 / 通知区域图标的菜单，以及打开、保存、确认对话框的标题和按钮，也使用替换后的文字（1.6.0b4 起）。
 - 不会替换的内容：
   - 用户的内容：歌词、歌名、艺人、专辑、文件名、歌单名、评论（这些区域带有 `data-lp-raw` 属性）
   - 输入框中的文字
-  - 系统原生的界面：菜单栏 / 托盘菜单、系统对话框（打开文件、确认框）、通知
+  - 其他系统原生的界面：macOS 的应用菜单、系统对话框中的系统文字、通知
 - 文字表最多 5000 条。
 
 > 原文以当前版本的界面为准。App 更新后个别文字可能变化，对应的条目就不再生效，不会出错。
@@ -501,5 +508,5 @@ LightPlayer 的源码仓库中自带浏览器预览（`pnpm dev`），会列出 
 | --- | --- |
 | [`example.minimal-player`](../../examples/plugins/example.minimal-player) 极简播放页 | 改变布局：封面在上、隐藏标签、精简播放栏；`select` / `range` / `toggle` 选项 |
 | [`example.serif-lyrics`](../../examples/plugins/example.serif-lyrics) 宋体歌词 | 改变歌词页的字体与样式：当前行发光；`config` 调整歌词对齐和字号；`color` 选项 |
-| [`example.english-ui`](../../examples/plugins/example.english-ui) English UI | 用 `strings.json` 把主要界面文字换成英文，包括占位符用法 |
+| [`example.english-ui`](../../examples/plugins/example.english-ui) English UI | 用 `strings.json` 把主要界面文字换成英文，包括占位符用法（App 现已自带英文界面，这个示例用来演示文字替换） |
 | [`example.retro-turntable`](../../examples/plugins/example.retro-turntable) 复古唱机 | 播放页布局：唱片、进度环、时钟、自定义文字和图片，再用 CSS 微调布局中的元素 |

@@ -1,5 +1,7 @@
 # LightPlayer
 
+简体中文 | [English](README.en.md)
+
 轻量的 macOS 与 Windows 多媒体播放器。基于 **Tauri 2 + React + TypeScript**，
 借助内置 **FFmpeg** 几乎支持所有音视频格式，并内置基于 **whisper.cpp** 的 **本地离线歌词识别**。
 使用Claude编写代码。
@@ -22,6 +24,7 @@
 | **AI 识别歌词** | 本机离线运行 Whisper（Apple Silicon 使用 Metal GPU 加速，Windows 使用 CPU）；首次使用下载模型（可选国内镜像）；人声检测（Silero VAD）、人声频段增强、幻觉过滤、繁转简、逐字时间轴；结果正常滚动显示并提示“本歌词由识别模型生成，可能有误”，可直接进入编辑器校对保存；可重新识别（换模型）、移除 AI 歌词或重新查找本地歌词文件 |
 | 识别任务 | 歌词和字幕识别任务排队依次进行：标题栏的识别任务面板显示进度，可暂停、取消、调整顺序、重试；媒体库右键可一次加入整个列表 |
 | 视频信息 | 文件大小、分辨率、帧率、码率（总/视频/音频）、编码、HDR、声道等 |
+| **界面语言** | 简体中文、繁體中文、English、日本語、한국어（设置 > 外观 > 语言，默认跟随系统）；歌词、歌名等内容不会翻译 |
 | 外观 | 浅色/深色/跟随系统；默认主题色浅蓝 `#66ccff`，可选预设或自定义（文字自动保证对比度）；自定义背景图（模糊、遮罩、填充方式）；可随封面变色 |
 | 媒体库 | 添加文件夹（递归扫描子文件夹，启动时增量刷新）、自动记录播放过的文件、把文件或文件夹拖进媒体库页面；按歌曲、专辑、艺术家、视频浏览，支持搜索、排序、收藏、自建歌单（拖动排序）、**把文件夹导入为歌单**、右键“下一首播放 / 加入播放队列”；专辑可从媒体库移除或移到废纸篓；从媒体库点开时播放队列就是当前视图；打开 App 时默认进入媒体库，播放页左上角可返回（`⌘L`） |
 | 天气主题 | 外观选“天气”后，按当前位置的实时天气显示动态天空：晴天阳光、云、雨、雷电、雪、冰雹、雾和星空，雨滴、雪花和冰雹会落在播放栏、封面等界面元素上（macOS 使用系统定位服务，Windows 按网络大致位置定位，也可指定城市；天气来自免费的 Open-Meteo） |
@@ -86,9 +89,10 @@ pnpm tauri build --bundles app,dmg     # 打包（macOS）
 pnpm tauri build --bundles nsis        # 打包（Windows，需先运行 fetch-ffmpeg.sh 下载 .exe 版 ffmpeg）
 ```
 
-- `pnpm test`：前端单元测试（LRC 解析、播放队列、颜色等）
+- `pnpm test`：前端单元测试（LRC 解析、播放队列、颜色、界面语言等）
 - `cd src-tauri && cargo test`：后端测试（路由决策、Range、歌词查找/编码、HLS 与转码集成测试需要本机 ffmpeg）
 - `pnpm dev` 可在普通浏览器中预览界面（使用内置 Mock，本地文件通过文件选择器打开）
+- `node scripts/i18n.mjs`：列出各语言缺少翻译的界面文字；`--hant` 自动补全繁体中文（见 [src/i18n](src/i18n)）
 
 数据位置：macOS 为 `~/Library/Application Support/com.lightplayer.app/`，Windows 为 `%APPDATA%\com.lightplayer.app\`
 （`models/` 识别模型、`lyrics/` 应用歌词库、`backgrounds/`）；

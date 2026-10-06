@@ -39,7 +39,7 @@ async function install(folder: boolean) {
     toast("浏览器预览中不能安装插件", "error");
     return;
   }
-  const { open } = await import("@tauri-apps/plugin-dialog");
+  const { open } = await import("../lib/dialog");
   const path = folder
     ? await open({ directory: true, title: "选择插件文件夹（包含 manifest.json）" })
     : await open({ multiple: false, title: "选择插件包", filters: [{ name: "LightPlayer 插件", extensions: ["lpplugin", "zip"] }] });

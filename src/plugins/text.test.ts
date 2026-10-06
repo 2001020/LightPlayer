@@ -18,6 +18,22 @@ describe("translate", () => {
     // A placeholder stands for at least one character.
     expect(translate(t, "共  条")).toBeNull();
   });
+  it("translates what placeholders stand for, and tries the most specific pattern first", () => {
+    const r = compileStrings({ "保存失败：{a}": "Save failed: {a}", 文件不存在: "File not found", "{a}失败：{b}": "{a} failed: {b}" });
+    expect(translate(r, "保存失败：文件不存在")).toBe("Save failed: File not found");
+    expect(translate(r, "保存失败：disk full")).toBe("Save failed: disk full");
+  });
+  it("counts line breaks as spaces", () => {
+    const r = compileStrings({ "第一行\n第二行": "one two", "共 {n} 条": "{n} in total" });
+    expect(translate(r, "第一行 第二行")).toBe("one two");
+    expect(translate(r, "第一行\n  第二行")).toBe("one two");
+  });
+  it("skips text without Chinese when every key has some", () => {
+    const r = compileStrings({ "{a} 首": "{a} songs" });
+    expect(r.cjkOnly).toBe(true);
+    expect(translate(r, "12:34")).toBeNull();
+    expect(compileStrings({ LightPlayer: "x" }).cjkOnly).toBe(false);
+  });
   it("treats regex characters in keys literally", () => {
     const r = compileStrings({ "A+B (x) {n}?": "ok {n}" });
     expect(translate(r, "A+B (x) 5?")).toBe("ok 5");
