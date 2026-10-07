@@ -1,3 +1,5 @@
+**【Attention: This document will not be updated in the future, and the current version contains the original PLAN of this app】**
+
 # LightPlayer desktop media player — development plan
 
 [简体中文](PLAN.md) | English
