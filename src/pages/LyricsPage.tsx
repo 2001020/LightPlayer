@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ColorChoices } from "../components/ColorChoices";
 import * as C from "../core/controller";
 import { Icon } from "../components/Icon";
+import { Marquee } from "../components/Marquee";
 import { LyricsView } from "../components/LyricsView";
 import { isCloudPath } from "../lib/ipc";
 import { Popover } from "../components/Popover";
@@ -191,8 +192,8 @@ export function LyricsPage() {
         </div>
         <div className="who" data-lp-raw>
           <div style={{ minWidth: 0 }}>
-            <div className="t">{meta.title || media.name}</div>
-            {meta.artist && <div className="a">{meta.artist}</div>}
+            <Marquee className="t">{meta.title || media.name}</Marquee>
+            {meta.artist && <Marquee className="a">{meta.artist}</Marquee>}
           </div>
         </div>
         <div className="tools">

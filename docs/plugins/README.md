@@ -1698,7 +1698,7 @@ pnpm dev
 | 1.6.0 | 正式版，包含以上全部功能 |
 | 1.6.1 | 布局中唱片的唱臂 `arm` 默认不显示 |
 | 1.6.3 | 状态属性 `data-time`（天气主题的九个时段），以及 `data-sky`、`data-phase` 写入文档 |
-| 1.6.6 | `transport-right` 中放不下的按钮收进「更多」菜单；`transport-now` 的歌名和歌手过长时滚动显示 |
+| 1.6.6 | `transport-right` 中放不下的按钮收进「更多」菜单；`transport-now` 和 `lyrics-head` 的歌名和歌手过长时滚动显示 |
 
 用到表中某个版本的功能时，把 `minAppVersion` 设为那个版本（预发布版本请写对应的正式版本号，例如 `1.6.0`）。
 
