@@ -577,7 +577,8 @@ input[type="range"] {
 }
 .transport .controls {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* minmax(0, …): long song names must not push the buttons aside. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -604,7 +605,7 @@ input[type="range"] {
   padding: 4px;
   margin-left: -4px;
   width: fit-content;
-  max-width: 100%;
+  max-width: min(100%, 360px);
 }
 .mini:hover {
   background: var(--hover);
@@ -630,16 +631,61 @@ input[type="range"] {
 }
 .mini .t {
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .mini .a {
   font-size: 12px;
   color: var(--text-dim);
-  white-space: nowrap;
+}
+/* Text wider than its box scrolls to the end and back. The edge fades
+   follow: the start fades in as it leaves, the end fades out as it arrives. */
+@property --mq-l {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --mq-r {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 14px;
+}
+.marquee {
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.marquee > span {
+  display: inline-block;
+}
+.marquee.scrolling {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--mq-l), #000 calc(100% - var(--mq-r)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--mq-l), #000 calc(100% - var(--mq-r)), transparent);
+  animation: marquee-fade var(--mq-dur, 8s) linear infinite;
+}
+.marquee.scrolling > span {
+  animation: marquee var(--mq-dur, 8s) linear infinite;
+}
+@keyframes marquee {
+  0%,
+  12%,
+  100% {
+    transform: translateX(0);
+  }
+  50%,
+  62% {
+    transform: translateX(var(--mq-shift, 0));
+  }
+}
+@keyframes marquee-fade {
+  0%,
+  12%,
+  100% {
+    --mq-l: 0px;
+    --mq-r: 14px;
+  }
+  50%,
+  62% {
+    --mq-l: 12px;
+    --mq-r: 0px;
+  }
 }
 .volume {
   display: flex;
@@ -650,6 +696,106 @@ input[type="range"] {
 }
 .volume .slider {
   flex: 1;
+}
+.transport .tb-slot {
+  display: flex;
+  flex: none;
+}
+/* Narrow windows: the slider pops up above the volume button. */
+.volume.compact {
+  width: auto;
+  display: block;
+}
+.popover.vol-pop {
+  right: 50%;
+  transform: translateX(50%);
+  min-width: 0;
+  width: 52px;
+  padding: 10px 0 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: none;
+}
+.vol-pop .vol-value {
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+.slider.vertical,
+.volume .slider.vertical {
+  flex: none;
+  width: 18px;
+  height: 112px;
+  flex-direction: column;
+  justify-content: center;
+}
+.slider.vertical .rail {
+  left: auto;
+  right: auto;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  height: auto;
+  transition: width 0.12s;
+}
+.slider.vertical:hover .rail,
+.slider.vertical.dragging .rail {
+  width: 6px;
+  height: auto;
+}
+.slider.vertical .fill {
+  top: auto;
+  bottom: 0;
+  right: 0;
+}
+.slider.vertical .thumb {
+  margin: 0 0 -7px;
+}
+/* Buttons that do not fit in the transport bar. */
+.more-menu {
+  min-width: 220px;
+}
+.more-menu .item {
+  justify-content: flex-start;
+  gap: 10px;
+}
+.more-menu .item > svg:first-child {
+  flex: none;
+  color: var(--text-dim);
+}
+.more-menu .item.selected > svg:first-child {
+  color: inherit;
+}
+.more-menu .more-label {
+  flex: 1;
+}
+.more-menu .more-value {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.more-menu kbd {
+  font-size: 11px;
+  padding: 0 5px;
+  color: var(--text-faint);
+}
+.more-menu .item.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.more-menu .item.disabled:hover {
+  background: transparent;
+}
+.more-menu .more-back {
+  font-weight: 600;
+}
+.more-menu .q-menu {
+  width: 236px;
 }
 
 /* ---------------------------------------------------------------- tooltip */
@@ -3354,6 +3500,10 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .marquee.scrolling,
+  .marquee.scrolling > span {
+    animation: none !important;
+  }
   .vinyl.spin .vinyl-disc,
   .vinyl.spin .vinyl-label {
     animation: none !important;

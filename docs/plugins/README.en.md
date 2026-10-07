@@ -161,7 +161,7 @@ The main areas of the interface have a `data-lp` attribute; select them with `[d
 | `transport-controls` | The part of the playback bar below the progress bar |
 | `transport-now` | The left of the playback bar: cover thumbnail, song title |
 | `transport-center` | The middle of the playback bar: play mode, previous, play, next and so on |
-| `transport-right` | The right of the playback bar: quality, comments, speed, timer, subtitles, list, volume and so on |
+| `transport-right` | The right of the playback bar: quality, comments, speed, timer, subtitles, list, volume and so on. Buttons that do not fit move into a "More" menu, and the volume becomes a pop-up slider (since 1.6.6) |
 | `volume` | Volume |
 | `playlist` | Playlist (sidebar or floating panel) |
 | `comments` | NetEase comments panel |
