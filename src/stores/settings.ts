@@ -17,6 +17,8 @@ export interface WeatherSettings {
   city: { name: string; lat: number; lon: number } | null;
   /** Animated rain, snow, clouds and lightning. */
   motion: boolean;
+  /** The accent colour follows the time of day. */
+  timeAccent: boolean;
 }
 
 export interface AsrSettings {
@@ -132,7 +134,7 @@ export const defaultSettings: Settings = {
   dynamicAccent: false,
   background: { path: null, blur: 16, dim: 0.35, fit: "cover" },
   coverBackground: true,
-  weather: { source: "auto", city: null, motion: true },
+  weather: { source: "auto", city: null, motion: true, timeAccent: true },
   seekStep: 5,
   jumpStep: 15,
   resume: true,

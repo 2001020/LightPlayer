@@ -185,6 +185,9 @@ LightPlayer 自身的 class 名属于内部实现，可能随版本变化。**�
 | `data-platform` | `macos` / `windows` | 操作系统 |
 | `data-theme` | `light` / `dark` | 当前实际使用的明暗模式 |
 | `data-bg` | `image` / `weather` / 无 | 背景是图片（自定义背景或封面）、天气动画，还是纯色 |
+| `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | 天气主题下的天气 |
+| `data-phase` | `dawn` / `day` / `dusk` / `night` | 天气主题下的大致时段 |
+| `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | 天气主题下的时段：破晓、日出、上午、中午、下午、傍晚、日落、夜晚、午夜（1.6.3 起） |
 | `data-page` | `player` / `lyrics` / `library` | 当前页面 |
 | `data-media` | `audio` / `video` / `none` | 正在播放的媒体类型 |
 | `data-player-style` | `classic` / `flow` | 音频播放页样式 |

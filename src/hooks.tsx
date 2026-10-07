@@ -30,31 +30,39 @@ export function useTheme() {
   const accent = useSettings((s) => s.accent);
   const dynamic = useSettings((s) => s.dynamicAccent);
   const dynamicColor = useUI((s) => s.dynamicAccent);
+  const timeAccent = useTimeAccent();
   const systemDark = useSystemDark();
   // The weather theme uses white text on the sky, like the iOS Weather app.
   const dark = theme === "dark" || theme === "weather" || (theme === "system" && systemDark);
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = dark ? "dark" : "light";
-    const p = accentPalette(dynamic && dynamicColor ? dynamicColor : accent, dark);
+    const p = accentPalette(dynamic && dynamicColor ? dynamicColor : timeAccent ?? accent, dark);
     root.style.setProperty("--accent", p.accent);
     root.style.setProperty("--accent-hover", p.hover);
     root.style.setProperty("--accent-text", p.text);
     root.style.setProperty("--accent-strong", p.strong);
     root.style.setProperty("--accent-soft", p.soft);
     root.style.setProperty("--on-accent", p.onAccent);
-  }, [dark, accent, dynamic, dynamicColor]);
+  }, [dark, accent, dynamic, dynamicColor, timeAccent]);
   return dark;
+}
+
+/** In the weather theme, the accent colour of the time of day (when that option is on). */
+function useTimeAccent(): string | null {
+  const on = useSettings((s) => s.theme === "weather" && s.weather.timeAccent);
+  const scene = useWeatherScene();
+  return on ? scene.time.look.accent : null;
 }
 
 /** The weather scene to show: a preview, the latest report, or the clock. */
 export function useWeatherScene(): Scene {
   const report = useWeather((s) => s.report);
   const preview = useWeather((s) => s.preview);
-  // Re-evaluate the time of day every few minutes.
+  // Re-evaluate the time of day every minute: the sky, sun and moon move with the clock.
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const t = window.setInterval(() => setTick((x) => x + 1), 5 * 60 * 1000);
+    const t = window.setInterval(() => setTick((x) => x + 1), 60 * 1000);
     return () => clearInterval(t);
   }, []);
   return useMemo(() => {
@@ -74,12 +82,14 @@ function WeatherBackground() {
     root.dataset.bg = "weather";
     root.dataset.sky = scene.kind;
     root.dataset.phase = scene.phase;
+    root.dataset.time = scene.time.phase;
     return () => {
       delete root.dataset.bg;
       delete root.dataset.sky;
       delete root.dataset.phase;
+      delete root.dataset.time;
     };
-  }, [scene.kind, scene.phase]);
+  }, [scene.kind, scene.phase, scene.time.phase]);
   return (
     <>
       <div className="bg-layer" />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as C from "../core/controller";
-import { describeCode, PREVIEWS } from "../core/weather/scene";
+import { describeCode, PREVIEWS, timeLabel } from "../core/weather/scene";
 import { refreshWeather } from "../core/weather/service";
 import { api, isTauri, localFileUrl, pickBrowserFiles, type CityHit, type FileAssociations } from "../lib/ipc";
 import { useWeather } from "../stores/weather";
@@ -19,6 +19,7 @@ import { AsrOptions, ModelManager } from "./ModelManager";
 import { PluginSettings } from "./PluginSettings";
 import { Row, Seg, Switch } from "./SettingsControls";
 import { tip } from "./Tooltip";
+import { useWeatherScene } from "../hooks";
 import { UpdateSettings } from "./UpdateSettings";
 import { isWindows, keys, TRAY } from "../lib/platform";
 import { LANGS, locale, systemLang, type LangSetting } from "../i18n";
@@ -97,13 +98,14 @@ function WeatherOptions() {
   const status = useWeather((s) => s.status);
   const error = useWeather((s) => s.error);
   const preview = useWeather((s) => s.preview);
+  const scene = useWeatherScene();
   const busy = status === "locating" || status === "loading";
   const time = (sec: number) => new Date(sec * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
   let state: string;
   if (status === "locating") state = "正在定位…";
   else if (status === "loading") state = "正在获取天气…";
   else if (status === "error") state = `获取失败：${error}`;
-  else if (report) state = `${report.place}，${describeCode(report.code).label}，${Math.round(report.temperature)}°，更新于 ${time(report.fetchedAt)}`;
+  else if (report) state = `${report.place}，${describeCode(report.code).label}，${Math.round(report.temperature)}°，${timeLabel(scene.time.phase)}，更新于 ${time(report.fetchedAt)}`;
   else state = "还没有天气数据";
   const autoNote =
     w.source === "auto" && place
@@ -132,14 +134,26 @@ function WeatherOptions() {
       <Row label="动态效果" hint="雨、雪、冰雹、云和闪电的动画，雨雪会落在播放栏等界面元素上；关闭后只显示静态天空">
         <Switch on={w.motion} onChange={(motion) => setWeather({ motion })} />
       </Row>
-      <Row label="效果预览" hint="临时查看其他天气的效果，不会保存">
+      <Row label="主题色跟随时段" hint="破晓、日出、上午、中午、下午、傍晚、日落、夜晚、午夜各有一种主题色，随时间平滑变化；开启后不使用上方选择的主题色">
+        <Switch on={w.timeAccent} onChange={(timeAccent) => setWeather({ timeAccent })} />
+      </Row>
+      <Row label="效果预览" hint="临时查看其他天气或时段的效果，不会保存">
         <select value={preview ?? ""} onChange={(e) => useWeather.setState({ preview: e.target.value || null })}>
           <option value="">实时天气</option>
-          {PREVIEWS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
+          <optgroup label="天气">
+            {PREVIEWS.filter((p) => p.group === "weather").map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="时段">
+            {PREVIEWS.filter((p) => p.group === "time").map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </optgroup>
         </select>
       </Row>
       <p className="note">天气数据来自 Open-Meteo，地名来自 BigDataCloud，都无需账号；位置只用于查询天气，不会保存到别处。</p>

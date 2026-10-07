@@ -411,13 +411,18 @@ export class WeatherRenderer {
       bg.fillRect(st.x, st.y, st.r, st.r);
     }
     bg.globalAlpha = 1;
-    // Sun or moon.
-    const sunny = (s.kind === "clear" || s.kind === "partly") && !this.night;
-    if (sunny) this.drawSun(s.phase === "day" ? 1 : 0.75);
-    if (this.night && s.clouds < 0.75) this.drawMoon(1 - s.clouds);
-    if ((s.phase === "dawn" || s.phase === "dusk") && s.clouds < 0.8) {
-      const g = bg.createRadialGradient(w * 0.7, h * 1.05, 0, w * 0.7, h * 1.05, Math.max(w, h) * 0.75);
-      g.addColorStop(0, `rgba(255,170,110,${0.35 * (1 - s.clouds)})`);
+    // Sun and moon, each on its arc across the sky.
+    const { look, sun, moon } = s.time;
+    const clearish = s.kind === "clear" || s.kind === "partly";
+    if (clearish && sun > -0.04 && sun < 1.04) this.drawSun(sun);
+    const moonUp = Math.min(1, Math.sin(Math.PI * Math.min(1, Math.max(0, moon))) * 5);
+    const moonDark = Math.min(1, Math.max(0, (0.7 - look.light) / 0.6));
+    if (s.clouds < 0.75 && moonUp > 0 && moonDark > 0) this.drawMoon(moon, (1 - s.clouds) * moonUp * moonDark);
+    // Warm light on the horizon under the sun, around sunrise and sunset.
+    if (look.glow > 0.02 && s.clouds < 0.8) {
+      const [gx] = this.arc(Math.min(1.1, Math.max(-0.1, sun)));
+      const g = bg.createRadialGradient(gx, h * 1.05, 0, gx, h * 1.05, Math.max(w, h) * 0.75);
+      g.addColorStop(0, `rgba(255,170,110,${0.35 * look.glow * (1 - s.clouds)})`);
       g.addColorStop(1, "rgba(255,170,110,0)");
       bg.fillStyle = g;
       bg.fillRect(0, 0, w, h);
@@ -438,14 +443,29 @@ export class WeatherRenderer {
     }
   }
 
-  private drawSun(strength: number) {
+  /**
+   * A point on the arc the sun and moon follow: rising on the left at 0,
+   * highest in the middle at 0.5, setting on the right at 1.
+   */
+  private arc(u: number): [number, number] {
+    const { w, h } = this;
+    const horizon = h * 0.9;
+    const top = h * 0.1;
+    const lift = u >= 0 && u <= 1 ? Math.sin(Math.PI * u) : -Math.min(0.5, Math.abs(u < 0 ? u : u - 1)) * 2;
+    return [w * (0.08 + 0.84 * u), horizon - (horizon - top) * lift];
+  }
+
+  private drawSun(u: number) {
     const { bg, w, h, t } = this;
-    const low = this.scene.phase !== "day";
-    const cx = w * 0.84;
-    const cy = low ? h * 0.78 : h * 0.1;
+    const [cx, cy] = this.arc(u);
+    // Altitude 0–1; low suns are warmer and fainter.
+    const alt = Math.sin(Math.PI * Math.min(1, Math.max(0, u)));
+    const low = Math.min(1, alt / 0.3);
+    const strength = (0.7 + 0.3 * low) * Math.min(1, (u < 0 ? 1 + u / 0.04 : u > 1 ? 1 - (u - 1) / 0.04 : 1));
+    if (strength <= 0) return;
+    const warm = [255, Math.round(196 + 48 * low), Math.round(140 + 74 * low)].join(",");
     const R = Math.max(w, h) * 0.55;
     const glow = bg.createRadialGradient(cx, cy, 0, cx, cy, R);
-    const warm = low ? "255,196,140" : "255,244,214";
     glow.addColorStop(0, `rgba(${warm},${0.6 * strength})`);
     glow.addColorStop(0.18, `rgba(${warm},${0.22 * strength})`);
     glow.addColorStop(1, `rgba(${warm},0)`);
@@ -494,10 +514,9 @@ export class WeatherRenderer {
     }
   }
 
-  private drawMoon(strength: number) {
-    const { bg, w, h } = this;
-    const cx = w * 0.8;
-    const cy = h * 0.14;
+  private drawMoon(u: number, strength: number) {
+    const { bg } = this;
+    const [cx, cy] = this.arc(u);
     const glow = bg.createRadialGradient(cx, cy, 0, cx, cy, 160);
     glow.addColorStop(0, `rgba(220,228,255,${0.3 * strength})`);
     glow.addColorStop(1, "rgba(220,228,255,0)");

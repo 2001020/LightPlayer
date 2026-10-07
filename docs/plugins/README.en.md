@@ -188,6 +188,9 @@ Attributes on the `<html>` element reflect the app's current state, so styles ca
 | `data-platform` | `macos` / `windows` | Operating system |
 | `data-theme` | `light` / `dark` | The light/dark mode actually in use |
 | `data-bg` | `image` / `weather` / none | The background is an image (custom background or cover), the weather animation, or a plain color |
+| `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | The weather, in the weather theme |
+| `data-phase` | `dawn` / `day` / `dusk` / `night` | The rough time of day, in the weather theme |
+| `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | The stage of the day, in the weather theme (since 1.6.3) |
 | `data-page` | `player` / `lyrics` / `library` | Current page |
 | `data-media` | `audio` / `video` / `none` | Kind of media playing |
 | `data-player-style` | `classic` / `flow` | Audio player page style |

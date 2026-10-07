@@ -20,9 +20,46 @@ export type SkyKind =
 
 export type DayPhase = "dawn" | "day" | "dusk" | "night";
 
+/** The nine stages of the day the sky follows, from before sunrise to the small hours. */
+export type TimePhase = "daybreak" | "sunrise" | "morning" | "noon" | "afternoon" | "evening" | "sunset" | "night" | "midnight";
+
+export const TIME_PHASES: { id: TimePhase; label: string }[] = [
+  { id: "daybreak", label: "破晓" },
+  { id: "sunrise", label: "日出" },
+  { id: "morning", label: "上午" },
+  { id: "noon", label: "中午" },
+  { id: "afternoon", label: "下午" },
+  { id: "evening", label: "傍晚" },
+  { id: "sunset", label: "日落" },
+  { id: "night", label: "夜晚" },
+  { id: "midnight", label: "午夜" },
+];
+
+/** How a clear sky looks at some moment: gradient (top, middle, bottom), daylight, horizon glow and accent colour. */
+export interface SkyLook {
+  sky: [string, string, string];
+  /** 0 (dark night) to 1 (full daylight). */
+  light: number;
+  /** Warm glow on the horizon, 0–1. */
+  glow: number;
+  accent: string;
+}
+
+export interface TimeOfDay {
+  phase: TimePhase;
+  /** The sun's way across the sky: 0 at sunrise, 1 at sunset, outside 0–1 below the horizon. */
+  sun: number;
+  /** The moon's way across the night sky: 0 at sunset, 1 at the next sunrise. */
+  moon: number;
+  /** The look at this moment, blended smoothly between neighbouring stages. */
+  look: SkyLook;
+}
+
 export interface Scene {
   kind: SkyKind;
+  /** Coarse time of day, derived from `time`. */
   phase: DayPhase;
+  time: TimeOfDay;
   /** Precipitation strength, 0–1. */
   intensity: number;
   /** Cloud amount, 0–1. */
@@ -88,18 +125,127 @@ export function describeCode(code: number): CodeInfo {
   return CODES[code] ?? { kind: "cloudy", intensity: 0, label: "多云" };
 }
 
-const TWILIGHT = 40 * 60;
+const DAY = 86400;
+const MIN = 60;
 
-/** Dawn and dusk are the 40 minutes either side of sunrise and sunset. */
+/** Clear-sky looks for each stage, at its middle. */
+const LOOKS: Record<TimePhase, SkyLook> = {
+  daybreak: { sky: ["#1b2a5a", "#5b5b90", "#d6978d"], light: 0.3, glow: 0.55, accent: "#a78bfa" },
+  sunrise: { sky: ["#34528f", "#c97f78", "#f4b98d"], light: 0.55, glow: 0.9, accent: "#ff8a4c" },
+  morning: { sky: ["#2f80da", "#6aaee2", "#b4d8f3"], light: 0.92, glow: 0.08, accent: "#2fa4ff" },
+  noon: { sky: ["#2a78d6", "#5ea6ea", "#a3d0f5"], light: 1, glow: 0, accent: "#0a84ff" },
+  afternoon: { sky: ["#3073c6", "#69a3da", "#b9d3e8"], light: 0.95, glow: 0.06, accent: "#14b8a6" },
+  evening: { sky: ["#3a67aa", "#9e98ae", "#f0c287"], light: 0.75, glow: 0.5, accent: "#f5a524" },
+  sunset: { sky: ["#27356f", "#8f5a8c", "#ee9066"], light: 0.4, glow: 1, accent: "#ff6b5b" },
+  night: { sky: ["#060a1c", "#111d45", "#22346a"], light: 0.06, glow: 0, accent: "#8b7cf6" },
+  midnight: { sky: ["#03060f", "#0a1230", "#16244e"], light: 0, glow: 0, accent: "#6d7cf2" },
+};
+
+/**
+ * Where each stage starts, in seconds since sunrise (daybreak is negative),
+ * for a day with `light` seconds between sunrise and sunset. Short days and
+ * nights shrink the stages so they always stay in order.
+ */
+export function phaseStarts(light: number): [TimePhase, number][] {
+  const L = Math.min(DAY - 2 * MIN, Math.max(2 * MIN, light));
+  const dark = DAY - L;
+  const twilight = Math.min(40 * MIN, dark * 0.15);
+  const noon = Math.min(60 * MIN, L * 0.1);
+  const nightStart = L + twilight;
+  const nightEnd = DAY - twilight;
+  return [
+    ["daybreak", -twilight],
+    ["sunrise", 0],
+    ["morning", Math.min(40 * MIN, L * 0.15)],
+    ["noon", L / 2 - noon],
+    ["afternoon", L / 2 + noon],
+    ["evening", L - Math.min(90 * MIN, L * 0.2)],
+    ["sunset", L - Math.min(20 * MIN, L * 0.05)],
+    ["night", nightStart],
+    ["midnight", nightStart + (nightEnd - nightStart) * 0.4],
+  ];
+}
+
+const smooth = (x: number) => x * x * (3 - 2 * x);
+
+function blendLook(a: SkyLook, b: SkyLook, t: number): SkyLook {
+  return {
+    sky: [mix(a.sky[0], b.sky[0], t), mix(a.sky[1], b.sky[1], t), mix(a.sky[2], b.sky[2], t)],
+    light: a.light + (b.light - a.light) * t,
+    glow: a.glow + (b.glow - a.glow) * t,
+    accent: mix(a.accent, b.accent, t),
+  };
+}
+
+/** The time of day at `t` seconds since sunrise, with `light` seconds of daylight. */
+function timeAt(t: number, light: number): TimeOfDay {
+  const starts = phaseStarts(light);
+  const first = starts[0][1];
+  // Into [daybreak, next daybreak).
+  t = ((((t - first) % DAY) + DAY) % DAY) + first;
+  let i = starts.length - 1;
+  while (i > 0 && t < starts[i][1]) i--;
+  // Colours change continuously: between the middles of neighbouring stages.
+  const ends = starts.map((_, k) => (k + 1 < starts.length ? starts[k + 1][1] : first + DAY));
+  const mid = (k: number) => (starts[k][1] + ends[k]) / 2;
+  const n = starts.length;
+  let a = t < mid(i) ? (i + n - 1) % n : i;
+  let ma = mid(a);
+  let mb = mid((a + 1) % n);
+  if (ma > t) ma -= DAY;
+  if (mb < ma) mb += DAY;
+  const f = mb > ma ? Math.min(1, Math.max(0, (t - ma) / (mb - ma))) : 0;
+  const look = blendLook(LOOKS[starts[a][0]], LOOKS[starts[(a + 1) % n][0]], smooth(f));
+  const L = Math.min(DAY - 2 * MIN, Math.max(2 * MIN, light));
+  const sinceSunset = (((t - L) % DAY) + DAY) % DAY;
+  return { phase: starts[i][0], sun: t / L, moon: sinceSunset / (DAY - L), look };
+}
+
+/** Today's local clock time as a unix timestamp. */
+function clock(now: Date, h: number, m = 0): number {
+  const d = new Date(now);
+  d.setHours(h, m, 0, 0);
+  return d.getTime() / 1000;
+}
+
+/**
+ * The time of day from sunrise and sunset (unix seconds, any day: only the
+ * time of day counts). Without them, a 06:00 sunrise and 18:30 sunset on the
+ * local clock.
+ */
+export function timeOfDay(nowSec: number, sunrise?: number | null, sunset?: number | null): TimeOfDay {
+  if (!sunrise || !sunset) {
+    const now = new Date(nowSec * 1000);
+    sunrise = clock(now, 6);
+    sunset = clock(now, 18, 30);
+  }
+  const light = (((sunset - sunrise) % DAY) + DAY) % DAY;
+  return timeAt(nowSec - sunrise, light);
+}
+
+export function coarsePhase(p: TimePhase): DayPhase {
+  switch (p) {
+    case "daybreak":
+    case "sunrise":
+      return "dawn";
+    case "sunset":
+      return "dusk";
+    case "night":
+    case "midnight":
+      return "night";
+    default:
+      return "day";
+  }
+}
+
+/** Dawn is daybreak and sunrise, dusk the sunset stage. */
 export function dayPhase(nowSec: number, sunrise?: number | null, sunset?: number | null, isDay = true): DayPhase {
   if (!sunrise || !sunset) return isDay ? "day" : "night";
-  // The report's sunrise and sunset are for "today" there; compare by time of day.
-  const day = 86400;
-  const t = (((nowSec - sunrise) % day) + day) % day; // seconds since sunrise
-  const len = (((sunset - sunrise) % day) + day) % day; // daylight length
-  if (t < TWILIGHT || t > day - TWILIGHT) return "dawn";
-  if (Math.abs(t - len) < TWILIGHT) return "dusk";
-  return t < len ? "day" : "night";
+  return coarsePhase(timeOfDay(nowSec, sunrise, sunset).phase);
+}
+
+export function timeLabel(p: TimePhase): string {
+  return TIME_PHASES.find((x) => x.id === p)!.label;
 }
 
 /** Wind (km/h, direction it blows from) as a sideways drift of rain and snow. */
@@ -111,9 +257,11 @@ export function windDrift(speed: number, fromDeg: number): number {
 
 export function sceneOf(r: WeatherReport, nowSec = Date.now() / 1000): Scene {
   const info = describeCode(r.code);
+  const time = timeOfDay(nowSec, r.sunrise, r.sunset);
   return {
     kind: info.kind,
-    phase: dayPhase(nowSec, r.sunrise, r.sunset, r.isDay),
+    phase: coarsePhase(time.phase),
+    time,
     intensity: info.intensity,
     clouds: info.kind === "clear" ? 0 : Math.max(CLOUDS[info.kind], Math.min(1, r.cloudCover / 100) * 0.9),
     wind: windDrift(r.windSpeed, r.windDirection),
@@ -123,34 +271,54 @@ export function sceneOf(r: WeatherReport, nowSec = Date.now() / 1000): Scene {
 
 /** Before any report arrives: a clear sky that follows the clock. */
 export function fallbackScene(now = new Date()): Scene {
-  const h = now.getHours() + now.getMinutes() / 60;
-  const phase: DayPhase = h < 5.5 || h >= 19.5 ? "night" : h < 7 ? "dawn" : h >= 18 ? "dusk" : "day";
-  return { kind: "clear", phase, intensity: 0, clouds: 0, wind: 0.1, label: "晴" };
+  const time = timeOfDay(now.getTime() / 1000);
+  return { kind: "clear", phase: coarsePhase(time.phase), time, intensity: 0, clouds: 0, wind: 0.1, label: "晴" };
 }
 
 // ------------------------------------------------------------------ previews
 
-export const PREVIEWS: { id: string; label: string; scene: Omit<Scene, "label"> }[] = [
-  { id: "clear", label: "晴", scene: { kind: "clear", phase: "day", intensity: 0, clouds: 0, wind: 0.1 } },
-  { id: "partly", label: "少云", scene: { kind: "partly", phase: "day", intensity: 0, clouds: 0.3, wind: 0.1 } },
-  { id: "cloudy", label: "多云", scene: { kind: "cloudy", phase: "day", intensity: 0, clouds: 0.6, wind: 0.15 } },
-  { id: "overcast", label: "阴", scene: { kind: "overcast", phase: "day", intensity: 0, clouds: 0.95, wind: 0.15 } },
-  { id: "fog", label: "雾", scene: { kind: "fog", phase: "day", intensity: 0.7, clouds: 0.45, wind: 0.05 } },
-  { id: "drizzle", label: "毛毛雨", scene: { kind: "drizzle", phase: "day", intensity: 0.4, clouds: 0.75, wind: 0.12 } },
-  { id: "rain", label: "雨", scene: { kind: "rain", phase: "day", intensity: 0.65, clouds: 0.88, wind: 0.2 } },
-  { id: "heavyRain", label: "大雨", scene: { kind: "heavyRain", phase: "day", intensity: 1, clouds: 1, wind: 0.35 } },
-  { id: "thunder", label: "雷雨", scene: { kind: "thunder", phase: "day", intensity: 0.9, clouds: 1, wind: 0.3 } },
-  { id: "snow", label: "雪", scene: { kind: "snow", phase: "day", intensity: 0.7, clouds: 0.8, wind: 0.15 } },
-  { id: "sleet", label: "雨夹雪", scene: { kind: "sleet", phase: "day", intensity: 0.6, clouds: 0.85, wind: 0.2 } },
-  { id: "hail", label: "冰雹", scene: { kind: "hail", phase: "day", intensity: 0.85, clouds: 1, wind: 0.2 } },
-  { id: "dusk", label: "黄昏", scene: { kind: "partly", phase: "dusk", intensity: 0, clouds: 0.3, wind: 0.1 } },
-  { id: "night", label: "晴夜", scene: { kind: "clear", phase: "night", intensity: 0, clouds: 0, wind: 0.1 } },
-  { id: "nightRain", label: "雨夜", scene: { kind: "rain", phase: "night", intensity: 0.65, clouds: 0.9, wind: 0.2 } },
+type Weather = Omit<Scene, "label" | "phase" | "time">;
+
+const WEATHER_PREVIEWS: { id: string; label: string; scene: Weather; at?: TimePhase }[] = [
+  { id: "clear", label: "晴", scene: { kind: "clear", intensity: 0, clouds: 0, wind: 0.1 } },
+  { id: "partly", label: "少云", scene: { kind: "partly", intensity: 0, clouds: 0.3, wind: 0.1 } },
+  { id: "cloudy", label: "多云", scene: { kind: "cloudy", intensity: 0, clouds: 0.6, wind: 0.15 } },
+  { id: "overcast", label: "阴", scene: { kind: "overcast", intensity: 0, clouds: 0.95, wind: 0.15 } },
+  { id: "fog", label: "雾", scene: { kind: "fog", intensity: 0.7, clouds: 0.45, wind: 0.05 } },
+  { id: "drizzle", label: "毛毛雨", scene: { kind: "drizzle", intensity: 0.4, clouds: 0.75, wind: 0.12 } },
+  { id: "rain", label: "雨", scene: { kind: "rain", intensity: 0.65, clouds: 0.88, wind: 0.2 } },
+  { id: "heavyRain", label: "大雨", scene: { kind: "heavyRain", intensity: 1, clouds: 1, wind: 0.35 } },
+  { id: "thunder", label: "雷雨", scene: { kind: "thunder", intensity: 0.9, clouds: 1, wind: 0.3 } },
+  { id: "snow", label: "雪", scene: { kind: "snow", intensity: 0.7, clouds: 0.8, wind: 0.15 } },
+  { id: "sleet", label: "雨夹雪", scene: { kind: "sleet", intensity: 0.6, clouds: 0.85, wind: 0.2 } },
+  { id: "hail", label: "冰雹", scene: { kind: "hail", intensity: 0.85, clouds: 1, wind: 0.2 } },
+  { id: "nightRain", label: "雨夜", scene: { kind: "rain", intensity: 0.65, clouds: 0.9, wind: 0.2 }, at: "night" },
+];
+
+/** A clear sky in the middle of a stage, on a day with a 06:00 sunrise and 18:00 sunset. */
+export function previewTime(p: TimePhase): TimeOfDay {
+  const light = 12 * 3600;
+  const starts = phaseStarts(light);
+  const i = starts.findIndex(([id]) => id === p);
+  const end = i + 1 < starts.length ? starts[i + 1][1] : starts[0][1] + DAY;
+  return timeAt((starts[i][1] + end) / 2, light);
+}
+
+export const PREVIEWS: { id: string; label: string; group: "weather" | "time" }[] = [
+  ...WEATHER_PREVIEWS.map((p) => ({ id: p.id, label: p.label, group: "weather" as const })),
+  ...TIME_PHASES.map((p) => ({ id: `time:${p.id}`, label: p.label, group: "time" as const })),
 ];
 
 export function previewScene(id: string): Scene | null {
-  const p = PREVIEWS.find((x) => x.id === id);
-  return p ? { ...p.scene, label: p.label } : null;
+  const stage = TIME_PHASES.find((x) => `time:${x.id}` === id);
+  if (stage) {
+    const time = previewTime(stage.id);
+    return { kind: "clear", phase: coarsePhase(stage.id), time, intensity: 0, clouds: 0, wind: 0.1, label: stage.label };
+  }
+  const p = WEATHER_PREVIEWS.find((x) => x.id === id);
+  if (!p) return null;
+  const at = p.at ?? "noon";
+  return { ...p.scene, phase: coarsePhase(at), time: previewTime(at), label: p.label };
 }
 
 // ------------------------------------------------------------------ looks
@@ -195,11 +363,7 @@ const DAY_SKY: Record<SkyKind, [string, string, string]> = {
   hail: ["#212638", "#363d56", "#4d5571"],
 };
 
-const CLEAR_TWILIGHT: Record<"dawn" | "dusk" | "night", [string, string, string]> = {
-  dawn: ["#34528f", "#c97f78", "#f4b98d"],
-  dusk: ["#27356f", "#8f5a8c", "#ee9066"],
-  night: ["#060a1c", "#111d45", "#22346a"],
-};
+const NIGHT_SKY: [string, string, string] = ["#050812", "#070b18", "#0b1222"];
 
 function hex(c: string): [number, number, number] {
   const n = parseInt(c.slice(1), 16);
@@ -214,16 +378,17 @@ export function mix(a: string, b: string, t: number): string {
 }
 
 /** Sky gradient colours for a scene, top to bottom. */
-export function skyColors(s: Pick<Scene, "kind" | "phase" | "clouds">): [string, string, string] {
+export function skyColors(s: Pick<Scene, "kind" | "clouds" | "time">): [string, string, string] {
+  const { sky, light, glow } = s.time.look;
+  if (s.kind === "clear") return sky;
+  // Weather skies: the daytime colours, darkened as the light goes and warmed near the horizon.
   const day = DAY_SKY[s.kind];
-  if (s.phase === "day") return day;
-  if (s.kind === "clear" || s.kind === "partly") {
-    const t = CLEAR_TWILIGHT[s.phase];
-    return s.kind === "clear" ? t : [mix(t[0], day[0], 0.15), mix(t[1], day[1], 0.2), mix(t[2], day[2], 0.2)];
-  }
-  if (s.phase === "night") return [mix(day[0], "#050812", 0.7), mix(day[1], "#070b18", 0.66), mix(day[2], "#0b1222", 0.6)];
-  // Cloudy dawn or dusk: a muted warm glow near the horizon.
-  const warm = s.phase === "dawn" ? "#e7a07c" : "#d97a5a";
-  const glow = 0.4 * (1 - s.clouds * 0.6);
-  return [mix(day[0], "#1f2440", 0.35), mix(day[1], "#6a5068", 0.3), mix(day[2], warm, glow)];
+  const dim = 1 - light;
+  const base = day.map((c, i) => mix(c, NIGHT_SKY[i], dim * [0.72, 0.68, 0.62][i]));
+  const warm = glow * 0.45 * (1 - s.clouds * 0.6);
+  const cloudy: [string, string, string] = [mix(base[0], "#1f2440", glow * 0.3), mix(base[1], "#6a5068", glow * 0.25), mix(base[2], sky[2], warm)];
+  if (s.kind !== "partly") return cloudy;
+  // A few clouds: mostly the clear sky at dawn, dusk and night, the cloudy day sky at noon.
+  const k = 0.15 + 0.85 * light * (1 - glow);
+  return [mix(sky[0], cloudy[0], k), mix(sky[1], cloudy[1], k), mix(sky[2], cloudy[2], k)];
 }

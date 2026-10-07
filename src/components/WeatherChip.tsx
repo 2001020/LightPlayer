@@ -1,7 +1,7 @@
 // Titlebar weather readout for the weather theme, with a details popover.
 
 import { refreshWeather } from "../core/weather/service";
-import { describeCode, sceneIcon } from "../core/weather/scene";
+import { describeCode, sceneIcon, timeLabel } from "../core/weather/scene";
 import { useWeatherScene } from "../hooks";
 import { useUI } from "../stores/player";
 import { useWeather } from "../stores/weather";
@@ -58,6 +58,8 @@ export function WeatherChip() {
                 <b>
                   {hm(report.sunrise)} / {hm(report.sunset)}
                 </b>
+                <span>时段</span>
+                <b>{timeLabel(scene.time.phase)}</b>
               </div>
               <div className="updated">
                 {status === "error" ? `更新失败：${error}` : busy ? "正在更新…" : `更新于 ${hm(report.fetchedAt)}`}
