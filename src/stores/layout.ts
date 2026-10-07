@@ -32,6 +32,8 @@ interface LayoutState {
   replay: number;
   /** The inspector sits on this side of the stage. */
   panelSide: "left" | "right";
+  /** Where the inspector was dragged to (px from the stage's top left); null: docked to `panelSide`. */
+  panelPos: { x: number; y: number } | null;
   /** The inspector is folded away (to see the whole stage). */
   panelHidden: boolean;
   /** The player page shows a sample song, to edit a layout with nothing playing. */
@@ -61,6 +63,7 @@ export const useLayouts = create<LayoutState>()(
       future: [],
       replay: 0,
       panelSide: "right",
+      panelPos: null,
       panelHidden: false,
       sample: false,
     }),
@@ -68,7 +71,7 @@ export const useLayouts = create<LayoutState>()(
       name: "lightplayer-layouts",
       version: 2,
       migrate: (saved, version) => migrateLayouts(saved, version) as LayoutState,
-      partialize: (s) => ({ custom: s.custom, active: s.active, panelSide: s.panelSide }),
+      partialize: (s) => ({ custom: s.custom, active: s.active, panelSide: s.panelSide, panelPos: s.panelPos }),
       merge: (saved, cur) => {
         const s = (saved ?? {}) as Partial<LayoutState>;
         const custom = (Array.isArray(s.custom) ? s.custom : [])
@@ -79,11 +82,17 @@ export const useLayouts = create<LayoutState>()(
           custom,
           active: typeof s.active === "string" ? s.active : DEFAULT_LAYOUT_ID,
           panelSide: s.panelSide === "left" ? "left" : "right",
+          panelPos: panelPos(s.panelPos),
         };
       },
     },
   ),
 );
+
+function panelPos(p: unknown): LayoutState["panelPos"] {
+  const q = p as { x?: unknown; y?: unknown } | null;
+  return q && Number.isFinite(q.x) && Number.isFinite(q.y) ? { x: Math.max(0, q.x as number), y: Math.max(0, q.y as number) } : null;
+}
 
 export function allLayouts(s: LayoutState = useLayouts.getState()): PlayerLayout[] {
   return [...BUILTIN_LAYOUTS, ...s.custom, ...s.plugin];

@@ -1,7 +1,7 @@
 // The layout editor's toolbar and inspector, shown over the player page while
 // a layout is edited, plus the layout menu shown otherwise.
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ColorChoices } from "../components/ColorChoices";
 import { Icon, type IconName } from "../components/Icon";
 import { Popover } from "../components/Popover";
@@ -502,21 +502,74 @@ function Layers() {
   );
 }
 
+/** Gap kept between a dragged panel and the stage's edges. */
+const PANEL_MARGIN = 8;
+
+/**
+ * Drags the inspector by its grip. The position is kept within the stage
+ * (also when the window shrinks later, through the CSS min() in the style).
+ */
+function startPanelDrag(e: ReactPointerEvent<HTMLDivElement>) {
+  if (e.button !== 0) return;
+  const panel = e.currentTarget.closest<HTMLElement>(".le-panel");
+  const stage = panel?.offsetParent as HTMLElement | null;
+  if (!panel || !stage) return;
+  e.preventDefault();
+  const grip = e.currentTarget;
+  grip.setPointerCapture(e.pointerId);
+  const start = { x: e.clientX, y: e.clientY, left: panel.offsetLeft, top: panel.offsetTop };
+  panel.classList.add("dragging");
+  const move = (ev: PointerEvent) => {
+    const maxX = stage.clientWidth - panel.offsetWidth - PANEL_MARGIN;
+    const maxY = stage.clientHeight - 120;
+    const x = Math.round(Math.min(maxX, Math.max(PANEL_MARGIN, start.left + ev.clientX - start.x)));
+    const y = Math.round(Math.min(maxY, Math.max(PANEL_MARGIN, start.top + ev.clientY - start.y)));
+    useLayouts.setState({ panelPos: { x, y } });
+  };
+  const end = () => {
+    panel.classList.remove("dragging");
+    grip.removeEventListener("pointermove", move);
+    grip.removeEventListener("pointerup", end);
+    grip.removeEventListener("pointercancel", end);
+  };
+  grip.addEventListener("pointermove", move);
+  grip.addEventListener("pointerup", end);
+  grip.addEventListener("pointercancel", end);
+}
+
+function panelStyle(pos: { x: number; y: number } | null): CSSProperties | undefined {
+  if (!pos) return undefined;
+  const top = `min(${pos.y}px, calc(100% - 120px))`;
+  return {
+    left: `max(${PANEL_MARGIN}px, min(${pos.x}px, calc(100% - var(--le-panel-w) - ${PANEL_MARGIN}px)))`,
+    right: "auto",
+    top,
+    bottom: "auto",
+    maxHeight: `calc(100% - ${top} - ${PANEL_MARGIN}px)`,
+  };
+}
+
 function Inspector() {
   const selected = useLayouts((s) => s.draft?.elements.find((e) => e.id === s.selected) ?? null);
   const side = useLayouts((s) => s.panelSide);
+  const pos = useLayouts((s) => s.panelPos);
   const hidden = useLayouts((s) => s.panelHidden);
   if (hidden) return null;
   return (
-    <aside className={`le-panel ${side}`} data-lp="layout-editor" onPointerDown={(e) => e.stopPropagation()}>
-      <Layers />
-      {selected ? (
-        <ElementInspector key={selected.id} e={selected} />
-      ) : (
-        <p className="le-hint">
-          点选元素进行设置。拖动可移动，拖右下角可调大小，拖上方圆点可旋转（按住 ⇧ 以 15° 为步长）；按住 {keys("⌥")} 拖动时不吸附对齐线。方向键微调，{keys("⌘Z")} 撤销。
-        </p>
-      )}
+    <aside className={`le-panel ${pos ? "floating" : side}`} style={panelStyle(pos)} data-lp="layout-editor" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="le-grip" onPointerDown={startPanelDrag} onDoubleClick={() => useLayouts.setState({ panelPos: null })} {...tip("拖动可移动面板，双击放回原处")}>
+        <span />
+      </div>
+      <div className="le-panel-body">
+        <Layers />
+        {selected ? (
+          <ElementInspector key={selected.id} e={selected} />
+        ) : (
+          <p className="le-hint">
+            点选元素进行设置。拖动可移动，拖右下角可调大小，拖上方圆点可旋转（按住 ⇧ 以 15° 为步长）；按住 {keys("⌥")} 拖动时不吸附对齐线。方向键微调，{keys("⌘Z")} 撤销。拖动面板顶部的横条可移动面板。
+          </p>
+        )}
+      </div>
     </aside>
   );
 }
@@ -526,6 +579,7 @@ function Toolbar() {
   const canUndo = useLayouts((s) => s.past.length > 0);
   const canRedo = useLayouts((s) => s.future.length > 0);
   const side = useLayouts((s) => s.panelSide);
+  const floating = useLayouts((s) => !!s.panelPos);
   const hidden = useLayouts((s) => s.panelHidden);
   const cancel = async () => {
     if (!draftChanged() || (await confirmDialog("放弃对布局的修改？"))) cancelEditing();
@@ -555,7 +609,11 @@ function Toolbar() {
         <Icon name="settings" size={17} />
       </button>
       {!hidden && (
-        <button className="icon-btn" onClick={() => useLayouts.setState({ panelSide: side === "right" ? "left" : "right" })} {...tip("面板移到另一侧")}>
+        <button
+          className="icon-btn"
+          onClick={() => useLayouts.setState((s) => ({ panelSide: s.panelPos ? s.panelSide : side === "right" ? "left" : "right", panelPos: null }))}
+          {...tip(floating ? "面板放回原处" : "面板移到另一侧")}
+        >
           <Icon name="sidebar" size={17} />
         </button>
       )}
