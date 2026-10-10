@@ -18,12 +18,13 @@
   const LYRICS_B = ['海浪轻轻拍着岸', '没有名字的夜晚', '星星落进我掌心', '潮水带走了叹息', '你说远方有灯塔', '我就一直向前划'];
 
   // ---------- backdrop: a painted wall behind the window, a different colour in every shot ----------
-  function wall(c0, c1, c2, key) {
+  function wall(c0, c1, c2, key, a = 1) {
+    if (a <= 0) return;
     boilSeed(key + 'wall');
-    paint(rectPts(-200, -200, W + 400, H + 400), { wash: c0, ink: null });
-    boilSeed(key + 'b1'); paint(ellPts(260, 180, 520, 330, 26, 6), { wash: c1, washOp: 150, ink: null });
-    boilSeed(key + 'b2'); paint(ellPts(1700, 900, 600, 380, 26, 6), { wash: c2, washOp: 140, ink: null });
-    boilSeed(key + 'b3'); paint(ellPts(1500, 120, 380, 200, 22, 6), { wash: c2, washOp: 80, ink: null });
+    paint(rectPts(-200, -200, W + 400, H + 400), { wash: c0, washOp: 255 * a, ink: null });
+    boilSeed(key + 'b1'); paint(ellPts(260, 180, 520, 330, 26, 6), { wash: c1, washOp: 150 * a, ink: null });
+    boilSeed(key + 'b2'); paint(ellPts(1700, 900, 600, 380, 26, 6), { wash: c2, washOp: 140 * a, ink: null });
+    boilSeed(key + 'b3'); paint(ellPts(1500, 120, 380, 200, 22, 6), { wash: c2, washOp: 80 * a, ink: null });
   }
   function nightSky(t, key = 'night') {
     boilSeed(key);
@@ -370,7 +371,7 @@
   // =============================================================== F: desktop lyrics (39 – 46)
   const DL_CLICK = 39.25, DOT_CLICK = 42.35, YEL_CLICK = 43.3;
   const DLR = [330, 150, 1260, 128];   // the lyric window on the desktop (world px)
-  function wallpaper(t) {
+  function wallpaper(t, a = 1) {
     boilSeed('wp');
     paint(rectPts(-200, -200, W + 400, H + 400), { wash: '#ffd9c2', ink: null });
     boilSeed('wp1'); paint([[-200, 520], [300, 430], [800, 520], [1300, 420], [2120, 500], [2120, 1300], [-200, 1300]], { wash: '#f7a8b8', ink: null, curv: .5 });
@@ -382,14 +383,15 @@
     boilSeed('dock'); paint(rrPts(560, 990, 800, 78, 22), { wash: '#ffffff', washOp: 120, ink: '#ffffff', sw: .5 });
     const cols = ['#66ccff', '#ff7849', '#13ce66', '#ffd166', '#7c5cff', '#ff4d8d', '#00b8a9', '#8e8e93'];
     cols.forEach((c, i) => { boilSeed('dk' + i); paint(rrPts(590 + i * 94, 1003, 58, 58, 14), { wash: c, ink: null }); });
-    appIcon(590 + 29, 1003 + 29, 58 / .805, { ink: null });
+    if (a > .02) appIcon(590 + 29, 1003 + 29, 58 / .805, { ink: null, alpha: a });
   }
   function shotF(t) {
     // the window shrinks to a corner of the desktop
     const k = ease(seg(t, 39.45, 40.5)), ws = lerp(WS, .62, k), wx = lerp(WX, 140, k), wy = lerp(WY, 330, k);
     const back = ease(seg(t, 45.3, 46.0));
     useTheme(LIGHT, '#66ccff');
-    if (k > 0) wallpaper(t); else wall('#d6f2ea', '#cde6ff', '#fff1c9', 'E');
+    const wk = ease(seg(t, 39.3, 40.3));
+    wallpaper(t, wk); wall('#d6f2ea', '#cde6ff', '#fff1c9', 'E', 1 - wk);
     camBegin(lerp(960, 640, back), lerp(540, 600, back), 1 + 1.2 * easeIn(back));
     const s = SONGS[1], on = t > DL_CLICK;
     win(() => {
@@ -456,7 +458,7 @@
   function shotG(t) {
     const sk = skyAt(t), night = seg(t, 53.6, 54.6), raining = seg(t, 48.9, 49.6) * (1 - seg(t, 52.0, 52.8));
     // the whole frame is sky: outside the window, hills; inside, the theme's gradient
-    skyFill(-60, -60, W + 120, H + 120, sk.sky, 0, 'gsky', 12);
+    skyFill(-60, -60, W + 120, H + 120, sk.sky, 0, 'gsky');
     // sun and moon on an arc
     const sunA = lerp(Math.PI * .95, Math.PI * .1, seg(t, 46, 53.8)), sx = 960 + Math.cos(sunA) * 820, sy = 820 - Math.sin(sunA) * 640;
     if (night < 1) { glow(sx, sy, 220, '#ffd36b', (1 - night) * (1 - raining * .8)); boilSeed('sun'); paint(ellPts(sx, sy, 62, 62, 30), { wash: '#fff1c2', washOp: 255 * (1 - night) * (1 - raining * .7), ink: null }); }
@@ -527,8 +529,17 @@
         const pb = U(...PLAY_BTN); if (ak > 0 && ak < 1) { boilSeed('accring'); paint(ellPts(pb[0], pb[1], 30 + 90 * easeOut(ak), 30 + 90 * easeOut(ak), 28), { wash: null, ink: acc, sw: 2 * (1 - ak) + .3 }); }
       } else {
         const [x, y, w, h, r] = morphRect(1 - shrink), cover = seg(shrink, 0, .35);
-        if (cover < 1) { const sc = w / APP_W; win(() => { winFrame(); titlebar({}); transport({}); }, x, y + h / 2 - APP_H * sc / 2, sc); flushLetters(); }
-        rr(x, y, w, h, r, { fill: mixCol('#f4f4f7', '#5aa9ff', seg(shrink, .3, .7)), op: 255 * Math.max(cover, .001) + (cover >= 1 ? 0 : 0), ink: cover >= 1 ? PAL.ink : null, sw: 1, key: 'morph' });
+        if (cover < 1) {
+          const sc = w / APP_W, s = SONGS[0];
+          win(() => {
+            winFrame(); titlebar({ file: s.file });
+            playerPage({ title: s.title, artist: s.artist, album: s.album, fmt: 'APE', chip2: '实时转换播放', arm: 1, ang: (t - 14.5) * TAU / 20, cover: 'dusk' });
+            transport({ pos: t - 40, dur: s.secs, playing: true, title: s.title, artist: s.artist, cover: 'dusk' });
+          }, x, y + h / 2 - APP_H * sc / 2, sc);
+          flushLetters();
+        }
+        rr(x, y, w, h, r, { fill: mixCol('#f4f4f7', '#5aa9ff', seg(shrink, .3, .7)), op: 255 * Math.max(cover, .001), ink: cover >= 1 ? PAL.ink : null, sw: 1, key: 'morph' });
+        if (shrink > .7) appIcon(ICX, ICY, ICS, { alpha: seg(shrink, .7, 1), ink: null, bars: .6 });
       }
     }
     if (shrink >= 1) appIcon(ICX, ICY, ICS, { bars: .6 + .4 * pulse(t) });

@@ -313,19 +313,15 @@ function winFrame(o = {}) {
   }
 }
 // A painted vertical gradient: bands of wash between the three stops (top, 55%, bottom), with soft wavy seams.
-function skyFill(x, y, w, h, cols, r, key, n = 16) {
-  rr(x, y, w, h, r, { fill: cols[0], key: key + 'base' });
-  for (let i = 1; i < n; i++) {
-    const k = i / n, col = k < .55 ? mixCol(cols[0], cols[1], k / .55) : mixCol(cols[1], cols[2], (k - .55) / .45);
-    const yy = y + h * k, pts = [];
-    for (let j = 0; j <= 8; j++) pts.push([x + w * j / 8, yy + Math.sin(j * 1.3 + i) * 5]);
-    pts.push([x + w, y + h - (i === n - 1 ? 0 : 0)]);
-    const bottom = y + h;
-    boilSeed(key + 'band' + i);
-    const R = Math.min(r, bottom - yy);
-    const poly = pts.concat([[x + w, bottom - R], [x + w - R * .3, bottom - R * .05], [x + w - R, bottom], [x + R, bottom], [x + R * .3, bottom - R * .05], [x, bottom - R]]);
-    paint(poly, { wash: col, ink: null });
-  }
+function skyFill(x, y, w, h, cols, r, key) {
+  // WeatherSky.tsx: linear-gradient(to bottom, top 0%, middle 55%, bottom 100%), on the crisp layer, then flushed so
+  // everything painted after it lands on top.
+  glyph(c => {
+    const g = c.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, cols[0]); g.addColorStop(.55, cols[1]); g.addColorStop(1, cols[2]);
+    c.fillStyle = g; c.beginPath(); c.roundRect(x, y, w, h, r); c.fill();
+  });
+  flushLetters();
 }
 // Titlebar: traffic lights, brand, file name, the buttons on the right (App.tsx).
 function titlebar(o = {}) {

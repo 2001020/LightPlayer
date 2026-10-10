@@ -2,6 +2,8 @@
 
 `LightPlayer-PV.mp4`：64 秒，1920×1080，24 帧每秒，无配乐。分镜与每个镜头的时间安排见 [STORYBOARD.md](STORYBOARD.md)。
 
+![预览](preview.jpg)
+
 画面是手绘纸面风格：面板、封面、唱片、天空和角色 Clawd 用 [p5.brush](https://github.com/acamposuribe/p5.brush) 平涂加墨线绘制，
 动画框架来自 [ClaudeAnimationBase](https://github.com/JohnHeibel/ClaudeAnimationBase)（MIT，见 [LICENSE](LICENSE)）。
 
@@ -30,7 +32,7 @@ npm install
 export CHROME_PATH=/path/to/chrome          # 找不到浏览器时设置
 npm run sheet                               # 联系表：out/sheet.jpg
 npm run frames                              # 逐帧渲染到 out/frames（可并行、可续传）
-npm run encode                              # 合成 out/LightPlayer-PV.mp4
+npm run encode                              # 合成 LightPlayer-PV.mp4
 ```
 
 也可以用 Chrome 打开 `studio.html` 拖动进度条预览。
