@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>LightPlayer PV studio</title>
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-sc/400.css">
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-sc/600.css">
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-sc/700.css">
+<link rel="stylesheet" href="node_modules/@fontsource/zcool-kuaile/400.css">
+<link rel="stylesheet" href="node_modules/@fontsource/fredoka/600.css">
+<style>
+  html, body { margin: 0; background: #1b1820; color: #eee; font: 13px system-ui, sans-serif; }
+  main { padding: 12px; display: grid; gap: 8px; }
+  #out { width: min(100%, 1280px); aspect-ratio: 16 / 9; height: auto; background: #F3EBDC; }
+  .p5Canvas { display: none !important; }
+  .bar { display: flex; gap: 10px; align-items: center; max-width: 1280px; }
+  #scrub { flex: 1; }
+  #tt { font-variant-numeric: tabular-nums; min-width: 190px; }
+</style>
+<script src="node_modules/p5/lib/p5.min.js"></script>
+<script src="node_modules/p5.brush/dist/p5.brush.js"></script>
+</head>
+<body>
+<main>
+  <canvas id="out" width="1920" height="1080"></canvas>
+  <div class="bar"><input id="scrub" type="range" min="0" max="64" step="0.0417" value="0"><span id="tt">loading</span></div>
+</main>
+<!-- engine (ClaudeAnimationBase) -->
+<script src="src/config.js"></script>
+<script src="src/core.js"></script>
+<script src="src/clawd.js"></script>
+<script src="src/timeline.js"></script>
+<!-- LightPlayer's interface, redrawn from the app's source -->
+<script src="src/ui.js"></script>
+<!-- the film -->
+<script src="src/scenes/pv.js"></script>
+<script>
+  // Load every glyph the film uses before the first frame: the CJK fonts come in unicode-range pieces.
+  window.preloadFonts = async () => {
+    let text = 'LightPlayer0123456789:%()';
+    for (const f of ['src/ui.js', 'src/scenes/pv.js']) { try { text += await (await fetch(f)).text(); } catch (e) {} }
+    const chars = [...new Set(text)].join('');
+    const fams = ['400 20px "Noto Sans SC"', '600 20px "Noto Sans SC"', '700 20px "Noto Sans SC"', '20px "ZCOOL KuaiLe"', '600 20px "Fredoka"'];
+    for (const f of fams) { try { await document.fonts.load(f, chars); } catch (e) {} }
+    await document.fonts.ready;
+  };
+</script>
+</body>
+</html>
