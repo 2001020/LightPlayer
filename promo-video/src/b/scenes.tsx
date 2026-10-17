@@ -351,7 +351,7 @@ const WeatherInner: React.FC = () => (
   <>
     <AbsoluteFill style={{ backgroundColor: "#f5f5f7" }} />
     <AbsoluteFill style={{ alignItems: "center", top: 104 }}>
-      <Headline at={2} size={116} weight={800} color={INK} stagger={3} blur={10} rise={0.2}>
+      <Headline at={6} out={134} size={116} weight={800} color={INK} stagger={3} blur={10} rise={0.2}>
         天气 就是主题
       </Headline>
     </AbsoluteFill>
@@ -376,7 +376,7 @@ const DesktopInner: React.FC = () => {
       <Skeleton x={190} y={330} w={780} h={400} tone="light" />
       <Skeleton x={1050} y={380} w={660} h={360} tone="light" />
       <AbsoluteFill style={{ alignItems: "center", top: 110 }}>
-        <Headline at={4} size={112} weight={800} color={INK} stagger={3} blur={10} rise={0.2}>
+        <Headline at={10} out={104} size={112} weight={800} color={INK} stagger={3} blur={10} rise={0.2}>
           歌词 浮于桌面之上
         </Headline>
       </AbsoluteFill>
@@ -405,7 +405,7 @@ const CustomizeInner: React.FC = () => {
     <>
       <AbsoluteFill style={{ backgroundColor: "#f5f5f7" }} />
       <AbsoluteFill style={{ alignItems: "center", top: 70 }}>
-        <Headline at={2} size={112} weight={800} color={INK} stagger={3} blur={10} rise={0.2}>
+        <Headline at={10} size={112} weight={800} color={INK} stagger={3} blur={10} rise={0.2}>
           由你定义
         </Headline>
       </AbsoluteFill>

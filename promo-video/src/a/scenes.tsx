@@ -296,7 +296,7 @@ const DesktopInner: React.FC = () => {
       <Skeleton x={190} y={330} w={780} h={400} tone="light" />
       <Skeleton x={1050} y={380} w={660} h={360} tone="dark" />
       <AbsoluteFill style={{ alignItems: "center", top: 110 }}>
-        <Headline at={46} size={112} weight={700} stagger={3} glow="0 6px 40px rgba(0,0,0,.45)">
+        <Headline at={46} out={112} size={112} weight={700} stagger={3} glow="0 6px 40px rgba(0,0,0,.45)">
           歌词 浮于桌面之上
         </Headline>
       </AbsoluteFill>
@@ -342,7 +342,7 @@ const CustomizeInner: React.FC = () => {
     <>
       <AbsoluteFill style={{ background: "radial-gradient(ellipse 70% 55% at 50% 70%, #121a28 0%, #000 72%)" }} />
       <AbsoluteFill style={{ alignItems: "center", top: 92 }}>
-        <Headline at={6} size={124} weight={700} stagger={4}>
+        <Headline at={14} size={124} weight={700} stagger={4}>
           由你定义
         </Headline>
       </AbsoluteFill>

@@ -99,7 +99,7 @@ const HeroInner: React.FC = () => {
     <>
       <Aurora keys={[{ f: 0, p: P.deep }, { f: 150, p: P.lyric }]} />
       <AbsoluteFill style={{ alignItems: "center", top: 70 }}>
-        <Headline at={4} size={104} weight={700} stagger={3} glow={GLOW}>
+        <Headline at={18} size={104} weight={700} stagger={3} glow={GLOW}>
           轻巧 也全能
         </Headline>
       </AbsoluteFill>
@@ -128,8 +128,8 @@ export const CHero = Interactive.create({ Component: HeroInner, layout: "absolut
 
 const LyricsInner: React.FC = () => {
   const frame = useCurrentFrame();
-  const show = interpolate(frame, [54, 80], [0, 1], clamp);
-  const pos = Math.max(0, (frame - 54) / 44);
+  const show = interpolate(frame, [58, 82], [0, 1], clamp);
+  const pos = Math.max(0, (frame - 58) / 44);
   const cur = Math.floor(pos);
   const frac = pos - cur;
   const glide = 1 - Math.pow(1 - Math.min(1, frac / 0.22), 3);
@@ -138,10 +138,10 @@ const LyricsInner: React.FC = () => {
     <>
       <Aurora keys={[{ f: 0, p: P.lyric }]} dark={0.4} />
       <AbsoluteFill style={{ ...center, flexDirection: "column", gap: 6 }}>
-        <Headline at={2} out={48} size={132} weight={700} stagger={4} glow={GLOW}>
+        <Headline at={2} out={42} size={132} weight={700} stagger={4} glow={GLOW}>
           每一句
         </Headline>
-        <Headline at={14} out={50} size={132} weight={700} stagger={4} glow={GLOW}>
+        <Headline at={14} out={44} size={132} weight={700} stagger={4} glow={GLOW}>
           都在发光
         </Headline>
       </AbsoluteFill>
@@ -251,7 +251,7 @@ const DayInner: React.FC = () => {
         }}
       />
       <AbsoluteFill style={{ alignItems: "center", top: 70 }}>
-        <Headline at={4} size={104} weight={700} stagger={3} glow="0 4px 30px rgba(0,0,0,.2)">
+        <Headline at={18} size={104} weight={700} stagger={3} glow="0 4px 30px rgba(0,0,0,.2)">
           天色 随时间流转
         </Headline>
       </AbsoluteFill>
@@ -280,7 +280,7 @@ const DesktopInner: React.FC = () => {
       <Skeleton x={190} y={330} w={780} h={400} tone="glass" />
       <Skeleton x={1050} y={380} w={660} h={360} tone="glass" />
       <AbsoluteFill style={{ alignItems: "center", top: 110 }}>
-        <Headline at={30} size={112} weight={700} stagger={3} glow={GLOW}>
+        <Headline at={30} out={106} size={112} weight={700} stagger={3} glow={GLOW}>
           歌词 浮于桌面之上
         </Headline>
       </AbsoluteFill>
@@ -318,7 +318,7 @@ const CustomizeInner: React.FC = () => {
     <>
       <Aurora keys={TINTS.map((p, i) => ({ f: 10 + i * every, p }))} dark={0.5} />
       <AbsoluteFill style={{ alignItems: "center", top: 70 }}>
-        <Headline at={2} size={112} weight={700} stagger={3} glow={GLOW}>
+        <Headline at={18} size={112} weight={700} stagger={3} glow={GLOW}>
           由你定义
         </Headline>
       </AbsoluteFill>
