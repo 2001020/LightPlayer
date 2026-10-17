@@ -1,43 +1,18 @@
-import { linearTiming, TransitionSeries } from "@remotion/transitions";
-import { fade } from "@remotion/transitions/fade";
-import { AbsoluteFill } from "remotion";
+import { type SceneDef, Series } from "../shared/Series";
 import { CCustomize, CDay, CDesktop, CEnd, CHero, CLyrics, COpening, CVinyl } from "./scenes";
 
+export const C_CROSSFADE = 20;
+
+export const C_SCENES: SceneDef[] = [
+  { id: "C1-Opening", label: "开场", duration: 120, Component: COpening },
+  { id: "C2-Hero", label: "轻巧全能", duration: 150, Component: CHero },
+  { id: "C3-Lyrics", label: "歌词", duration: 190, Component: CLyrics },
+  { id: "C4-Vinyl", label: "黑胶", duration: 140, Component: CVinyl },
+  { id: "C5-Day", label: "天色", duration: 165, Component: CDay },
+  { id: "C6-Desktop", label: "桌面歌词", duration: 130, Component: CDesktop },
+  { id: "C7-Customize", label: "自定义", duration: 130, Component: CCustomize },
+  { id: "C8-End", label: "结尾", duration: 135, Component: CEnd },
+];
+
 /** 流光: 1160 frames of scenes minus 7 20-frame crossfades = 1020 frames. */
-export const CAurora: React.FC = () => (
-  <AbsoluteFill style={{ backgroundColor: "#000" }}>
-    <TransitionSeries name="流光">
-      <TransitionSeries.Sequence name="听见光" durationInFrames={120}>
-        <COpening />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 20 })} />
-      <TransitionSeries.Sequence name="轻巧 也全能" durationInFrames={150}>
-        <CHero />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 20 })} />
-      <TransitionSeries.Sequence name="每一句 都在发光" durationInFrames={190}>
-        <CLyrics />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 20 })} />
-      <TransitionSeries.Sequence name="让唱片 转起来" durationInFrames={140}>
-        <CVinyl />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 20 })} />
-      <TransitionSeries.Sequence name="天色 随时间流转" durationInFrames={165}>
-        <CDay />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 20 })} />
-      <TransitionSeries.Sequence name="歌词 浮于桌面之上" durationInFrames={130}>
-        <CDesktop />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 20 })} />
-      <TransitionSeries.Sequence name="由你定义" durationInFrames={130}>
-        <CCustomize />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 20 })} />
-      <TransitionSeries.Sequence name="结尾" durationInFrames={135}>
-        <CEnd />
-      </TransitionSeries.Sequence>
-    </TransitionSeries>
-  </AbsoluteFill>
-);
+export const CAurora: React.FC = () => <Series name="流光" scenes={C_SCENES} crossfade={C_CROSSFADE} background="#000" />;

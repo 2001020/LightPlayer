@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
-import { useCurrentFrame, useVideoConfig } from "remotion";
+import { getRemotionEnvironment, useCurrentFrame, useVideoConfig } from "remotion";
+import { BASE_FPS } from "../tokens";
 
 export type Uniforms = Record<string, number | readonly number[]>;
 
@@ -53,11 +54,14 @@ export const ShaderCanvas: React.FC<{
   style?: CSSProperties;
 }> = ({ frag, uniforms = {}, resolution = 1, width, height, style }) => {
   const frame = useCurrentFrame();
-  const { fps, width: vw, height: vh } = useVideoConfig();
+  const { width: vw, height: vh } = useVideoConfig();
   const ref = useRef<HTMLCanvasElement>(null);
   const state = useRef<GLState | null>(null);
-  const w = Math.round((width ?? vw) * resolution);
-  const h = Math.round((height ?? vh) * resolution);
+  // Exports above 1080p render with a larger device pixel ratio; match it so
+  // the shaders stay sharp. Previews keep the cheaper 1x buffer.
+  const dpr = getRemotionEnvironment().isRendering ? Math.max(1, window.devicePixelRatio || 1) : 1;
+  const w = Math.round((width ?? vw) * resolution * dpr);
+  const h = Math.round((height ?? vh) * resolution * dpr);
 
   useLayoutEffect(() => {
     const canvas = ref.current!;
@@ -75,7 +79,7 @@ export const ShaderCanvas: React.FC<{
     gl.viewport(0, 0, w, h);
     gl.useProgram(program);
     set("u_res", [w, h]);
-    set("u_time", frame / fps);
+    set("u_time", frame / BASE_FPS);
     for (const [k, v] of Object.entries(uniforms)) set(k, v);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   });

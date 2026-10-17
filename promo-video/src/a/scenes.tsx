@@ -6,12 +6,12 @@ import { useLayoutEffect } from "react";
 import { AbsoluteFill, Interactive, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { accentAt } from "../shared/accents";
 import { APP_ICON_SVG, AppIcon } from "../shared/AppIcon";
-import { LYRICS } from "../shared/data";
 import { FontSync } from "../shared/FontSync";
 import { BEAM, PRECIP, SKY, WALLPAPER } from "../shared/gl/shaders";
 import { ShaderCanvas } from "../shared/gl/ShaderCanvas";
 import { Headline } from "../shared/Headline";
 import { canvasTexture, svgCanvas, useAsset } from "../shared/three/assets";
+import { useTexts } from "../shared/texts";
 import { StudioEnv } from "../shared/three/Env";
 import { IconSlab } from "../shared/three/IconSlab";
 import { MediaTunnel, useTunnelTextures } from "../shared/three/MediaTunnel";
@@ -44,6 +44,7 @@ const LookAt: React.FC<{ position: [number, number, number]; target: [number, nu
 
 const OpeningInner: React.FC = () => {
   const frame = useCurrentFrame();
+  const t = useTexts().a;
   return (
     <>
       <AbsoluteFill style={{ backgroundColor: "#000" }} />
@@ -58,8 +59,8 @@ const OpeningInner: React.FC = () => {
         }}
       />
       <AbsoluteFill style={center}>
-        <Headline at={40} size={156} weight={600} gradient={WHITE_TO_SKY} stagger={6} duration={36} blur={24} letterSpacing="0.1em">
-          听见光
+        <Headline at={40} size={156} weight={600} gradient={WHITE_TO_SKY} stagger={6} duration={36} blur={24} letterSpacing="0.1em" tk="a.opening">
+          {t.opening}
         </Headline>
       </AbsoluteFill>
       <FontSync />
@@ -74,6 +75,7 @@ export const AOpening = Interactive.create({ Component: OpeningInner, layout: "a
 const IconInner: React.FC = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
+  const t = useTexts().a;
   const tex = useAsset(async () => canvasTexture(await svgCanvas(APP_ICON_SVG, 1024, 1024)), "Icon texture");
   const p = interpolate(frame, [0, 80], [0, 1], { ...clamp, easing: EASE_OUT });
   return (
@@ -99,8 +101,8 @@ const IconInner: React.FC = () => {
         </ThreeCanvas>
       ) : null}
       <AbsoluteFill style={{ alignItems: "center", top: 700 }}>
-        <Headline at={56} size={104} weight={600} stagger={2} duration={30} letterSpacing="-0.01em">
-          LightPlayer
+        <Headline at={56} size={104} weight={600} stagger={2} duration={30} letterSpacing="-0.01em" tk="a.brand">
+          {t.brand}
         </Headline>
       </AbsoluteFill>
       <FontSync />
@@ -114,14 +116,15 @@ export const AIcon = Interactive.create({ Component: IconInner, layout: "absolut
 
 const HeroInner: React.FC = () => {
   const frame = useCurrentFrame();
+  const t = useTexts().a;
   const rise = interpolate(frame, [18, 100], [0, 1], { ...clamp, easing: EASE_OUT });
   const push = interpolate(frame, [95, 165], [0, 1], { ...clamp, easing: EASE_IN_OUT });
   return (
     <>
       <AbsoluteFill style={{ background: "radial-gradient(ellipse 70% 45% at 50% 100%, #0d2440 0%, #000 70%)" }} />
       <AbsoluteFill style={{ alignItems: "center", top: 96 }}>
-        <Headline at={4} out={96} size={112} weight={700} gradient={WHITE_TO_SKY} stagger={3}>
-          轻巧 也全能
+        <Headline at={4} out={96} size={112} weight={700} gradient={WHITE_TO_SKY} stagger={3} tk="a.hero">
+          {t.hero}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ ...center, perspective: 2200 }}>
@@ -150,6 +153,7 @@ const FormatsInner: React.FC = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const textures = useTunnelTextures();
+  const t = useTexts().a;
   return (
     <>
       <AbsoluteFill style={{ backgroundColor: "#000" }} />
@@ -161,11 +165,11 @@ const FormatsInner: React.FC = () => {
       ) : null}
       <AbsoluteFill style={{ background: "radial-gradient(ellipse 34% 30% at 50% 50%, rgba(0,0,0,.85), transparent 100%)" }} />
       <AbsoluteFill style={{ ...center, flexDirection: "column", gap: 4 }}>
-        <Headline at={28} size={128} weight={700} stagger={3}>
-          几乎所有格式
+        <Headline at={28} size={128} weight={700} stagger={3} tk="a.formats1">
+          {t.formats1}
         </Headline>
-        <Headline at={52} size={128} weight={700} stagger={3} gradient={SKY_TO_BLUE}>
-          打开就播
+        <Headline at={52} size={128} weight={700} stagger={3} gradient={SKY_TO_BLUE} tk="a.formats2">
+          {t.formats2}
         </Headline>
       </AbsoluteFill>
       <FontSync />
@@ -181,6 +185,7 @@ const LyricsInner: React.FC = () => {
   const frame = useCurrentFrame();
   const show = interpolate(frame, [52, 76], [0, 1], clamp);
   const zoom = interpolate(frame, [64, 205], [2.35, 1.02], { ...clamp, easing: EASE_IN_OUT });
+  const t = useTexts().a;
   return (
     <>
       <AbsoluteFill style={{ backgroundColor: "#000" }} />
@@ -192,11 +197,11 @@ const LyricsInner: React.FC = () => {
         </div>
       </AbsoluteFill>
       <AbsoluteFill style={{ ...center, flexDirection: "column", gap: 8 }}>
-        <Headline at={2} out={50} size={132} weight={700} stagger={4}>
-          每一句
+        <Headline at={2} out={50} size={132} weight={700} stagger={4} tk="a.lyrics1">
+          {t.lyrics1}
         </Headline>
-        <Headline at={16} out={52} size={132} weight={700} stagger={4} gradient={SKY_TO_BLUE} glow="0 0 40px rgba(102,204,255,.35)">
-          都在发光
+        <Headline at={16} out={52} size={132} weight={700} stagger={4} gradient={SKY_TO_BLUE} glow="0 0 40px rgba(102,204,255,.35)" tk="a.lyrics2">
+          {t.lyrics2}
         </Headline>
       </AbsoluteFill>
       <FontSync />
@@ -212,6 +217,7 @@ const VinylInner: React.FC = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const textures = useVinylTextures(3);
+  const t = useTexts().a;
   const orbit = -0.35 + frame * 0.0022;
   const dist = 6.6 - 0.6 * interpolate(frame, [0, 150], [0, 1], { ...clamp, easing: EASE_IN_OUT });
   return (
@@ -230,11 +236,11 @@ const VinylInner: React.FC = () => {
         </ThreeCanvas>
       ) : null}
       <AbsoluteFill style={{ justifyContent: "center", left: 170 }}>
-        <Headline at={44} size={120} weight={700} stagger={4}>
-          让唱片
+        <Headline at={44} size={120} weight={700} stagger={4} maxWidth={800} tk="a.vinyl1">
+          {t.vinyl1}
         </Headline>
-        <Headline at={60} size={120} weight={700} stagger={4} gradient="linear-gradient(90deg, #ffe2b8, #ffb36b)">
-          转起来
+        <Headline at={60} size={120} weight={700} stagger={4} gradient="linear-gradient(90deg, #ffe2b8, #ffb36b)" maxWidth={800} tk="a.vinyl2">
+          {t.vinyl2}
         </Headline>
       </AbsoluteFill>
       <FontSync />
@@ -249,16 +255,17 @@ export const AVinyl = Interactive.create({ Component: VinylInner, layout: "absol
 const WeatherInner: React.FC = () => {
   const frame = useCurrentFrame();
   const { sky, precip } = skyAt(frame);
+  const t = useTexts().a;
   const rise = interpolate(frame, [62, 118], [0, 1], { ...clamp, easing: EASE_OUT });
   return (
     <>
       <ShaderCanvas frag={SKY} resolution={0.5} uniforms={sky} />
       <AbsoluteFill style={{ ...center, flexDirection: "column", gap: 6, top: -40 }}>
-        <Headline at={6} out={66} size={124} weight={700} stagger={3} glow="0 4px 30px rgba(0,40,90,.25)">
-          窗外的天气
+        <Headline at={6} out={66} size={124} weight={700} stagger={3} glow="0 4px 30px rgba(0,40,90,.25)" tk="a.weather1">
+          {t.weather1}
         </Headline>
-        <Headline at={22} out={68} size={124} weight={700} stagger={3} glow="0 4px 30px rgba(0,40,90,.25)">
-          就是主题
+        <Headline at={22} out={68} size={124} weight={700} stagger={3} glow="0 4px 30px rgba(0,40,90,.25)" tk="a.weather2">
+          {t.weather2}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ ...center, perspective: 2400 }}>
@@ -285,6 +292,7 @@ const DesktopInner: React.FC = () => {
   const second = frame >= 78;
   const lineFrame = second ? frame - 78 : frame - 18;
   const swap = interpolate(frame, [72, 78, 84], [1, 0, 1], clamp);
+  const { a: t, lyrics } = useTexts();
   return (
     <>
       <ShaderCanvas frag={WALLPAPER} resolution={0.5} uniforms={{ u_a: hex("#0b1030"), u_b: hex("#24316e"), u_c: hex("#5fb8ff") }} />
@@ -296,8 +304,8 @@ const DesktopInner: React.FC = () => {
       <Skeleton x={190} y={330} w={780} h={400} tone="light" />
       <Skeleton x={1050} y={380} w={660} h={360} tone="dark" />
       <AbsoluteFill style={{ alignItems: "center", top: 110 }}>
-        <Headline at={46} out={112} size={112} weight={700} stagger={3} glow="0 6px 40px rgba(0,0,0,.45)">
-          歌词 浮于桌面之上
+        <Headline at={46} out={112} size={112} weight={700} stagger={3} glow="0 6px 40px rgba(0,0,0,.45)" tk="a.desktop">
+          {t.desktop}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ alignItems: "center", top: 800 }}>
@@ -305,7 +313,8 @@ const DesktopInner: React.FC = () => {
           <DesktopLyrics
             scale={1.25}
             color={ACCENT}
-            text={second ? LYRICS[3] : LYRICS[2]}
+            text={second ? lyrics[3] : lyrics[2]}
+            tk={second ? "lyrics.3" : "lyrics.2"}
             progress={interpolate(lineFrame, [0, 54], [0, 1], clamp)}
           />
         </div>
@@ -322,6 +331,7 @@ export const ADesktop = Interactive.create({ Component: DesktopInner, layout: "a
 const CustomizeInner: React.FC = () => {
   const frame = useCurrentFrame();
   const accent = accentAt(frame - 30);
+  const t = useTexts().a;
   const p = interpolate(frame, [0, 60], [0, 1], { ...clamp, easing: EASE_OUT });
   const drift = interpolate(frame, [0, 135], [40, -40]);
   const card = (i: number, child: React.ReactNode) => {
@@ -342,8 +352,8 @@ const CustomizeInner: React.FC = () => {
     <>
       <AbsoluteFill style={{ background: "radial-gradient(ellipse 70% 55% at 50% 70%, #121a28 0%, #000 72%)" }} />
       <AbsoluteFill style={{ alignItems: "center", top: 92 }}>
-        <Headline at={14} size={124} weight={700} stagger={4}>
-          由你定义
+        <Headline at={14} size={124} weight={700} stagger={4} tk="a.customize">
+          {t.customize}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ ...center, top: 150, perspective: 2000 }}>
@@ -364,6 +374,7 @@ const EndInner: React.FC = () => {
   const frame = useCurrentFrame();
   const p = interpolate(frame, [0, 40], [0, 1], { ...clamp, easing: EASE_OUT });
   const out = interpolate(frame, [128, 150], [1, 0], clamp);
+  const t = useTexts().a;
   return (
     <>
       <AbsoluteFill style={{ backgroundColor: "#000" }} />
@@ -373,12 +384,12 @@ const EndInner: React.FC = () => {
           <AppIcon size={220} style={{ position: "relative", filter: "drop-shadow(0 20px 50px rgba(61,139,255,.45))" }} />
         </div>
         <div style={{ height: 44 }} />
-        <Headline at={22} size={96} weight={600} stagger={2} letterSpacing="-0.01em">
-          LightPlayer
+        <Headline at={22} size={96} weight={600} stagger={2} letterSpacing="-0.01em" tk="a.endName">
+          {t.endName}
         </Headline>
         <div style={{ height: 18 }} />
-        <Headline at={44} size={46} weight={500} color="#a1a1a6" stagger={2} blur={10} letterSpacing="0.04em">
-          macOS 与 Windows
+        <Headline at={44} size={46} weight={500} color="#a1a1a6" stagger={2} blur={10} letterSpacing="0.04em" tk="a.endTagline">
+          {t.endTagline}
         </Headline>
       </AbsoluteFill>
       <FontSync />

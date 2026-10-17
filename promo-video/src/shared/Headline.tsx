@@ -1,5 +1,6 @@
 import { interpolate, useCurrentFrame } from "remotion";
 import { FONT } from "./fonts";
+import { fitSize } from "./texts";
 import { clamp, EASE_IN, EASE_OUT } from "./tokens";
 
 export type HeadlineProps = {
@@ -22,6 +23,10 @@ export type HeadlineProps = {
   rise?: number;
   letterSpacing?: string;
   glow?: string;
+  /** Longer lines shrink to stay within this width (px). */
+  maxWidth?: number;
+  /** Path of the text in Texts, so the editor can find it on screen. */
+  tk?: string;
   style?: React.CSSProperties;
 };
 
@@ -33,7 +38,7 @@ export const Headline: React.FC<HeadlineProps> = ({
   children,
   at = 0,
   out,
-  size = 120,
+  size: baseSize = 120,
   weight = 700,
   color = "#fff",
   gradient,
@@ -43,14 +48,19 @@ export const Headline: React.FC<HeadlineProps> = ({
   rise = 0.3,
   letterSpacing = "0.02em",
   glow,
+  maxWidth = 1720,
+  tk,
   style,
 }) => {
   const frame = useCurrentFrame();
   const chars = [...children];
+  const em = letterSpacing.endsWith("em") ? parseFloat(letterSpacing) : 0;
+  const size = fitSize(children, baseSize, maxWidth, em);
   const n = chars.length;
   const leave = out === undefined ? 0 : interpolate(frame, [out, out + 16], [0, 1], { ...clamp, easing: EASE_IN });
   return (
     <div
+      data-tk={tk}
       style={{
         fontFamily: FONT,
         fontSize: size,

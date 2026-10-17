@@ -4,12 +4,12 @@
 import { AbsoluteFill, Interactive, interpolate, interpolateColors, useCurrentFrame } from "remotion";
 import { accentAt, ACCENTS } from "../shared/accents";
 import { AppIcon } from "../shared/AppIcon";
-import { LYRICS } from "../shared/data";
 import { FONT } from "../shared/fonts";
 import { FontSync } from "../shared/FontSync";
 import { AURORA } from "../shared/gl/shaders";
 import { ShaderCanvas } from "../shared/gl/ShaderCanvas";
 import { Headline } from "../shared/Headline";
+import { fitSize, useTexts } from "../shared/texts";
 import { clamp, EASE_IN_OUT, EASE_OUT } from "../shared/tokens";
 import { AppScreen, Karaoke } from "../shared/ui/AppScreen";
 import { DesktopLyrics } from "../shared/ui/DesktopLyrics";
@@ -74,13 +74,14 @@ const GlassWindow: React.FC<{ scale: number; children: React.ReactNode }> = ({ s
 const OpeningInner: React.FC = () => {
   const frame = useCurrentFrame();
   const track = interpolate(frame, [26, 110], [0.42, 0.1], { ...clamp, easing: EASE_OUT });
+  const t = useTexts().c;
   return (
     <>
       <AbsoluteFill style={{ backgroundColor: "#000" }} />
       <Aurora keys={[{ f: 0, p: P.deep }]} opacity={interpolate(frame, [0, 70], [0, 1], clamp)} dark={0.75} />
       <AbsoluteFill style={center}>
-        <Headline at={26} size={170} weight={600} stagger={7} duration={40} blur={26} rise={0.15} letterSpacing={`${track}em`} glow={GLOW}>
-          听见光
+        <Headline at={26} size={170} weight={600} stagger={7} duration={40} blur={26} rise={0.15} letterSpacing={`${track}em`} glow={GLOW} tk="c.opening">
+          {t.opening}
         </Headline>
       </AbsoluteFill>
       <FontSync />
@@ -95,12 +96,13 @@ export const COpening = Interactive.create({ Component: OpeningInner, layout: "a
 const HeroInner: React.FC = () => {
   const frame = useCurrentFrame();
   const p = interpolate(frame, [10, 70], [0, 1], { ...clamp, easing: EASE_OUT });
+  const t = useTexts().c;
   return (
     <>
       <Aurora keys={[{ f: 0, p: P.deep }, { f: 150, p: P.lyric }]} />
       <AbsoluteFill style={{ alignItems: "center", top: 70 }}>
-        <Headline at={18} size={104} weight={700} stagger={3} glow={GLOW}>
-          轻巧 也全能
+        <Headline at={18} size={104} weight={700} stagger={3} glow={GLOW} tk="c.hero">
+          {t.hero}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ alignItems: "center", top: 250 }}>
@@ -134,20 +136,21 @@ const LyricsInner: React.FC = () => {
   const frac = pos - cur;
   const glide = 1 - Math.pow(1 - Math.min(1, frac / 0.22), 3);
   const LH = 128;
+  const { c: t, lyrics } = useTexts();
   return (
     <>
       <Aurora keys={[{ f: 0, p: P.lyric }]} dark={0.4} />
       <AbsoluteFill style={{ ...center, flexDirection: "column", gap: 6 }}>
-        <Headline at={2} out={42} size={132} weight={700} stagger={4} glow={GLOW}>
-          每一句
+        <Headline at={2} out={42} size={132} weight={700} stagger={4} glow={GLOW} tk="c.lyrics1">
+          {t.lyrics1}
         </Headline>
-        <Headline at={14} out={44} size={132} weight={700} stagger={4} glow={GLOW}>
-          都在发光
+        <Headline at={14} out={44} size={132} weight={700} stagger={4} glow={GLOW} tk="c.lyrics2">
+          {t.lyrics2}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ opacity: show, maskImage: "linear-gradient(transparent 6%, #000 32%, #000 68%, transparent 94%)" }}>
         <div style={{ position: "absolute", left: 0, right: 0, top: 540 - LH / 2 - (cur + glide) * LH, fontFamily: FONT, textAlign: "center" }}>
-          {LYRICS.map((l, i) => {
+          {lyrics.map((l, i) => {
             const active = i === cur;
             const d = Math.abs(i - (cur + glide));
             return (
@@ -156,7 +159,8 @@ const LyricsInner: React.FC = () => {
                 style={{
                   height: LH,
                   lineHeight: `${LH}px`,
-                  fontSize: 84,
+                  fontSize: fitSize(l, 84, 1700),
+                  whiteSpace: "nowrap",
                   fontWeight: 700,
                   color: "#fff",
                   opacity: active ? 1 : Math.max(0.12, 0.42 - (d - 1) * 0.12),
@@ -164,7 +168,9 @@ const LyricsInner: React.FC = () => {
                   filter: !active && d > 1.2 ? `blur(${Math.min(4, (d - 1) * 2)}px)` : undefined,
                 }}
               >
-                {active ? <Karaoke text={l} progress={Math.min(1, frac / 0.9)} color="#ffffff" base="#ffffff" baseOpacity={0.42} /> : l}
+                <span data-tk={`lyrics.${i}`}>
+                  {active ? <Karaoke text={l} progress={Math.min(1, frac / 0.9)} color="#ffffff" base="#ffffff" baseOpacity={0.42} /> : l}
+                </span>
               </div>
             );
           })}
@@ -182,6 +188,7 @@ export const CLyrics = Interactive.create({ Component: LyricsInner, layout: "abs
 const VinylInner: React.FC = () => {
   const frame = useCurrentFrame();
   const p = interpolate(frame, [0, 50], [0, 1], { ...clamp, easing: EASE_OUT });
+  const t = useTexts().c;
   return (
     <>
       <Aurora keys={[{ f: 0, p: P.warm }]} dark={0.5} />
@@ -191,11 +198,11 @@ const VinylInner: React.FC = () => {
         </div>
       </AbsoluteFill>
       <AbsoluteFill style={{ justifyContent: "center", left: 1150 }}>
-        <Headline at={24} size={128} weight={700} stagger={4} glow={GLOW}>
-          让唱片
+        <Headline at={24} size={128} weight={700} stagger={4} glow={GLOW} maxWidth={690} tk="c.vinyl1">
+          {t.vinyl1}
         </Headline>
-        <Headline at={36} size={128} weight={700} stagger={4} glow={GLOW}>
-          转起来
+        <Headline at={36} size={128} weight={700} stagger={4} glow={GLOW} maxWidth={690} tk="c.vinyl2">
+          {t.vinyl2}
         </Headline>
       </AbsoluteFill>
       <FontSync />
@@ -215,6 +222,7 @@ const DayInner: React.FC = () => {
   const sunY = 980 - Math.sin(a) * 760;
   const sunCol = interpolateColors(frame, [0, 50, 100, 130], ["#ffd1a6", "#fffbe8", "#ffb066", "#ff8a57"]);
   const p = interpolate(frame, [8, 60], [0, 1], { ...clamp, easing: EASE_OUT });
+  const t = useTexts().c;
   return (
     <>
       <Aurora
@@ -251,8 +259,8 @@ const DayInner: React.FC = () => {
         }}
       />
       <AbsoluteFill style={{ alignItems: "center", top: 70 }}>
-        <Headline at={18} size={104} weight={700} stagger={3} glow="0 4px 30px rgba(0,0,0,.2)">
-          天色 随时间流转
+        <Headline at={18} size={104} weight={700} stagger={3} glow="0 4px 30px rgba(0,0,0,.2)" tk="c.day">
+          {t.day}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ alignItems: "center", top: 250 }}>
@@ -274,19 +282,20 @@ export const CDay = Interactive.create({ Component: DayInner, layout: "absolute-
 const DesktopInner: React.FC = () => {
   const frame = useCurrentFrame();
   const appear = interpolate(frame, [12, 40], [0, 1], { ...clamp, easing: EASE_OUT });
+  const { c: t, lyrics } = useTexts();
   return (
     <>
       <Aurora keys={[{ f: 0, p: P.violet }]} dark={0.4} />
       <Skeleton x={190} y={330} w={780} h={400} tone="glass" />
       <Skeleton x={1050} y={380} w={660} h={360} tone="glass" />
       <AbsoluteFill style={{ alignItems: "center", top: 110 }}>
-        <Headline at={30} out={106} size={112} weight={700} stagger={3} glow={GLOW}>
-          歌词 浮于桌面之上
+        <Headline at={30} out={106} size={112} weight={700} stagger={3} glow={GLOW} tk="c.desktop">
+          {t.desktop}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ alignItems: "center", top: 800 }}>
         <div style={{ opacity: appear, translate: `0 ${(1 - appear) * 40}px` }}>
-          <DesktopLyrics scale={1.25} color="#ff9bd6" text={LYRICS[5]} progress={interpolate(frame, [20, 110], [0, 1], clamp)} />
+          <DesktopLyrics scale={1.25} color="#ff9bd6" text={lyrics[5]} tk="lyrics.5" progress={interpolate(frame, [20, 110], [0, 1], clamp)} />
         </div>
       </AbsoluteFill>
       <FontSync />
@@ -314,12 +323,13 @@ const CustomizeInner: React.FC = () => {
   const accent = accentAt(frame - 10, every);
   const pick = Math.max(0, Math.min(ACCENTS.length - 2, Math.round((frame - 10) / every)));
   const p = interpolate(frame, [0, 40], [0, 1], { ...clamp, easing: EASE_OUT });
+  const t = useTexts().c;
   return (
     <>
       <Aurora keys={TINTS.map((p, i) => ({ f: 10 + i * every, p }))} dark={0.5} />
       <AbsoluteFill style={{ alignItems: "center", top: 70 }}>
-        <Headline at={18} size={112} weight={700} stagger={3} glow={GLOW}>
-          由你定义
+        <Headline at={18} size={112} weight={700} stagger={3} glow={GLOW} tk="c.customize">
+          {t.customize}
         </Headline>
       </AbsoluteFill>
       <AbsoluteFill style={{ alignItems: "center", top: 240 }}>
@@ -358,6 +368,7 @@ const EndInner: React.FC = () => {
   const frame = useCurrentFrame();
   const p = interpolate(frame, [0, 40], [0, 1], { ...clamp, easing: EASE_OUT });
   const out = interpolate(frame, [112, 135], [1, 0], clamp);
+  const t = useTexts().c;
   return (
     <>
       <AbsoluteFill style={{ backgroundColor: "#000" }} />
@@ -367,12 +378,12 @@ const EndInner: React.FC = () => {
           <AppIcon size={210} style={{ filter: "drop-shadow(0 20px 60px rgba(102,204,255,.5))" }} />
         </div>
         <div style={{ height: 40 }} />
-        <Headline at={18} size={96} weight={600} stagger={2} letterSpacing="-0.01em" glow={GLOW}>
-          LightPlayer
+        <Headline at={18} size={96} weight={600} stagger={2} letterSpacing="-0.01em" glow={GLOW} tk="c.endName">
+          {t.endName}
         </Headline>
         <div style={{ height: 16 }} />
-        <Headline at={38} size={46} weight={500} color="rgba(255,255,255,.72)" stagger={2} blur={10} letterSpacing="0.04em">
-          macOS 与 Windows
+        <Headline at={38} size={46} weight={500} color="rgba(255,255,255,.72)" stagger={2} blur={10} letterSpacing="0.04em" tk="c.endTagline">
+          {t.endTagline}
         </Headline>
       </AbsoluteFill>
       <FontSync />

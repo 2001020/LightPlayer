@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "a": {
+    "opening": "听见光",
+    "brand": "LightPlayer",
+    "hero": "轻巧 也全能",
+    "formats1": "几乎所有格式",
+    "formats2": "打开就播",
+    "lyrics1": "每一句",
+    "lyrics2": "都在发光",
+    "vinyl1": "让唱片",
+    "vinyl2": "转起来",
+    "weather1": "窗外的天气",
+    "weather2": "就是主题",
+    "desktop": "歌词 浮于桌面之上",
+    "customize": "由你定义",
+    "endName": "LightPlayer",
+    "endTagline": "macOS 与 Windows"
+  },
+  "b": {
+    "intro": "听见光",
+    "library": "你的音乐 一目了然",
+    "formats1": "几乎所有格式",
+    "formats2": "打开就播",
+    "lyrics1": "每一句",
+    "lyrics2": "都在发光",
+    "vinyl1": "让唱片",
+    "vinyl2": "转起来",
+    "weather": "天气 就是主题",
+    "desktop": "歌词 浮于桌面之上",
+    "customize": "由你定义",
+    "endName": "LightPlayer",
+    "endTagline": "macOS 与 Windows"
+  },
+  "c": {
+    "opening": "听见光",
+    "hero": "轻巧 也全能",
+    "lyrics1": "每一句",
+    "lyrics2": "都在发光",
+    "vinyl1": "让唱片",
+    "vinyl2": "转起来",
+    "day": "天色 随时间流转",
+    "desktop": "歌词 浮于桌面之上",
+    "customize": "由你定义",
+    "endName": "LightPlayer",
+    "endTagline": "macOS 与 Windows"
+  },
+  "songs": [
+    {
+      "title": "夏夜微光",
+      "artist": "林间"
+    },
+    {
+      "title": "海边的信",
+      "artist": "南风"
+    },
+    {
+      "title": "慢慢来",
+      "artist": "白昼"
+    },
+    {
+      "title": "向光而行",
+      "artist": "星野"
+    },
+    {
+      "title": "晚安城市",
+      "artist": "林间"
+    },
+    {
+      "title": "第七个春天",
+      "artist": "雾岛"
+    }
+  ],
+  "albums": [
+    {
+      "title": "山间小屋",
+      "artist": "青木"
+    },
+    {
+      "title": "雨后",
+      "artist": "空山"
+    },
+    {
+      "title": "远行",
+      "artist": "鹿鸣"
+    },
+    {
+      "title": "旧时光",
+      "artist": "北岸"
+    },
+    {
+      "title": "蓝色星球",
+      "artist": "云端"
+    },
+    {
+      "title": "落日飞行",
+      "artist": "风铃"
+    }
+  ],
+  "lyrics": [
+    "晚风经过窗台",
+    "把灯光吹成海",
+    "你说慢一点也没关系",
+    "我们还有整个夏天",
+    "星星落在耳边",
+    "旋律替我说完",
+    "那些没讲出口的想念",
+    "都在这首歌里面"
+  ],
+  "playlists": [
+    "通勤路上",
+    "夜晚独处",
+    "周末慢时光"
+  ],
+  "ui": {
+    "appName": "LightPlayer",
+    "fileName": "{artist} - {title}.flac",
+    "back": "返回",
+    "layout": "布局",
+    "discVinyl": "黑胶",
+    "discCover": "封面",
+    "formatTag": "FLAC",
+    "navSongs": "歌曲",
+    "navAlbums": "专辑",
+    "navArtists": "艺术家",
+    "navVideos": "视频",
+    "navFavorites": "收藏",
+    "navRecent": "最近播放",
+    "playlistsHeader": "歌单",
+    "manageFolders": "管理文件夹",
+    "albumCount": "{n} 张",
+    "search": "搜索标题、艺术家、专辑",
+    "playAll": "播放全部",
+    "shuffle": "随机播放"
+  }
+}

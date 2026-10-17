@@ -4,9 +4,10 @@
 
 import { Img } from "remotion";
 import { coverUrl, genCover, svgUrl } from "../covers";
-import { fmtTime, LYRICS, SONGS } from "../data";
+import { fmtTime, useSongs } from "../data";
 import { FONT } from "../fonts";
 import { Icon, SkipIcon, type IconName } from "../Icon";
+import { fill, fitSize, useTexts } from "../texts";
 import { ACCENT, THEMES, type Theme, type ThemeName } from "../tokens";
 import { Vinyl } from "./Vinyl";
 
@@ -48,17 +49,20 @@ const Traffic: React.FC = () => (
 );
 
 const Titlebar: React.FC<{ t: Theme; accent: string; file: string | null; page: Page }> = ({ t, accent, file, page }) => {
+  const { ui } = useTexts();
   const icons: IconName[] = ["library", "sparkles", "folder", "settings"];
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 44 }}>
       <Traffic />
       <div style={{ position: "absolute", left: 86, top: 0, height: 44, display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ width: 10, height: 10, borderRadius: 3, background: `linear-gradient(135deg, ${accent}, #3d8bff)` }} />
-        <div style={{ fontSize: 14, fontWeight: 600, color: t.textDim }}>LightPlayer</div>
+        <div data-tk="ui.appName" style={{ fontSize: 14, fontWeight: 600, color: t.textDim }}>
+          {ui.appName}
+        </div>
       </div>
       {file ? (
         <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, color: t.textFaint }}>
-          {file}
+          <span data-tk="ui.fileName">{file}</span>
         </div>
       ) : null}
       {icons.map((n, i) => {
@@ -82,7 +86,9 @@ const Transport: React.FC<{ t: Theme; accent: string; song: number | null; time:
   playing,
   glass,
 }) => {
-  const s = song === null ? null : SONGS[song];
+  const songs = useSongs();
+  const { ui } = useTexts();
+  const s = song === null ? null : songs[song];
   const p = s ? Math.min(1, time / s.duration) : 0;
   const btn = (n: IconName, x: number, on = false) => (
     <div style={{ position: "absolute", left: x - 10, top: 41, color: on ? accent : t.textDim }}>
@@ -131,8 +137,12 @@ const Transport: React.FC<{ t: Theme; accent: string; song: number | null; time:
         {s ? <Img src={coverUrl(s.cover)} style={{ width: 42, height: 42 }} /> : null}
       </div>
       <div style={{ position: "absolute", left: 71, top: 33, lineHeight: 1.3 }}>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{s ? s.title : "LightPlayer"}</div>
-        <div style={{ fontSize: 12, color: t.textDim }}>{s ? s.artist : "未在播放"}</div>
+        <div data-tk={s ? `songs.${song}.title` : "ui.appName"} style={{ fontSize: 14, fontWeight: 600 }}>
+          {s ? s.title : ui.appName}
+        </div>
+        <div data-tk={s ? `songs.${song}.artist` : undefined} style={{ fontSize: 12, color: t.textDim }}>
+          {s ? s.artist : "未在播放"}
+        </div>
       </div>
 
       {btn("loop", 503)}
@@ -177,20 +187,21 @@ const Transport: React.FC<{ t: Theme; accent: string; song: number | null; time:
 };
 
 const Sidebar: React.FC<{ t: Theme; accent: string; page: Page }> = ({ t, accent, page }) => {
-  const items: [IconName, string][] = [
-    ["music", "歌曲"],
-    ["album", "专辑"],
-    ["user", "艺术家"],
-    ["film", "视频"],
-    ["heart", "收藏"],
-    ["clock", "最近播放"],
+  const { ui, playlists } = useTexts();
+  const items: [IconName, keyof typeof ui][] = [
+    ["music", "navSongs"],
+    ["album", "navAlbums"],
+    ["user", "navArtists"],
+    ["film", "navVideos"],
+    ["heart", "navFavorites"],
+    ["clock", "navRecent"],
   ];
   const active = page === "albums" ? 1 : 0;
   return (
     <div style={{ position: "absolute", left: 12, top: 52, width: 206, bottom: 106 }}>
-      {items.map(([icon, label], i) => (
+      {items.map(([icon, key], i) => (
         <div
-          key={label}
+          key={key}
           style={{
             height: 34,
             marginBottom: 2,
@@ -206,43 +217,33 @@ const Sidebar: React.FC<{ t: Theme; accent: string; page: Page }> = ({ t, accent
           }}
         >
           <Icon name={icon} size={17} color={i === active ? accent : t.textDim} />
-          {label}
+          <span data-tk={`ui.${key}`}>{ui[key]}</span>
         </div>
       ))}
       <div style={{ marginTop: 22, padding: "0 10px", fontSize: 12, fontWeight: 600, color: t.textFaint, display: "flex", justifyContent: "space-between" }}>
-        歌单
+        <span data-tk="ui.playlistsHeader">{ui.playlistsHeader}</span>
         <div style={{ display: "flex", gap: 14 }}>
           <Icon name="folderPlus" size={15} color={t.textDim} />
           <Icon name="plus" size={15} color={t.textDim} />
         </div>
       </div>
-      {["通勤路上", "夜晚独处", "周末慢时光"].map((n) => (
-        <div key={n} style={{ height: 34, display: "flex", alignItems: "center", gap: 12, padding: "0 10px", fontSize: 14, color: t.textDim }}>
+      {playlists.map((n, i) => (
+        <div key={i} style={{ height: 34, display: "flex", alignItems: "center", gap: 12, padding: "0 10px", fontSize: 14, color: t.textDim }}>
           <Icon name="list" size={16} color={t.textDim} />
-          {n}
+          <span data-tk={`playlists.${i}`}>{n}</span>
         </div>
       ))}
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, borderTop: `1px solid ${t.border}`, paddingTop: 12 }}>
         <div style={{ height: 34, display: "flex", alignItems: "center", gap: 12, padding: "0 10px", fontSize: 14, color: t.textDim }}>
           <Icon name="folder" size={16} color={t.textDim} />
-          管理文件夹
+          <span data-tk="ui.manageFolders">{ui.manageFolders}</span>
         </div>
       </div>
     </div>
   );
 };
 
-const ALBUMS = [
-  ...SONGS.map((s) => ({ title: s.title, artist: s.artist, src: coverUrl(s.cover) })),
-  ...[
-    ["山间小屋", "青木"],
-    ["雨后", "空山"],
-    ["远行", "鹿鸣"],
-    ["旧时光", "北岸"],
-    ["蓝色星球", "云端"],
-    ["落日飞行", "风铃"],
-  ].map(([title, artist], i) => ({ title, artist, src: svgUrl(genCover(i + 3)) })),
-];
+const EXTRA_COVERS = Array.from({ length: 6 }, (_, i) => svgUrl(genCover(i + 3)));
 
 const LibraryPanel: React.FC<{ t: Theme; accent: string; page: Page; song: number | null; glass: boolean; activeRow?: number }> = ({
   t,
@@ -253,6 +254,13 @@ const LibraryPanel: React.FC<{ t: Theme; accent: string; page: Page; song: numbe
   activeRow,
 }) => {
   const albums = page === "albums";
+  const songs = useSongs();
+  const texts = useTexts();
+  const { ui } = texts;
+  const grid = [
+    ...songs.map((s, i) => ({ title: s.title, artist: s.artist, src: coverUrl(s.cover), tk: `songs.${i}` })),
+    ...texts.albums.map((a, i) => ({ ...a, src: EXTRA_COVERS[i], tk: `albums.${i}` })),
+  ];
   return (
     <div
       style={{
@@ -268,8 +276,12 @@ const LibraryPanel: React.FC<{ t: Theme; accent: string; page: Page; song: numbe
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", left: 20, top: 16, fontSize: 24, fontWeight: 700, color: t.text }}>{albums ? "专辑" : "歌曲"}</div>
-      <div style={{ position: "absolute", left: 20, top: 52, fontSize: 12.5, color: t.textFaint }}>{albums ? "12 张" : "6 首"}</div>
+      <div data-tk={albums ? "ui.navAlbums" : "ui.navSongs"} style={{ position: "absolute", left: 20, top: 16, fontSize: 24, fontWeight: 700, color: t.text }}>
+        {albums ? ui.navAlbums : ui.navSongs}
+      </div>
+      <div data-tk={albums ? "ui.albumCount" : undefined} style={{ position: "absolute", left: 20, top: 52, fontSize: 12.5, color: t.textFaint }}>
+        {albums ? fill(ui.albumCount, { n: grid.length }) : `${songs.length} 首`}
+      </div>
       <div
         style={{
           position: "absolute",
@@ -289,7 +301,9 @@ const LibraryPanel: React.FC<{ t: Theme; accent: string; page: Page; song: numbe
         }}
       >
         <Icon name="search" size={15} color={t.textFaint} />
-        搜索标题、艺术家、专辑
+        <span data-tk="ui.search" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {ui.search}
+        </span>
       </div>
       <div
         style={{
@@ -309,7 +323,7 @@ const LibraryPanel: React.FC<{ t: Theme; accent: string; page: Page; song: numbe
         }}
       >
         <Icon name="play" size={14} color="#fff" />
-        播放全部
+        <span data-tk="ui.playAll">{ui.playAll}</span>
       </div>
       <div
         style={{
@@ -329,18 +343,22 @@ const LibraryPanel: React.FC<{ t: Theme; accent: string; page: Page; song: numbe
         }}
       >
         <Icon name="shuffle" size={14} color={t.text} />
-        随机播放
+        <span data-tk="ui.shuffle">{ui.shuffle}</span>
       </div>
 
       {albums ? (
         <div style={{ position: "absolute", left: 20, top: 92, right: 20, display: "flex", flexWrap: "wrap", columnGap: 19, rowGap: 18 }}>
-          {ALBUMS.map((a, i) => (
-            <div key={a.title} style={{ width: 150 }}>
+          {grid.map((a, i) => (
+            <div key={i} style={{ width: 150 }}>
               <div style={{ width: 150, height: 150, borderRadius: 10, overflow: "hidden", boxShadow: "0 10px 24px rgba(0,0,0,.18)" }}>
                 <Img src={a.src} style={{ width: 150, height: 150 }} />
               </div>
-              <div style={{ marginTop: 9, fontSize: 13.5, fontWeight: 600, color: i === song ? t.accentText : t.text }}>{a.title}</div>
-              <div style={{ fontSize: 12, color: t.textDim, marginTop: 2 }}>{a.artist}</div>
+              <div style={{ marginTop: 9, fontSize: 13.5, fontWeight: 600, color: i === song ? t.accentText : t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span data-tk={`${a.tk}.title`}>{a.title}</span>
+              </div>
+              <div style={{ fontSize: 12, color: t.textDim, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span data-tk={`${a.tk}.artist`}>{a.artist}</span>
+              </div>
             </div>
           ))}
         </div>
@@ -353,11 +371,11 @@ const LibraryPanel: React.FC<{ t: Theme; accent: string; page: Page; song: numbe
             <div style={{ width: 215 }}>专辑</div>
             <div>时长</div>
           </div>
-          {SONGS.map((s, i) => {
+          {songs.map((s, i) => {
             const on = i === (activeRow ?? song);
             return (
               <div
-                key={s.title}
+                key={i}
                 style={{
                   height: 44,
                   marginTop: i === 0 ? 4 : 0,
@@ -374,9 +392,11 @@ const LibraryPanel: React.FC<{ t: Theme; accent: string; page: Page; song: numbe
                 </div>
                 <div style={{ width: 386, display: "flex", alignItems: "center", gap: 10, fontWeight: on ? 600 : 400, color: on ? t.accentText : t.text }}>
                   <Img src={coverUrl(s.cover)} style={{ width: 32, height: 32, borderRadius: 6 }} />
-                  {s.title}
+                  <span data-tk={`songs.${i}.title`}>{s.title}</span>
                 </div>
-                <div style={{ width: 215, color: t.textDim }}>{s.artist}</div>
+                <div style={{ width: 215, color: t.textDim }}>
+                  <span data-tk={`songs.${i}.artist`}>{s.artist}</span>
+                </div>
                 <div style={{ width: 215, color: t.textDim }}>{s.title}</div>
                 <div style={{ color: t.textDim, fontVariantNumeric: "tabular-nums" }}>{fmtTime(s.duration)}</div>
               </div>
@@ -397,23 +417,24 @@ const PlayerPanel: React.FC<{ t: Theme; accent: string; song: number; lyric: num
   spin,
   arm,
 }) => {
-  const s = SONGS[song];
+  const { ui, lyrics } = useTexts();
+  const s = useSongs()[song];
   const size = disc === "vinyl" ? 330 : 280;
-  const line = LYRICS[Math.max(0, Math.floor(lyric)) % LYRICS.length];
+  const li = Math.max(0, Math.floor(lyric)) % lyrics.length;
   return (
     <>
       <div style={{ position: "absolute", left: 28, top: 52, display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: t.text }}>
         <Icon name="chevronLeft" size={18} />
-        返回
+        <span data-tk="ui.back">{ui.back}</span>
       </div>
       <div style={{ position: "absolute", right: 28, top: 52, display: "flex", gap: 26, fontSize: 14, color: t.text }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <Icon name="layout" size={16} />
-          布局
+          <span data-tk="ui.layout">{ui.layout}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <Icon name={disc === "vinyl" ? "vinyl" : "flow"} size={16} />
-          {disc === "vinyl" ? "黑胶" : "封面"}
+          <span data-tk={disc === "vinyl" ? "ui.discVinyl" : "ui.discCover"}>{disc === "vinyl" ? ui.discVinyl : ui.discCover}</span>
         </div>
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: 44, height: 664, display: "flex", alignItems: "center", justifyContent: "center", gap: 76 }}>
@@ -433,8 +454,12 @@ const PlayerPanel: React.FC<{ t: Theme; accent: string; song: number; lyric: num
           </div>
         )}
         <div style={{ width: 380, color: t.text }}>
-          <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: 1 }}>{s.title}</div>
-          <div style={{ fontSize: 18, color: t.textDim, marginTop: 10 }}>{s.artist}</div>
+          <div data-tk={`songs.${song}.title`} style={{ fontSize: Math.max(26, fitSize(s.title, 40, 380, 1 / 40)), fontWeight: 700, letterSpacing: 1 }}>
+            {s.title}
+          </div>
+          <div data-tk={`songs.${song}.artist`} style={{ fontSize: 18, color: t.textDim, marginTop: 10 }}>
+            {s.artist}
+          </div>
           <div
             style={{
               display: "inline-block",
@@ -446,9 +471,11 @@ const PlayerPanel: React.FC<{ t: Theme; accent: string; song: number; lyric: num
               color: t.textDim,
             }}
           >
-            FLAC
+            <span data-tk="ui.formatTag">{ui.formatTag}</span>
           </div>
-          <div style={{ marginTop: 34, fontSize: 15, fontWeight: 500, color: accent }}>{line}</div>
+          <div data-tk={`lyrics.${li}`} style={{ marginTop: 34, fontSize: 15, fontWeight: 500, color: accent }}>
+            {lyrics[li]}
+          </div>
         </div>
       </div>
     </>
@@ -456,7 +483,8 @@ const PlayerPanel: React.FC<{ t: Theme; accent: string; song: number; lyric: num
 };
 
 const LyricsPanel: React.FC<{ t: Theme; accent: string; song: number; lyric: number; onImage: boolean }> = ({ t, accent, song, lyric, onImage }) => {
-  const s = SONGS[song];
+  const { ui, lyrics } = useTexts();
+  const s = useSongs()[song];
   const cur = Math.floor(lyric);
   const frac = lyric - cur;
   const LH = 58;
@@ -469,11 +497,15 @@ const LyricsPanel: React.FC<{ t: Theme; accent: string; song: number; lyric: num
     <>
       <div style={{ position: "absolute", left: 28, top: 52, display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: t.text }}>
         <Icon name="chevronLeft" size={18} />
-        返回
+        <span data-tk="ui.back">{ui.back}</span>
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: 48, textAlign: "center", color: t.text }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{s.title}</div>
-        <div style={{ fontSize: 12.5, color: t.textDim }}>{s.artist}</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>
+          <span data-tk={`songs.${song}.title`}>{s.title}</span>
+        </div>
+        <div style={{ fontSize: 12.5, color: t.textDim }}>
+          <span data-tk={`songs.${song}.artist`}>{s.artist}</span>
+        </div>
       </div>
       <div style={{ position: "absolute", right: 28, top: 54, display: "flex", gap: 22, color: t.textDim }}>
         <div style={{ width: 18, height: 18, borderRadius: 9, background: accent, boxShadow: `0 0 0 3px ${t.accentSoft}` }} />
@@ -493,7 +525,7 @@ const LyricsPanel: React.FC<{ t: Theme; accent: string; song: number; lyric: num
         }}
       >
         <div style={{ position: "absolute", left: 0, right: 0, top: 300 - LH / 2 + offset - LH * 0 }}>
-          {LYRICS.map((l, i) => {
+          {lyrics.map((l, i) => {
             const d = i - (cur + ease);
             const active = i === cur;
             const dist = Math.abs(d);
@@ -505,15 +537,16 @@ const LyricsPanel: React.FC<{ t: Theme; accent: string; song: number; lyric: num
                   height: LH,
                   lineHeight: `${LH}px`,
                   textAlign: "center",
-                  fontSize: 30,
+                  fontSize: fitSize(l, 30, 1180),
                   fontWeight: 700,
+                  whiteSpace: "nowrap",
                   color: t.text,
                   opacity,
                   scale: active ? 1 + 0.08 * Math.min(1, frac / 0.18) : 1,
                   textShadow: onImage ? "0 1px 10px rgba(0,0,0,.35)" : undefined,
                 }}
               >
-                {active ? <Karaoke text={l} progress={Math.min(1, frac / 0.85)} color={accent} base={t.text} /> : l}
+                <span data-tk={`lyrics.${i}`}>{active ? <Karaoke text={l} progress={Math.min(1, frac / 0.85)} color={accent} base={t.text} /> : l}</span>
               </div>
             );
           })}
@@ -566,7 +599,8 @@ export const AppScreen: React.FC<AppScreenProps> = ({
   activeRow,
 }) => {
   const t = THEMES[theme];
-  const s = SONGS[song];
+  const { ui } = useTexts();
+  const s = useSongs()[song];
   const library = page === "library" || page === "albums";
   return (
     <div
@@ -590,7 +624,7 @@ export const AppScreen: React.FC<AppScreenProps> = ({
           <div style={{ position: "absolute", inset: 0, background: theme === "dark" ? "rgba(10,10,16,.42)" : "rgba(255,255,255,.35)" }} />
         </>
       ) : null}
-      <Titlebar t={t} accent={accent} file={library ? null : `${s.artist} - ${s.title}.flac`} page={page} />
+      <Titlebar t={t} accent={accent} file={library ? null : fill(ui.fileName, { artist: s.artist, title: s.title })} page={page} />
       {library ? <Sidebar t={t} accent={accent} page={page} /> : null}
       {library ? <LibraryPanel t={t} accent={accent} page={page} song={song} glass={glass} activeRow={activeRow} /> : null}
       {page === "player" ? <PlayerPanel t={t} accent={accent} song={song} lyric={lyric} disc={disc} spin={spin} arm={arm} /> : null}

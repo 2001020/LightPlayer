@@ -52,3 +52,6 @@ export const THEMES = {
 } as const;
 
 export type Theme = (typeof THEMES)[ThemeName];
+
+/** Every animation is written in frames at this rate; other rates are resampled. */
+export const BASE_FPS = 30;
