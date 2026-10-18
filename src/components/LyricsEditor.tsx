@@ -28,7 +28,7 @@ function MiniTransport() {
       <button className="icon-btn" onClick={() => C.seekBy(-5)} title="后退 5 秒 (←)">
         <SkipIcon dir="back" seconds={5} size={24} />
       </button>
-      <button className="icon-btn play-btn" style={{ width: 38, height: 38 }} onClick={() => engine.toggle()} title="播放/暂停 (P)">
+      <button className="icon-btn play-btn" style={{ width: 38, height: 38 }} onClick={() => C.toggle()} title="播放/暂停 (P)">
         <Icon name={playing ? "pause" : "play"} size={18} />
       </button>
       <button className="icon-btn" onClick={() => C.seekBy(5)} title="前进 5 秒 (→)">
@@ -108,7 +108,7 @@ export function LyricsEditor() {
       if (typing) return;
       if (e.key === "p" || e.key === "P") {
         e.preventDefault();
-        engine.toggle();
+        C.toggle();
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         C.seekBy(-3);
@@ -131,7 +131,7 @@ export function LyricsEditor() {
         }
       } else if (e.key === " ") {
         e.preventDefault();
-        engine.toggle();
+        C.toggle();
       }
     };
     window.addEventListener("keydown", h, true);
@@ -447,7 +447,7 @@ function TableRow({
         onChange={(e) => onChange({ ...row, text: e.target.value, words: undefined })}
       />
       <div className="ops">
-        <button className="icon-btn" title="从这一句开始播放" disabled={row.time === null} onClick={() => row.time !== null && (C.seek(row.time), void engine.play())}>
+        <button className="icon-btn" title="从这一句开始播放" disabled={row.time === null} onClick={() => row.time !== null && (C.seek(row.time), C.play())}>
           <Icon name="play" size={14} />
         </button>
         <button className="icon-btn" title="设为当前播放时间" onClick={() => onChange({ ...row, time: engine.position, words: undefined })}>

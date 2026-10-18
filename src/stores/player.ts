@@ -91,7 +91,7 @@ export interface ModelsState {
 export const useModels = create<ModelsState>(() => ({ models: [], downloads: {} }));
 
 export type Page = "player" | "lyrics" | "library";
-export type Overlay = null | "settings" | "editor" | "videoInfo" | "asrSetup" | "asrTasks" | "shortcuts" | "libraryFolders" | "neteaseLogin" | "update";
+export type Overlay = null | "settings" | "editor" | "videoInfo" | "asrSetup" | "asrTasks" | "shortcuts" | "libraryFolders" | "neteaseLogin" | "update" | "lan";
 
 export interface Toast {
   id: number;
@@ -102,7 +102,7 @@ export interface Toast {
 export interface UIState {
   page: Page;
   overlay: Overlay;
-  settingsTab: "appearance" | "playback" | "lyrics" | "asr" | "netease" | "plugins" | "shortcuts" | "about";
+  settingsTab: "appearance" | "playback" | "lyrics" | "asr" | "netease" | "lan" | "plugins" | "shortcuts" | "about";
   /** The floating play queue (narrow windows). */
   playlistFloat: boolean;
   /** The NetEase comments panel. */

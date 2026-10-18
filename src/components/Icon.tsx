@@ -84,6 +84,7 @@ const paths = {
   bolt: "M7 14h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 6.1 4 4 0 0 0 7 14zM13 12.5l-3 4.5h4l-3 4.5",
   fog: "M7 12h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 4.1 4 4 0 0 0 7 12zM4 15.5h16M6 19h12",
   location: "M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+  devices: "M4 4h11a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM6.5 19h6M9.5 15v4M19 8h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z",
 } satisfies Record<string, string>;
 
 const filled = new Set(["play", "pause", "next", "prev", "heartFill"]);

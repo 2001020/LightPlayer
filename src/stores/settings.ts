@@ -104,11 +104,22 @@ export interface Settings {
   lyricHighlight: string | null;
   desktopLyrics: DesktopLyricsSettings;
   update: UpdateSettings;
+  lan: LanSettings;
   tapCompensation: number;
   asr: AsrSettings;
   recent: string[];
   positions: Record<string, number>;
   lyricOffsets: Record<string, number>;
+}
+
+/** LAN sync playback. */
+export interface LanSettings {
+  /** Other devices can find this one and send media to it. */
+  enabled: boolean;
+  /** A received file follows the sender's playback (the offer dialog can change it each time). */
+  follow: boolean;
+  /** Name shown to other devices ("": the computer's name). */
+  name: string;
 }
 
 interface SettingsStore extends Settings {
@@ -162,6 +173,7 @@ export const defaultSettings: Settings = {
   lyricHighlight: null,
   desktopLyrics: { enabled: false, color: "#66ccff" },
   update: { auto: true, prerelease: null, skip: null },
+  lan: { enabled: true, follow: true, name: "" },
   tapCompensation: 0.15,
   asr: {
     model: "large-v3-turbo-q5_0",
@@ -241,6 +253,7 @@ export const useSettings = create<SettingsStore>()(
           weather: { ...current.weather, ...(p.weather ?? {}) },
           desktopLyrics: { ...current.desktopLyrics, ...(p.desktopLyrics ?? {}) },
           update: { ...current.update, ...(p.update ?? {}) },
+          lan: { ...current.lan, ...(p.lan ?? {}) },
         };
       },
     },

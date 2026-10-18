@@ -29,7 +29,7 @@ import {
   type MediaKind,
 } from "../lib/ipc";
 import { confirmDialog } from "../lib/confirm";
-import { stem } from "../lib/format";
+import { basename, stem } from "../lib/format";
 import { useLyrics, useModels, usePlayer, usePlaylist, useSubtitles, useUI, toast } from "../stores/player";
 import { useSettings, type NeteaseQuality } from "../stores/settings";
 import { initLibrary, libraryAction, useLibrary } from "../stores/library";
@@ -53,6 +53,25 @@ const LYRIC_EXTS = ["lrc", "srt", "vtt", "txt"];
 
 function settings() {
   return useSettings.getState();
+}
+
+/** Playback changes the user asked for (not ones made to follow another device). */
+export type UserAction = "play" | "pause" | "seek" | "rate" | "open" | "background";
+const userActionHandlers = new Set<(a: UserAction) => void>();
+
+export function onUserAction(cb: (a: UserAction) => void): () => void {
+  userActionHandlers.add(cb);
+  return () => void userActionHandlers.delete(cb);
+}
+
+function userAction(a: UserAction) {
+  for (const h of userActionHandlers) h(a);
+}
+
+/** While true, a finished file just stops (no next track, no repeat). */
+let holdAtEnd: () => boolean = () => false;
+export function setHoldAtEnd(fn: () => boolean) {
+  holdAtEnd = fn;
 }
 
 function errText(e: unknown): string {
@@ -88,6 +107,17 @@ export async function openFile(path: string) {
   } catch (e) {
     toast(`无法打开文件：${errText(e)}`, "error");
   }
+}
+
+/**
+ * Opens a file received over the LAN on its own (not its folder as a queue),
+ * at `startAt`, without resuming a saved position.
+ */
+export async function openReceived(path: string, startAt: number, autoplay: boolean) {
+  if (useUI.getState().page === "library") useUI.setState({ page: "player" });
+  const entry: MediaEntry = { path, fileName: basename(path), name: stem(path), kind: kindOf(path) ?? "video", size: 0 };
+  usePlaylist.setState({ items: [entry], index: 0, order: [], history: [], source: null });
+  await playIndex(0, autoplay, { startAt, quiet: true });
 }
 
 /** Plays `entries[index]` with `entries` as the queue (library views). */
@@ -293,13 +323,17 @@ export async function openWithDialog() {
 }
 
 /**
- * `reload.live`: the same file again (another playback strategy); it continues
+ * `opts.live`: the same file again (another playback strategy); it continues
  * from the position and play state it has when the new source is ready.
+ * `opts.startAt`: start there instead of a saved position. `opts.quiet`: not
+ * the user's doing (LAN sync).
  */
-export async function playIndex(index: number, autoplay = true, reload?: { live: true }) {
+export async function playIndex(index: number, autoplay = true, opts?: { live?: true; startAt?: number; quiet?: boolean }) {
   const pl = usePlaylist.getState();
   const entry = pl.items[index];
   if (!entry) return;
+  const reload = opts?.live ? opts : undefined;
+  if (!reload && !opts?.quiet) userAction("open");
   const prev = usePlayer.getState().media;
   if (prev) rememberPosition(true);
   usePlaylist.setState((s) => ({
@@ -318,7 +352,8 @@ export async function playIndex(index: number, autoplay = true, reload?: { live:
     let startAt = reload && engine.media?.path === entry.path ? engine.position : 0;
     const saved = st.positions[media.path];
     const dur = media.duration ?? 0;
-    if (!reload && st.resume && saved && saved > 10 && (!dur || saved < dur - 10)) {
+    if (!reload && opts?.startAt !== undefined) startAt = Math.max(0, opts.startAt);
+    else if (!reload && st.resume && saved && saved > 10 && (!dur || saved < dur - 10)) {
       startAt = saved;
       toast(`已从上次位置 ${Math.floor(saved / 60)}:${String(Math.floor(saved % 60)).padStart(2, "0")} 继续播放`);
     }
@@ -354,10 +389,22 @@ export function toggle() {
     void openWithDialog();
     return;
   }
+  userAction(engine.paused ? "play" : "pause");
   engine.toggle();
 }
 
+export function play() {
+  userAction("play");
+  void engine.play();
+}
+
+export function pause() {
+  userAction("pause");
+  engine.pause();
+}
+
 export async function next(auto = false) {
+  if (!auto) userAction("open");
   const pl = usePlaylist.getState();
   const r = nextIndex({ length: pl.items.length, index: pl.index, mode: pl.mode, order: pl.order, history: pl.history }, auto);
   usePlaylist.setState({ order: r.order });
@@ -376,6 +423,7 @@ export async function next(auto = false) {
 
 export async function prev() {
   if (engine.position > 3) {
+    userAction("seek");
     await engine.seek(0);
     return;
   }
@@ -388,6 +436,12 @@ export async function prev() {
 }
 
 export function seek(t: number) {
+  userAction("seek");
+  syncSeek(t);
+}
+
+/** Jumps without counting as the user's doing (LAN sync). */
+export function syncSeek(t: number) {
   if (exactJob && exactJob.path === engine.media?.path) exactJob.seekedEarly = true;
   void engine.seek(t);
   usePlayer.setState({ position: t });
@@ -411,6 +465,12 @@ export function toggleMute() {
 }
 
 export function setRate(r: number) {
+  userAction("rate");
+  syncRate(r);
+}
+
+/** Changes the speed without counting as the user's doing (LAN sync). */
+export function syncRate(r: number) {
   engine.setRate(r);
   useSettings.getState().set({ rate: r });
 }
@@ -424,6 +484,7 @@ export function cycleMode() {
 }
 
 export function cycleAbLoop() {
+  userAction("seek");
   const { a, b } = usePlayer.getState().abLoop;
   const t = engine.position;
   if (a === null) {
@@ -457,6 +518,7 @@ export function setSleepTimer(minutes: number | "end" | null) {
 
 export function stepFrame(dir: 1 | -1) {
   if (engine.media?.kind !== "video") return;
+  userAction("seek");
   engine.pause();
   const fps = frameRate ?? 30;
   void engine.seek(engine.position + dir / fps);
@@ -1010,6 +1072,7 @@ function tick() {
     if (a !== null && b !== null && position >= b) void engine.seek(a);
     if (p.sleep.until && Date.now() >= p.sleep.until) {
       usePlayer.setState({ sleep: { until: null, endOfTrack: false } });
+      userAction("pause");
       engine.fadeOutAndPause();
     }
     if (now - lastPosSave > 5000 && playing) {
@@ -1063,6 +1126,7 @@ export async function init() {
     const s = usePlayer.getState().sleep;
     const m = engine.media;
     if (m && !settings().privateMode) useSettings.getState().savePosition(m.path, null);
+    if (holdAtEnd()) return;
     if (s.endOfTrack) {
       usePlayer.setState({ sleep: { until: null, endOfTrack: false } });
       toast("睡眠定时：已暂停");
@@ -1125,15 +1189,18 @@ export async function init() {
     // The window was closed while the app keeps running in the menu bar: a
     // video pauses unless the settings say otherwise (songs keep playing).
     await on("app://closed-to-background", () => {
-      if (engine.media?.kind === "video" && !engine.paused && !settings().videoInBackground) engine.pause();
+      if (engine.media?.kind === "video" && !engine.paused && !settings().videoInBackground) {
+        userAction("background");
+        engine.pause();
+      }
     });
     await on<MediaControlEvent>("media-control", (e) => {
       switch (e.action) {
         case "play":
-          void engine.play();
+          play();
           break;
         case "pause":
-          engine.pause();
+          pause();
           break;
         case "toggle":
           toggle();

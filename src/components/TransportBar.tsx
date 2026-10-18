@@ -5,6 +5,7 @@ import { usePlayer, usePlaylist, useSubtitles, useUI } from "../stores/player";
 import { NETEASE_QUALITIES, useSettings } from "../stores/settings";
 import { isCloudPath } from "../lib/ipc";
 import { useLibrary } from "../stores/library";
+import { activeSend, useLan } from "../stores/lan";
 import { loadNeteaseLiked, useNetease, useNeteaseLiked } from "../stores/netease";
 import { Icon, SkipIcon, type IconName } from "./Icon";
 import { Popover } from "./Popover";
@@ -516,6 +517,7 @@ function TransportRight({ abRef }: { abRef: RefObject<HTMLButtonElement | null> 
   const quality = useQualityLabel();
   const isVideo = media?.kind === "video";
   const cloud = isCloudPath(media?.path);
+  const lanOn = useLan((s) => activeSend(s) || s.follow.mode === "following" || s.follow.mode === "paused");
 
   const slots: Slot[] = [];
   if (cloud) {
@@ -574,6 +576,19 @@ function TransportRight({ abRef }: { abRef: RefObject<HTMLButtonElement | null> 
         </button>
       ),
       row: { icon: "info", label: "视频详细信息", kbd: "I", run: () => useUI.setState({ overlay: "videoInfo" }) },
+    });
+  }
+  // Last in the list, so it is among the last to fold into the menu.
+  if (media && !cloud) {
+    const openLan = () => useUI.setState({ overlay: "lan" });
+    slots.push({
+      id: "lan",
+      node: (
+        <button className={`icon-btn ${lanOn ? "active" : ""}`} onClick={openLan} {...tip("局域网同步")}>
+          <Icon name="devices" />
+        </button>
+      ),
+      row: { icon: "devices", label: "局域网同步", on: lanOn, run: openLan },
     });
   }
 

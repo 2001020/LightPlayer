@@ -3,6 +3,7 @@ mod asr;
 mod cache;
 mod commands;
 mod error;
+mod lan;
 mod library;
 mod lyrics;
 mod media;
@@ -50,6 +51,8 @@ pub struct AppState {
     pub netease: netease::Netease,
     /// Set to stop an update download.
     pub update_cancel: Arc<AtomicBool>,
+    /// LAN sync playback (sending, receiving, discovery).
+    pub lan: lan::LanService,
 }
 
 /// Files macOS asks to open before `setup` has run: launching the app by
@@ -139,6 +142,11 @@ pub fn run() {
                 now_playing: nowplaying::NowPlaying::new(&handle),
                 tray: tray::TrayState::new(),
                 update_cancel: Arc::new(AtomicBool::new(false)),
+                lan: lan::LanService::new(
+                    Arc::new(lan::commands::TauriHost(handle.clone())),
+                    lan::LanConfig::default(),
+                    updater::current_version(),
+                ),
             });
             // The menu bar icon is optional (e.g. Linux desktops without a tray).
             match tray::create(&handle) {
@@ -171,6 +179,17 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            lan::commands::lan_configure,
+            lan::commands::lan_status,
+            lan::commands::lan_discover,
+            lan::commands::lan_probe,
+            lan::commands::lan_scan_subnet,
+            lan::commands::lan_send,
+            lan::commands::lan_cancel,
+            lan::commands::lan_answer,
+            lan::commands::lan_follow,
+            lan::commands::lan_publish,
+            lan::commands::lan_open_receive_dir,
             commands::open_media,
             commands::exact_audio,
             commands::cache_size,
@@ -265,6 +284,8 @@ pub fn run() {
         tauri::RunEvent::Exit => {
             if let Some(state) = handle.try_state::<AppState>() {
                 state.hls.stop_all();
+                // Tell devices we share with that we are going.
+                tauri::async_runtime::block_on(state.lan.shutdown(std::time::Duration::from_millis(500)));
             }
         }
         _ => {
