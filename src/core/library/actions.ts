@@ -12,7 +12,6 @@ import { toast, usePlayer, usePlaylist } from "../../stores/player";
 import { openMenu, sep, type MenuItem } from "../../components/ContextMenu";
 import type { IconName } from "../../components/Icon";
 import { promptText } from "../../components/Prompt";
-import { engine } from "../player/engine";
 import { toEntry, trackTitle, type Album } from "./views";
 import { FILE_MANAGER, TRASH } from "../../lib/platform";
 
@@ -194,7 +193,7 @@ export async function trashAlbum(a: Album) {
   const playing = usePlayer.getState().media?.path;
   if (playing && paths.includes(playing)) {
     // Let go of the file before it moves.
-    engine.pause();
+    C.pause();
     if (usePlaylist.getState().items.some((i) => !paths.includes(i.path))) await C.next();
   }
   const r = await libraryAction(() => api.libraryTrashTracks(paths));

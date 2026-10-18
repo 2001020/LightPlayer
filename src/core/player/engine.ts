@@ -33,6 +33,8 @@ export class PlayerEngine {
 
   private hls: Hls | null = null;
   private loadToken = 0;
+  /** Small speed correction while following another device (1 = none). */
+  private nudgeFactor = 1;
   private fadeTimer: number | null = null;
   /** Position to report while a new source loads and before it has seeked. */
   private pendingPos: number | null = null;
@@ -166,7 +168,8 @@ export class PlayerEngine {
     await this.setSource(url);
     if (token !== this.loadToken) return;
     const el = this.el;
-    el.playbackRate = this.rate;
+    this.nudgeFactor = 1;
+    this.applyRate();
     this.applyVolume();
     if (!this.isHls && startAt > 0) {
       this.pendingPos = startAt;
@@ -252,7 +255,7 @@ export class PlayerEngine {
       if (token !== this.loadToken) return;
       this.baseOffset = s.baseOffset;
       await this.setSource(s.url);
-      this.el.playbackRate = this.rate;
+      this.applyRate();
       if (wasPlaying) await this.play();
     } catch (e) {
       this.onError(String(e));
@@ -307,8 +310,38 @@ export class PlayerEngine {
 
   setRate(r: number) {
     this.rate = r;
+    this.nudgeFactor = 1;
+    this.applyRate();
+  }
+
+  /**
+   * Plays a little faster or slower than `rate` (k close to 1) to catch up
+   * with another device; `rate` itself, shown in the UI, stays the same.
+   */
+  nudge(k: number) {
+    if (k === this.nudgeFactor) return;
+    this.nudgeFactor = k;
+    this.applyRate();
+  }
+
+  private applyRate() {
+    const r = this.rate * this.nudgeFactor;
     this.audio.playbackRate = r;
     this.video.playbackRate = r;
+  }
+
+  /** Whether jumping to `t` is quick (no new stream or exact copy to start). */
+  canSeekInPlace(t: number): boolean {
+    if (!this.media) return false;
+    if (this.exact && this.exact.path === this.media.path && this.media.strategy === "direct") return false;
+    if (!this.isHls) return true;
+    const rel = t - this.baseOffset;
+    return rel >= 0 && rel <= this.seekableEnd() - 0.25;
+  }
+
+  /** The element is between a seek and its `seeked` event. */
+  get seeking(): boolean {
+    return this.el.seeking;
   }
 
   /** Fades out over `ms`, pauses, then restores the volume (sleep timer). */

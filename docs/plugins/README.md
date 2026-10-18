@@ -429,6 +429,10 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `track-table` | 歌曲列表 |
 | `settings` | 设置窗口 |
 | `update` | 发现新版本时的更新窗口 |
+| `lan-dialog` | 局域网同步窗口：把正在播放的文件发送给其他设备（1.6.7 起） |
+| `lan-offer` | 其他设备发来文件时的确认窗口（1.6.7 起） |
+| `lan-transfer` | 右下角的接收进度和接收完成卡片（1.6.7 起） |
+| `lan-banner` | 跟随其他设备播放时，窗口顶部的提示条（1.6.7 起） |
 | `desktop-lyrics` | 桌面歌词窗口 |
 | `desktop-lyrics-line` | 桌面歌词的文字 |
 <!-- /anchors -->
@@ -1699,6 +1703,7 @@ pnpm dev
 | 1.6.1 | 布局中唱片的唱臂 `arm` 默认不显示 |
 | 1.6.3 | 状态属性 `data-time`（天气主题的九个时段），以及 `data-sky`、`data-phase` 写入文档 |
 | 1.6.6 | `transport-right` 中放不下的按钮收进「更多」菜单；`transport-now` 和 `lyrics-head` 的歌名和歌手过长时滚动显示 |
+| 1.6.7 | 局域网同步：锚点 `lan-dialog`、`lan-offer`、`lan-transfer`、`lan-banner`；`transport-right` 中多了“局域网同步”按钮 |
 
 用到表中某个版本的功能时，把 `minAppVersion` 设为那个版本（预发布版本请写对应的正式版本号，例如 `1.6.0`）。
 

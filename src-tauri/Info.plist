@@ -6,5 +6,7 @@
   <string>LightPlayer 使用你的位置显示当地天气，仅在使用天气主题时获取。</string>
   <key>NSLocationWhenInUseUsageDescription</key>
   <string>LightPlayer 使用你的位置显示当地天气，仅在使用天气主题时获取。</string>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>LightPlayer 通过本地网络查找同一网络中的其他 LightPlayer，向它们发送媒体文件并同步播放进度。</string>
 </dict>
 </plist>

@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import * as C from "./core/controller";
+import { startLan } from "./core/lan";
 import { AsrSetupDialog } from "./components/AsrSetupDialog";
 import { AsrTasks, AsrTasksButton } from "./components/AsrTasks";
 import { CommentsPanel } from "./components/CommentsPanel";
 import { ContextMenuHost } from "./components/ContextMenu";
+import { LanDialog } from "./components/LanDialog";
+import { LanHost } from "./components/LanHost";
 import { LibraryFolders } from "./components/LibraryFolders";
 import { NeteaseLogin } from "./components/NeteaseLogin";
 import { PlaylistPanel, usePlaylistLayout, usePlaylistShown } from "./components/PlaylistPanel";
@@ -61,6 +64,7 @@ export default function App() {
 
   useEffect(() => {
     void C.init();
+    void startLan();
     startUpdateChecks();
   }, []);
 
@@ -158,7 +162,9 @@ export default function App() {
       {overlay === "libraryFolders" && <LibraryFolders />}
       {overlay === "neteaseLogin" && <NeteaseLogin />}
       {overlay === "update" && <UpdateDialog />}
+      {overlay === "lan" && <LanDialog />}
       {!isTauri && <DesktopLyricsOverlay />}
+      <LanHost />
       <PromptHost />
       <ContextMenuHost />
       <Toasts />

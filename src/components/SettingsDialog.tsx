@@ -16,6 +16,7 @@ import { ACCENT_PRESETS, defaultSettings, useSettings, LYRIC_SIZE_MAX, LYRIC_SIZ
 import { ColorChoices } from "./ColorChoices";
 import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
+import { LanSettings } from "./LanSettings";
 import { PluginSettings } from "./PluginSettings";
 import { Row, Seg, Switch } from "./SettingsControls";
 import { tip } from "./Tooltip";
@@ -32,6 +33,7 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: "lyrics", label: "歌词", icon: "lyrics" },
   { id: "asr", label: "歌词识别", icon: "sparkles" },
   { id: "netease", label: "网易云音乐", icon: "cloud" },
+  { id: "lan", label: "局域网同步", icon: "devices" },
   { id: "plugins", label: "插件", icon: "puzzle" },
   { id: "shortcuts", label: "快捷键", icon: "keyboard" },
   { id: "about", label: "关于", icon: "info" },
@@ -642,6 +644,7 @@ export function SettingsDialog() {
               </>
             )}
             {tab === "netease" && <NeteaseSettings />}
+            {tab === "lan" && <LanSettings />}
             {tab === "plugins" && <PluginSettings />}
             {tab === "shortcuts" && <Shortcuts />}
             {tab === "about" && <About />}

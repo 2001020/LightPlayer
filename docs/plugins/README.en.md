@@ -171,6 +171,10 @@ The main areas of the interface have a `data-lp` attribute; select them with `[d
 | `track-table` | Song list |
 | `settings` | Settings window |
 | `update` | The update window shown when a new version is found |
+| `lan-dialog` | The LAN Sync window: sending the file that is playing to another device (since 1.6.7) |
+| `lan-offer` | The confirmation window when another device sends a file (since 1.6.7) |
+| `lan-transfer` | The receiving progress and "received" card at the bottom right (since 1.6.7) |
+| `lan-banner` | The bar at the top of the window while following another device's playback (since 1.6.7) |
 | `desktop-lyrics` | Desktop lyrics window |
 | `desktop-lyrics-line` | The text of the desktop lyrics |
 <!-- /anchors -->

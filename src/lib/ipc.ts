@@ -436,6 +436,101 @@ export function kindOf(path: string): MediaKind | null {
   return null;
 }
 
+// ------------------------------------------------------------------ LAN sync
+
+export type LanRole = "send" | "receive";
+/** Sender: connecting, waiting, sending, syncing. Receiver: offered, accepted, receiving, received, syncing, lost. Both: ended. */
+export type LanStage = "connecting" | "waiting" | "sending" | "syncing" | "offered" | "accepted" | "receiving" | "received" | "lost" | "ended";
+
+export interface LanPeer {
+  name: string;
+  platform: string;
+  addr: string;
+}
+
+export interface LanFile {
+  name: string;
+  size: number;
+  kind: MediaKind;
+}
+
+export interface LanSession {
+  id: string;
+  role: LanRole;
+  stage: LanStage;
+  peer: LanPeer;
+  file: LanFile;
+  /** Reason code once ended (or why it failed). */
+  reason: string | null;
+  /** Sender: the file sent. Receiver: where it was saved. */
+  path: string | null;
+  /** Sender: the receiver follows our playback. Receiver: we follow theirs. */
+  following: boolean;
+  /** Date.now() when an unanswered offer expires. */
+  expiresAt: number | null;
+}
+
+export interface LanProgress {
+  id: string;
+  role: LanRole;
+  bytes: number;
+  total: number;
+  speed: number;
+}
+
+export interface LanDevice {
+  id: string;
+  name: string;
+  platform: string;
+  version: string;
+  /** "ip:port". */
+  addr: string;
+  /** Added by address. */
+  manual: boolean;
+}
+
+export interface LanDevicesEvent {
+  devices: LanDevice[];
+  error: string | null;
+}
+
+/** The sender's playback (`at`: this computer's Date.now()). */
+export interface LanSyncEvent {
+  id: string;
+  playing: boolean;
+  pos: number;
+  rate: number;
+  at: number;
+}
+
+export interface LanStatus {
+  running: boolean;
+  port: number | null;
+  addresses: string[];
+  receiveDir: string | null;
+  error: string | null;
+  name: string;
+}
+
+export interface LanAnchor {
+  path: string;
+  pos: number;
+  playing: boolean;
+  rate: number;
+  at: number;
+}
+
+export const LAN_EVENTS = {
+  devices: "lan://devices",
+  offer: "lan://offer",
+  progress: "lan://progress",
+  session: "lan://session",
+  sync: "lan://sync",
+} as const;
+
+/** Largest file that can be shared (1 GiB). */
+export const LAN_MAX_SIZE = 1024 ** 3;
+
 // ------------------------------------------------------------------ browser mock
 // i18n-ignore-start: pretend data for the browser preview, not UI text.
 
@@ -710,9 +805,189 @@ async function mockPlugins(): Promise<PluginEntry[]> {
     .map((m) => ({ id: m.id, manifest: m, error: null, incompatible: false }));
 }
 
+// LAN sync: two pretend devices that accept, receive and follow.
+const mockLanDevices: LanDevice[] = [
+  { id: "d1", name: "客厅的 Windows 电脑", platform: "windows", version: "1.6.7", addr: "192.168.1.31:47390", manual: false },
+  { id: "d2", name: "书房的 iMac", platform: "macos", version: "1.6.7", addr: "192.168.1.42:47390", manual: false },
+];
+const mockLanSessions = new Map<string, LanSession>();
+const mockLanTimers = new Map<string, number[]>();
+let mockLanEnabled = true;
+let mockLanName = "";
+
+function mockLanUpdate(id: string, patch: Partial<LanSession>) {
+  const s = mockLanSessions.get(id);
+  if (!s || s.stage === "ended") return;
+  const next = { ...s, ...patch };
+  mockLanSessions.set(id, next);
+  mockEmit(LAN_EVENTS.session, next);
+}
+
+function mockLanLater(id: string, ms: number, f: () => void) {
+  const t = window.setTimeout(f, ms);
+  mockLanTimers.set(id, [...(mockLanTimers.get(id) ?? []), t]);
+}
+
+function mockLanProgress(id: string, role: LanRole, total: number, ms: number, done: () => void) {
+  const steps = Math.max(1, Math.round(ms / 150));
+  for (let i = 1; i <= steps; i++) {
+    mockLanLater(id, (ms / steps) * i, () => {
+      if (mockLanSessions.get(id)?.stage === "ended") return;
+      const bytes = Math.round((total * i) / steps);
+      mockEmit(LAN_EVENTS.progress, { id, role, bytes: i === steps ? total : bytes, total, speed: total / (ms / 1000) });
+      if (i === steps) done();
+    });
+  }
+}
+
+/** The pretend sender's playback (`window.__lpMockLanRemote({ playing, pos, rate })` changes it). */
+const mockLanRemote = { pos: 42, playing: true, rate: 1, at: Date.now() };
+const mockLanReceived = new Map<string, string>();
+
+/**
+ * Starts an incoming offer in the preview (`window.__lpMockLanOffer()`); with
+ * a path (e.g. a "browser:" file), that file is what arrives.
+ */
+function mockLanOffer(path?: string) {
+  const id = `in${Date.now()}`;
+  if (path) mockLanReceived.set(id, path);
+  const s: LanSession = {
+    id,
+    role: "receive",
+    stage: "offered",
+    peer: { name: "小周的 MacBook Pro", platform: "macos", addr: "192.168.1.20" },
+    file: { name: path ? path.split("/").pop()! : "旅行 Vlog 2026.mp4", size: path ? (browserFiles.get(path)?.size ?? 1) : 812_000_000, kind: (path && kindOf(path)) || "video" },
+    reason: null,
+    path: null,
+    following: false,
+    expiresAt: Date.now() + 60_000,
+  };
+  mockLanSessions.set(id, s);
+  mockEmit(LAN_EVENTS.offer, s);
+  mockEmit(LAN_EVENTS.session, s);
+  mockLanLater(id, 60_000, () => {
+    if (mockLanSessions.get(id)?.stage === "offered") mockLanUpdate(id, { stage: "ended", reason: "timeout" });
+  });
+}
+function mockLanSetRemote(r: Partial<Pick<typeof mockLanRemote, "pos" | "playing" | "rate">>) {
+  const now = Date.now();
+  const pos = mockLanRemote.pos + (mockLanRemote.playing ? ((now - mockLanRemote.at) / 1000) * mockLanRemote.rate : 0);
+  Object.assign(mockLanRemote, { pos, at: now }, r);
+  return { ...mockLanRemote };
+}
+if (typeof window !== "undefined" && !isTauri) {
+  const w = window as unknown as Record<string, unknown>;
+  w.__lpMockLanOffer = mockLanOffer;
+  w.__lpMockLanRemote = mockLanSetRemote;
+}
+
+async function mockLan(cmd: string, args: Record<string, unknown>): Promise<unknown> {
+  const status = (): LanStatus => ({
+    running: mockLanEnabled,
+    port: mockLanEnabled ? 47390 : null,
+    addresses: ["192.168.1.23"],
+    receiveDir: "/Users/demo/Movies/LightPlayer",
+    error: null,
+    name: mockLanName || "演示用的 MacBook Air",
+  });
+  switch (cmd) {
+    case "lan_configure":
+      mockLanEnabled = !!args.enabled;
+      mockLanName = String(args.name ?? "");
+      return status();
+    case "lan_status":
+      return status();
+    case "lan_discover":
+      if (args.on) {
+        mockEmit(LAN_EVENTS.devices, { devices: [], error: null });
+        window.setTimeout(() => mockEmit(LAN_EVENTS.devices, { devices: mockLanDevices.slice(0, 1), error: null }), 500);
+        window.setTimeout(() => mockEmit(LAN_EVENTS.devices, { devices: [...mockLanDevices], error: null }), 1200);
+      }
+      return undefined;
+    case "lan_probe": {
+      const addr = String(args.addr ?? "");
+      if (!/^\d+\.\d+\.\d+\.\d+(:\d+)?$/.test(addr)) throw new Error("unreachable");
+      const d: LanDevice = { id: `m${addr}`, name: "手动添加的设备", platform: "windows", version: "1.6.7", addr: addr.includes(":") ? addr : `${addr}:47390`, manual: true };
+      mockLanDevices.push(d);
+      mockEmit(LAN_EVENTS.devices, { devices: [...mockLanDevices], error: null });
+      return d;
+    }
+    case "lan_scan_subnet":
+      await new Promise((r) => setTimeout(r, 1500));
+      return 0;
+    case "lan_send": {
+      const target = args.target as { addr: string; name: string; platform: string };
+      const path = String(args.path ?? "");
+      const browser = browserFiles.get(path);
+      const id = `out${Date.now()}`;
+      const s: LanSession = {
+        id,
+        role: "send",
+        stage: "connecting",
+        peer: { name: target.name, platform: target.platform, addr: target.addr },
+        file: { name: path.split(/[\\/]/).pop() ?? path, size: browser?.size ?? 48_200_000, kind: kindOf(path) ?? "audio" },
+        reason: null,
+        path,
+        following: false,
+        expiresAt: null,
+      };
+      mockLanSessions.set(id, s);
+      mockEmit(LAN_EVENTS.session, s);
+      mockLanLater(id, 300, () => mockLanUpdate(id, { stage: "waiting", expiresAt: Date.now() + 60_000 }));
+      mockLanLater(id, 2000, () => {
+        mockLanUpdate(id, { stage: "sending", expiresAt: null });
+        mockLanProgress(id, "send", s.file.size, 4000, () => mockLanUpdate(id, { stage: "syncing", following: true }));
+      });
+      return id;
+    }
+    case "lan_cancel": {
+      const id = String(args.id);
+      const s = mockLanSessions.get(id);
+      if (s) mockLanUpdate(id, { stage: "ended", reason: s.role === "send" ? (s.stage === "syncing" ? "stopped" : "canceled") : s.stage === "receiving" ? "canceled" : "left" });
+      for (const t of mockLanTimers.get(id) ?? []) clearTimeout(t);
+      return undefined;
+    }
+    case "lan_answer": {
+      const id = String(args.id);
+      const s = mockLanSessions.get(id);
+      if (!s || s.stage !== "offered") return false;
+      if (!args.accept) {
+        mockLanUpdate(id, { stage: "ended", reason: "declined" });
+        return true;
+      }
+      const follow = !!args.follow;
+      mockLanUpdate(id, { stage: "accepted", following: follow, expiresAt: null });
+      mockLanLater(id, 300, () => {
+        mockLanUpdate(id, { stage: "receiving" });
+        mockLanProgress(id, "receive", s.file.size, 5000, () => {
+          mockLanUpdate(id, { stage: "received", path: mockLanReceived.get(id) ?? `/Users/demo/Movies/LightPlayer/${s.file.name}` });
+          if (!follow) return mockLanUpdate(id, { stage: "ended", reason: "done" });
+          mockLanSetRemote({});
+          const beat = () => {
+            if (mockLanSessions.get(id)?.stage === "ended") return;
+            mockLanSetRemote({});
+            const { pos, playing, rate } = mockLanRemote;
+            mockEmit(LAN_EVENTS.sync, { id, playing, pos, rate, at: Date.now() });
+            if (mockLanSessions.get(id)?.stage === "received") mockLanUpdate(id, { stage: "syncing" });
+            mockLanLater(id, 1000, beat);
+          };
+          beat();
+        });
+      });
+      return true;
+    }
+    case "lan_follow":
+      mockLanUpdate(String(args.id), { following: !!args.on });
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
 async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const path = (args.path ?? args.mediaPath) as string | undefined;
   if (cmd.startsWith("library_") || cmd.startsWith("playlist_")) return mockLibrary(cmd, args) as T;
+  if (cmd.startsWith("lan_")) return mockLan(cmd, args) as T;
   switch (cmd) {
     case "open_media": {
       if (isCloudPath(path)) return mockCloudMedia(path!, String(args.quality ?? "exhigh")) as T;
@@ -1067,6 +1342,20 @@ export const api = {
   playlistRename: (id: string, name: string) => call<void>("playlist_rename", { id, name }),
   playlistDelete: (id: string) => call<void>("playlist_delete", { id }),
   playlistSetItems: (id: string, items: string[]) => call<void>("playlist_set_items", { id, items }),
+  lanConfigure: (enabled: boolean, name: string) => call<LanStatus>("lan_configure", { enabled, name }),
+  lanStatus: () => call<LanStatus>("lan_status"),
+  lanDiscover: (on: boolean) => call<void>("lan_discover", { on }),
+  /** Adds the device at "ip" or "ip:port"; rejects with a reason code. */
+  lanProbe: (addr: string) => call<LanDevice>("lan_probe", { addr }),
+  /** Asks every address of the local network; returns how many answered. */
+  lanScanSubnet: () => call<number>("lan_scan_subnet"),
+  /** Starts sending a file; returns the session id (rejects with a reason code). */
+  lanSend: (target: Pick<LanDevice, "addr" | "id" | "name" | "platform">, path: string) => call<string>("lan_send", { target, path }),
+  lanCancel: (id: string) => call<void>("lan_cancel", { id }),
+  lanAnswer: (id: string, accept: boolean, follow: boolean) => call<boolean>("lan_answer", { id, accept, follow }),
+  lanFollow: (id: string, on: boolean) => call<void>("lan_follow", { id, on }),
+  lanPublish: (anchor: LanAnchor) => call<void>("lan_publish", { anchor }),
+  lanOpenReceiveDir: () => call<void>("lan_open_receive_dir"),
 };
 
 // Browser preview: events emitted by the mock backend.
