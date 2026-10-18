@@ -1,119 +1,75 @@
-# LightPlayer 宣传片
+# LightPlayer 宣传片：一条进度线
 
-用 [Remotion](https://www.remotion.dev) 制作的 LightPlayer 宣传动画，16:9，无配乐，画面文字为简体中文。可以导出 720p 到 4K、24 到 60 帧的视频。
+用 [onetake](https://github.com/feitangyuan/onetake) 制作的 LightPlayer 宣传动画。16:9，26.5 秒，画面文字只有简体中文，没有配乐，只有几处轻微的合成音效。
 
-目前有三个风格候选：
+成片：[`LightPlayer-promo-1080p30.mp4`](LightPlayer-promo-1080p30.mp4)（1920×1080，30 帧，带运动模糊）
 
-| 合成 | 风格 | 时长 | 特点 |
-|---|---|---|---|
-| `A-Dark` | 暗场 | 47.5 秒 | 黑色舞台，Three.js 立体图标、黑胶唱机和媒体隧道，GLSL 光束与天气天空 |
-| `B-Light` | 白昼 | 约 37 秒 | 白底黑字，以排版为主，节奏明快，界面平铺展示 |
-| `C-Aurora` | 流光 | 34 秒 | 全程流动的 GLSL 渐变背景，毛玻璃窗口，颜色随场景变化 |
+之前用 Remotion 做的三个风格候选和文字编辑器都移到了 [`old/`](old)，在那个文件夹里照旧可以运行。
 
-三个版本讲的是同一组功能：几乎所有格式都能播放、滚动高亮的歌词、黑胶唱片播放页、天气主题、桌面歌词、主题色与布局自定义。
+## 片子讲什么
 
-## 文字编辑器
+全片只有一条线，它就是播放栏上的进度条，每一段都从上一段长出来，没有硬切换场：
 
-需要先安装 [Node.js](https://nodejs.org) 20 或更新版本。
+| 时间 | 画面 | 这条线在做什么 |
+|---|---|---|
+| 0 – 2.6 秒 | 白底上一个点，拉成一条线 | 被画出来 |
+| 2.6 – 5.3 秒 | 线变成播放栏，播放栏长成整个窗口，网易云音乐每日推荐 | 播放进度 |
+| 5.3 – 9.4 秒 | 手点亮红心，再点开评论区 | 播放进度 |
+| 9.4 – 12.6 秒 | 窗口收回线里，线飞起来变成歌词下的高亮线 | 跟着当前这一句 |
+| 12.6 – 15.4 秒 | 线卷成唱片的纹路，黑胶转起来 | 唱片纹路 |
+| 15.4 – 18.8 秒 | 线摊平成地平线，天气主题的天空升起：黄昏、雨、雪、星夜 | 地平线 |
+| 18.8 – 22.4 秒 | 线连起两台电脑，两边进度一起走 | 局域网同步 |
+| 22.4 – 26.5 秒 | 线收到 LightPlayer 下面，现已支持网易云音乐 | 名字下的横线 |
 
-- macOS：双击 `打开编辑器.command`
-- Windows：双击 `打开编辑器.bat`
-- 或在终端中运行：
+画面里的大标题：网易云音乐 也在这里、点亮红心、一起看评论、让唱片转起来、窗外的天气 就是主题、两台电脑 同步播放、现已支持网易云音乐。
 
-  ```bash
-  npm i
-  npm run editor
-  ```
+## 画面从哪里来
 
-第一次运行会先安装依赖，之后浏览器会自动打开编辑页面（`http://127.0.0.1:5180`）。编辑器只改文字，不改画面。
+窗口、歌单、评论区、黑胶、天空都是 App 自己的界面，不是重画的：`tools/capture.py` 打开 App 的浏览器预览（`pnpm dev`，内置 Mock），把 Mock 里的占位歌曲换成片子用的虚构歌曲和封面，开启网易云音乐，按顺序截下需要的画面（2 倍分辨率），存到 `footage/`。只有歌词那一段是按 App 的歌词样式重排的文字，因为线要贴在当前这一句下面。
 
-**编辑**
+- 歌名、歌手、歌词和封面都是为宣传片原创的虚构内容（封面来自 `old/src/shared/covers.ts`），评论区是 App Mock 自带的示例评论。
+- 进度条在截图里被隐藏，由片子自己画，所以线和播放栏能无缝衔接。`footage/rects.json` 记录了进度条、红心、评论按钮等在截图里的位置。
 
-- 页面顶部切换要编辑的视频：暗场、白昼、流光。
-- 右侧列出视频里的全部文字：
-  - 每个场景的标题，只属于当前视频。
-  - 共用内容：歌名、艺术家、歌词、专辑墙、侧栏歌单、窗口里的按钮和标签。这些在三个视频里是同一份，改一处三个视频都会变。
-- 点一个输入框，左边的预览会跳到这段文字出现的位置，并用蓝框标出。边输入边看效果。
-- 也可以直接点预览画面里的文字，跳到对应的输入框。
-- 文字比建议的长时，画面里会自动缩小字号，保证放得下。留空则不显示。
-- 每个输入框右侧的 ↺ 恢复这一项的默认文字。右上角「更多」里可以放弃未保存的修改，或把全部文字恢复默认。
-- 按「保存」或 ⌘S / Ctrl+S，文字会写入 `texts.json`。
+## 重新渲染
 
-**导出**
-
-点「导出视频」，选择：
-
-| 选项 | 可选值 |
-|---|---|
-| 视频 | 暗场 / 白昼 / 流光 |
-| 分辨率 | 720p、1080p、2K（1440p）、4K（2160p） |
-| 帧率 | 24、25、30、50、60 帧/秒 |
-| 编码 | H.264（MP4）、H.265（MP4）、ProRes 422（MOV，用于后期剪辑） |
-| 画质 | 高 / 标准 |
-| 画面渲染 | 显卡 / 软件 |
-| 视频编码器 | 显卡编码 / 软件编码 |
-
-- 导出前会自动保存文字。文件保存在 `out/` 文件夹，例如 `out/LightPlayer-A-Dark-2160p60.mp4`。
-- 导出在本机进行。可以关掉导出窗口继续编辑，进度会显示在「导出视频」按钮上。导出期间不要关闭终端窗口。
-- 动画按时间计算，任何帧率下速度都一样。60 帧导出的每一帧都是新画面，不是重复帧。
-- 4K 不是放大 1080p 的画面，而是按两倍像素密度重新绘制，文字和图形同样清晰。
-
-**显卡**
-
-- 画面渲染：用浏览器的 WebGL 绘制每一帧。macOS 上通过 Metal，Windows 上通过 Direct3D。
-  - 导出窗口里的「检测显卡是否可用」会用导出时同样的方式启动渲染浏览器，显示它实际用到的显卡型号；如果只用上了软件渲染，也会提示。
-- 视频编码器：
-  - macOS 使用 VideoToolbox，支持 H.264 和 H.265；ProRes 需要芯片带 ProRes 编码单元。
-  - Windows 上需要 NVIDIA 显卡（NVENC）。
-  - 打开导出窗口时会逐个测试显卡编码器，不可用的自动改用软件编码。导出中途显卡编码出错，也会自动改用软件编码重新导出。
-- 第一次导出前，Remotion 会下载一个渲染用的浏览器（Chrome Headless Shell，约 100 MB），之后不再下载。
-
-## 命令行
+需要 Python 3、`playwright`（Chromium）、`numpy`、`scipy`、`Pillow`、`ffmpeg`，以及 onetake 的 `scripts/render.py`（在 onetake 仓库里）。
 
 ```bash
-npm run dev        # 打开 Remotion Studio，可以调整画面
-npm run render:a   # 用 texts.json 中的文字渲染 暗场，1080p 30 帧，输出到 out/
-npm run render:b   # 渲染 白昼
-npm run render:c   # 渲染 流光
+python3 tools/score.py                                                   # 音效 → sfx.wav
+python3 <onetake>/scripts/render.py comp.html --out LightPlayer-promo-1080p30.mp4 --sfx sfx.wav   # 1080p30
+python3 <onetake>/scripts/render.py comp.html --out LightPlayer-promo-4k60.mp4 --final --sfx sfx.wav # 4K60
 ```
 
-命令行同样可以指定帧率和分辨率：`--props` 里的 `fps` 设置帧率，`--scale` 是相对 1080p 的倍数。例如 4K 60 帧：
+不要音效时去掉 `--sfx sfx.wav`，导出的视频没有音轨，可以自己配乐。
+
+预览：用浏览器打开 `comp.html?play` 循环播放，`comp.html?t=13.5&hud` 停在某一帧。
+
+重新截图（App 界面改版之后）：
 
 ```bash
-npx remotion render A-Dark out/A-4K60.mp4 --props='{"fps":60}' --scale=2 --gl=angle
+pnpm dev --port 5173          # 在仓库根目录
+python3 tools/capture.py      # 在 promo-video 目录
 ```
 
-在没有显卡的 Linux 服务器上渲染时，改用 `--gl=swangle`（软件 WebGL）。
+改了画面文字之后要重新生成字体：`python3 <onetake>/scripts/look.py apply look.json comp.html --cjk NotoSansSC-Bold.otf`（思源黑体 Noto Sans SC Bold）。`look.js` 里内嵌了只含片中用字的字体子集，渲染时不需要联网。
 
-每个场景也单独注册成了合成（`A-Scenes`、`B-Scenes`、`C-Scenes` 文件夹），可以在 Studio 中单独打开和渲染。
-
-## 结构
+## 文件
 
 ```
-texts.json              视频里的全部文字（编辑器保存到这里）
-打开编辑器.command/.bat   双击启动编辑器
-editor/                 文字编辑器
-  src/                  编辑页面：预览、文字列表、导出窗口；fields.ts 列出每段文字和它在预览中的位置
-  server/               本地服务：读写 texts.json，调用 Remotion 渲染和编码
-src/
-  Root.tsx              注册全部合成
-  videos.tsx            三个视频的场景列表，Studio 和编辑器共用
-  a/  b/  c/            三个风格：scenes.tsx 是各个场景，Video.tsx 列出场景顺序和时长
-  shared/
-    texts.tsx           文字的结构、默认值和读取方法
-    TimeScale.tsx       按导出帧率换算动画时间
-    ui/                 按 App 真实样式重建的界面：标题栏、播放栏、播放页、歌词页、媒体库、黑胶、桌面歌词
-    three/              Three.js 物体：立体图标、黑胶唱机、媒体隧道
-    gl/                 WebGL2 画布组件和 GLSL 着色器：光束、天空、雨雪、壁纸、流动渐变
-    Headline.tsx        逐字浮现的大标题
-    covers.ts           原创专辑封面与视频画面（SVG 绘制）
-    data.ts             歌曲的封面与时长
+comp.html        合成：每个画面都是时间 t 的函数（window.__seek(t)）
+motion.js        onetake 的动作库（弹簧、相机、转场）
+look.js          颜色和内嵌字体（look.py 生成，不要手改）
+look.json        配色：App 的浅色底、主题色 #66ccff、红心的网易云红
+sfx.wav          音效（tools/score.py 生成）
+footage/         App 真实界面截图、天空、封面、图标、rects.json
+tools/
+  capture.py     从 App 浏览器预览截取素材
+  covers.mjs     把 old/ 里的原创封面导出成 footage/covers.json
+  score.py       音效：按 comp.html 的时间轴放置
+  sfx_palette.py onetake 的合成音色
+old/             之前的 Remotion 版本（三个风格候选和文字编辑器）
 ```
 
-新增一段文字时：在 `src/shared/texts.tsx` 的 `DEFAULT_TEXTS` 中加一个字段，在场景中用 `useTexts()` 读取，给显示它的元素加上 `data-tk="路径"`，再在 `editor/src/fields.ts` 中登记它出现的场景和帧。所有动画都由当前帧计算，任意一帧都可以单独渲染。
+## 许可
 
-## 素材
-
-- 歌名、歌手、歌词和封面都是为这部片子原创的虚构内容。
-- 字体为 Noto Sans SC 与 Inter（SIL Open Font License），通过 Fontsource 打包，渲染时不需要联网。
-- 界面是按 App 的样式变量（`src/styles/app.css`）和图标（`src/components/Icon.tsx`）重建的，App 界面改版后需要同步更新 `src/shared/ui`。
+`motion.js`、`tools/sfx_palette.py` 和合成方法来自 onetake，采用 [PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/) 许可，只能用于非商业用途。字体为 Inter 与 Noto Sans SC（SIL Open Font License）。

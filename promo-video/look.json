@@ -1,0 +1,19 @@
+{
+  "from": "LightPlayer itself: the app's light theme ground, its accent #66ccff and the NetEase red of the heart",
+  "mood": "white ground, one light-blue line, lots of air",
+  "color": {
+    "ground": "#fbfcfd",
+    "deep": "#eef1f5",
+    "card": "#ffffff",
+    "line": "#e1e5ea",
+    "mute": "#858c97",
+    "ink": "#15171b",
+    "accent": "#66ccff",
+    "accent2": "#ff4d6a"
+  },
+  "type": {
+    "display": { "face": "Inter", "weight": 700, "tracking": -0.03 },
+    "text": { "face": "Inter", "weight": 600, "tracking": -0.01 },
+    "mono": { "face": "Geist Mono", "weight": 400, "tracking": 0 }
+  }
+}

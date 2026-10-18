@@ -1,0 +1,73 @@
+{
+ "track": {
+  "x": 97,
+  "y": 715,
+  "width": 1086,
+  "height": 18
+ },
+ "heart": {
+  "x": 147,
+  "y": 746,
+  "width": 28,
+  "height": 28
+ },
+ "comment": {
+  "x": 939,
+  "y": 743,
+  "width": 34,
+  "height": 34
+ },
+ "daily": {
+  "x": 17,
+  "y": 429,
+  "width": 196,
+  "height": 36
+ },
+ "liked": {
+  "x": 54,
+  "y": 513,
+  "width": 124.1,
+  "height": 20
+ },
+ "quality": {
+  "x": 898,
+  "y": 743,
+  "width": 39,
+  "height": 34
+ },
+ "play": {
+  "x": 616,
+  "y": 736,
+  "width": 48,
+  "height": 48
+ },
+ "row0": {
+  "x": 239,
+  "y": 166.8,
+  "width": 1024,
+  "height": 44
+ },
+ "comments": {
+  "x": 886,
+  "y": 52,
+  "width": 380,
+  "height": 634
+ },
+ "vinylDisc": {
+  "x": 439.1,
+  "y": 132.2,
+  "width": 401.8,
+  "height": 401.8
+ },
+ "darkTrack": {
+  "x": 97,
+  "y": 715,
+  "width": 1086,
+  "height": 18
+ },
+ "viewport": {
+  "w": 1280,
+  "h": 800,
+  "dpr": 2
+ }
+}
