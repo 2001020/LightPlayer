@@ -5,6 +5,12 @@
   "width": 1086,
   "height": 18
  },
+ "heartBtn": {
+  "x": 147,
+  "y": 746,
+  "width": 28,
+  "height": 28
+ },
  "heart": {
   "x": 147,
   "y": 746,

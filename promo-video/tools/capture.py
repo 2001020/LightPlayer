@@ -6,8 +6,8 @@ Start the app's browser preview first (repo root: `pnpm dev --port 5173`), then:
 
 The preview runs on its built-in mock. This script swaps the mock's placeholder songs for the
 promo's made-up ones (names, covers, lyrics) as the page loads; nothing in the app's source changes.
-Screens are taken at 2× so the camera can close in. The progress slider and its times are hidden:
-the film draws the progress line itself, and rects.json says where it sits.
+Screens are taken at 2× so the camera can close in, with the app's accent set to the film's amber.
+rects.json says where the buttons the film touches sit.
 """
 import asyncio, datetime, json, os
 from playwright.async_api import async_playwright
@@ -16,6 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "footage")
 URL = "http://localhost:5173/"
 W, H, DPR = 1280, 800, 2
+PLAY_ROW = 3   # 向光而行: the warm sunset cover, so the cover-tinted UI is warm too
 
 SONGS = [
     ("夏夜微光", "林间", "夏夜"), ("海边的信", "南风", "潮汐"), ("慢慢来", "白昼", "慢慢来"),
@@ -57,7 +58,8 @@ INIT = """
   const thumbs = new Map(LIB.map((t, i) => [t.path, C[i %% C.length]]));
   window.__PROMO_THUMB = p => thumbs.get(p) ?? null;
   localStorage.setItem('lightplayer-settings', JSON.stringify({ state: Object.assign({ language: 'zh-Hans',
-    netease: { enabled: true, quality: 'lossless' }, playlistOpen: false, volume: 0.8 }, window.__PROMO_SETTINGS || {}), version: 99 }));
+    netease: { enabled: true, quality: 'lossless' }, playlistOpen: false, volume: 0.8,
+    accent: '#f0973a', dynamicAccent: false, desktopLyrics: { enabled: false, color: '#ffd166' } }, window.__PROMO_SETTINGS || {}), version: 99 }));
   if (window.__PROMO_LAYOUT) localStorage.setItem('lightplayer-layouts', JSON.stringify({ state: { custom: [], active: window.__PROMO_LAYOUT }, version: 1 }));
 })();
 """
@@ -92,7 +94,6 @@ SKIES = {  # name: (hour, minute, weather)
     "sky-night": (22, 40, {"code": 0, "isDay": False, "precipitation": 0, "cloudCover": 4}),
 }
 
-HIDE_PROGRESS = ".transport .progress-row > * { visibility: hidden !important; }"
 NO_TIPS = "[role=tooltip], .tooltip, .tip, .toasts { display: none !important; } * { caret-color: transparent !important; }"
 
 
@@ -134,7 +135,7 @@ async def rect(pg, sel, nth=0):
     return None if b is None else {k: round(v, 1) for k, v in b.items()}
 
 
-async def play_daily(pg, row=0):
+async def play_daily(pg, row=PLAY_ROW):
     await pg.get_by_text("每日推荐", exact=True).click()
     await pg.wait_for_timeout(900)
     await pg.locator(".tt-row").filter(has_text=SONGS[row][0]).first.dblclick()
@@ -167,7 +168,6 @@ async def main():
         # 1. the NetEase daily list, a song playing; then liked; then the comments open
         pg = await page(b)
         await play_daily(pg)
-        await pg.add_style_tag(content=HIDE_PROGRESS)
         rects["track"] = await rect(pg, ".transport .progress-row .slider")
         rects["heart"] = await rect(pg, ".transport .fav")
         rects["comment"] = await rect(pg, ".transport .cm-toggle")
@@ -189,7 +189,6 @@ async def main():
         # 2. the local library: songs in many formats, then the album wall
         pg = await page(b)
         await play_daily(pg)
-        await pg.add_style_tag(content=HIDE_PROGRESS)
         await pg.locator(".sidebar, nav, aside").get_by_text("歌曲", exact=True).first.click()
         await pg.wait_for_timeout(1200)
         rects["navAlbums"] = await rect(pg, "text=专辑", 0)
@@ -202,7 +201,6 @@ async def main():
         # 3. the vinyl player page
         pg = await page(b, layout="vinyl")
         await play_daily(pg)
-        await pg.add_style_tag(content=HIDE_PROGRESS)
         await pg.locator(".transport .mini .thumb").first.click()
         await pg.wait_for_timeout(1500)
         rects["vinylDisc"] = await rect(pg, "[data-lp=vinyl]", 0)
@@ -212,7 +210,6 @@ async def main():
         # 4. a second computer: the same song, dark theme
         pg = await page(b, settings={"theme": "dark"})
         await play_daily(pg)
-        await pg.add_style_tag(content=HIDE_PROGRESS)
         await pg.locator(".transport .mini .thumb").first.click()
         await pg.wait_for_timeout(1500)
         await shot(pg, "dark")
