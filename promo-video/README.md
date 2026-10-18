@@ -36,11 +36,11 @@
 
 ```bash
 python3 tools/score.py                                                   # 音效 → sfx.wav
-python3 <onetake>/scripts/render.py comp.html --out LightPlayer-promo-1080p30.mp4 --sfx sfx.wav   # 1080p30
-python3 <onetake>/scripts/render.py comp.html --out LightPlayer-promo-4k60.mp4 --final --sfx sfx.wav # 4K60
+python3 <onetake>/scripts/render.py comp.html --out LightPlayer-promo-1080p30.mp4 --sfx sfx.wav --gap 8 --samples-max 48   # 1080p30
+python3 <onetake>/scripts/render.py comp.html --out LightPlayer-promo-4k60.mp4 --final --sfx sfx.wav --gap 8 --samples-max 48   # 4K60
 ```
 
-不要音效时去掉 `--sfx sfx.wav`，导出的视频没有音轨，可以自己配乐。
+`--gap 8` 让快速运镜的运动模糊足够细，不出现重影。不要音效时去掉 `--sfx sfx.wav`，导出的视频没有音轨，可以自己配乐。
 
 预览：用浏览器打开 `comp.html?play` 循环播放，`comp.html?t=13.5&hud` 停在某一帧。
 

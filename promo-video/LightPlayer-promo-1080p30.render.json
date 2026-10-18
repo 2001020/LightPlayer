@@ -1,0 +1,43 @@
+{
+ "comp": "/home/user/LightPlayer/promo-video/comp.html",
+ "fps": 30,
+ "scale": 1,
+ "size": [
+  1920,
+  1080
+ ],
+ "shutter": 180.0,
+ "samples": "adaptive",
+ "gap_px": 8.0,
+ "samples_per_moving_frame": {
+  "4": 574,
+  "5": 13,
+  "6": 14,
+  "7": 8,
+  "8": 102,
+  "9": 4,
+  "10": 5,
+  "11": 6,
+  "13": 3,
+  "14": 1,
+  "15": 2,
+  "16": 2,
+  "17": 1,
+  "18": 1,
+  "19": 1,
+  "21": 1,
+  "24": 1,
+  "26": 1,
+  "27": 1,
+  "32": 1,
+  "40": 1,
+  "48": 1
+ },
+ "workers": 3,
+ "frames": 795,
+ "still_frames": 51,
+ "cut_frames": 131,
+ "captures": 3958,
+ "seconds": 362.7,
+ "final": false
+}
