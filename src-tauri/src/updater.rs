@@ -202,6 +202,15 @@ pub struct Progress {
     pub speed: u64,
     /// Connections in use: several with aria2, 1 otherwise.
     pub connections: u32,
+    /// aria2 failed partway and a single connection started over from 0.
+    pub restarted: bool,
+}
+
+/// aria2's count can dip for a moment when a connection retries; the bar
+/// should never move back, so report the most seen (capped at the total).
+fn forward(most: &mut u64, received: u64, total: u64) -> u64 {
+    *most = (*most).max(received);
+    if total > 0 { (*most).min(total) } else { *most }
 }
 
 /// Downloads `asset` into `dir`, reporting progress; checks size and SHA-256.
@@ -223,14 +232,17 @@ async fn download_with(aria2: Option<&Path>, asset: &UpdateAsset, dir: &Path, ca
         }
     };
     let mut done = false;
+    let mut most = 0u64;
     if let Some(aria2) = aria2 {
         let ua = format!("LightPlayer/{}", current_version());
         let report = |s: crate::aria2::Status| {
+            let total = if s.total > 0 { s.total } else { asset.size };
             progress(Progress {
-                received: s.completed,
-                total: if s.total > 0 { s.total } else { asset.size },
+                received: forward(&mut most, s.completed, total),
+                total,
                 speed: s.speed,
                 connections: s.connections,
+                restarted: false,
             })
         };
         match crate::aria2::download(aria2, &asset.url, &part, &ua, cancel, report).await {
@@ -244,7 +256,12 @@ async fn download_with(aria2: Option<&Path>, asset: &UpdateAsset, dir: &Path, ca
     }
     if !done {
         remove(vec![control]).await;
-        if let Err(e) = single(asset, &part, cancel, &mut progress).await {
+        // Say so once when the bar has to go back to 0.
+        let restarted = most > 0;
+        if restarted {
+            progress(Progress { received: 0, total: asset.size, speed: 0, connections: 1, restarted });
+        }
+        if let Err(e) = single(asset, &part, cancel, restarted, &mut progress).await {
             remove(vec![part]).await;
             return Err(e);
         }
@@ -258,7 +275,7 @@ async fn download_with(aria2: Option<&Path>, asset: &UpdateAsset, dir: &Path, ca
 }
 
 /// One connection, straight to `part`.
-async fn single(asset: &UpdateAsset, part: &Path, cancel: &AtomicBool, progress: &mut impl FnMut(Progress)) -> AppResult<()> {
+async fn single(asset: &UpdateAsset, part: &Path, cancel: &AtomicBool, restarted: bool, progress: &mut impl FnMut(Progress)) -> AppResult<()> {
     use futures_util::StreamExt;
     use tokio::io::AsyncWriteExt;
     let resp = client()?.get(&asset.url).send().await?.error_for_status()?;
@@ -282,7 +299,7 @@ async fn single(asset: &UpdateAsset, part: &Path, cancel: &AtomicBool, progress:
         }
         if received - last >= 256 * 1024 || received == total {
             last = received;
-            progress(Progress { received, total, speed: window.2, connections: 1 });
+            progress(Progress { received, total, speed: window.2, connections: 1, restarted });
         }
     }
     file.flush().await?;
@@ -778,11 +795,24 @@ mod tests {
             None => eprintln!("no aria2c here: only the fallback is tested"),
         }
 
-        // aria2 cannot start: one connection instead.
-        let mut conns = 0;
-        let file = download_with(Some(Path::new("/nonexistent/aria2c")), &asset("/f.zip", &sha), &dir, &cancel, |p| conns = p.connections).await.unwrap();
+        // aria2 cannot start: one connection instead. Nothing was shown
+        // yet, so it is not reported as starting over.
+        let mut seen = Vec::new();
+        let file = download_with(Some(Path::new("/nonexistent/aria2c")), &asset("/f.zip", &sha), &dir, &cancel, |p| seen.push(p)).await.unwrap();
         assert_eq!(std::fs::read(&file).unwrap(), data);
-        assert_eq!(conns, 1);
+        assert!(seen.iter().all(|p| p.connections == 1 && !p.restarted));
+        assert!(seen.windows(2).all(|w| w[0].received <= w[1].received));
+    }
+
+    #[test]
+    fn progress_never_goes_back() {
+        let mut most = 0;
+        let shown: Vec<u64> = [(100, 1000), (400, 1000), (250, 1000), (420, 1000), (1200, 1000)].iter().map(|&(r, t)| forward(&mut most, r, t)).collect();
+        assert_eq!(shown, [100, 400, 400, 420, 1000]);
+        // Size not known yet.
+        let mut most = 0;
+        assert_eq!(forward(&mut most, 5, 0), 5);
+        assert_eq!(forward(&mut most, 3, 0), 5);
     }
 
     /// Downloads this platform's file from the newest final release with aria2,

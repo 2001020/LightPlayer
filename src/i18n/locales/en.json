@@ -375,6 +375,7 @@
   "外观": "Appearance",
   "外观模式": "Mode",
   "多云": "Cloudy",
+  "多线程下载中断，已改用单线程重新下载": "Multi-connection download failed; started over on a single connection",
   "夜晚": "Night",
   "大毛毛雨": "Dense drizzle",
   "大雨": "Heavy rain",

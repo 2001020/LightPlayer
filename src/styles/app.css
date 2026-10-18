@@ -5311,8 +5311,23 @@ html.desktop-lyrics #root {
   gap: 12px;
   font-size: 13px;
 }
-.update-progress .bar {
+.update-progress-main {
   flex: 1;
+  min-width: 0;
+}
+.update-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.update-restart {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.update-progress .bar {
   height: 6px;
   border-radius: 3px;
   background: var(--track);
@@ -5326,9 +5341,7 @@ html.desktop-lyrics #root {
   transition: width 0.2s;
 }
 .update-speed {
-  min-width: 76px;
   text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 .update-btn {
   position: relative;
