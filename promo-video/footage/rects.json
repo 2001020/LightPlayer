@@ -53,17 +53,17 @@
   "width": 380,
   "height": 634
  },
+ "navAlbums": {
+  "x": 17,
+  "y": 95,
+  "width": 196,
+  "height": 36
+ },
  "vinylDisc": {
   "x": 439.1,
   "y": 132.2,
   "width": 401.8,
   "height": 401.8
- },
- "darkTrack": {
-  "x": 97,
-  "y": 715,
-  "width": 1086,
-  "height": 18
  },
  "viewport": {
   "w": 1280,

@@ -48,6 +48,14 @@ INIT = """
     ? { title: s.name, artist: s.artists[0], cover: cover ?? s.cover, name: s.artists[0] + ' - ' + s.name }
     : { title: '夏夜微光', artist: '林间', cover, name: '林间 - 夏夜微光' }; };
   window.__PROMO_LRC = %s;
+  // a local library: the same songs as files in many formats, with their covers
+  const EXT = ['flac', 'ape', 'm4a', 'wav', 'mp3', 'dsf', 'ogg', 'wma', 'aiff', 'opus'];
+  const LIB = S.slice(0, 24).map((s, i) => ({ path: `/Users/demo/Music/${s[1]} - ${s[0]}.${EXT[i %% EXT.length]}`, kind: 'audio',
+    size: 31457280 + i * 1048576, mtime: 0, title: s[0], artist: s[1], album: s[2], albumArtist: s[1], trackNo: 1 + (i %% 9),
+    year: 2024, duration: 192 + ((i * 37) %% 110), source: 'added', addedAt: 1760000000 - i * 3600, playCount: 3 + (i %% 5), lastPlayed: null }));
+  window.__PROMO_LIB = LIB;
+  const thumbs = new Map(LIB.map((t, i) => [t.path, C[i %% C.length]]));
+  window.__PROMO_THUMB = p => thumbs.get(p) ?? null;
   localStorage.setItem('lightplayer-settings', JSON.stringify({ state: Object.assign({ language: 'zh-Hans',
     netease: { enabled: true, quality: 'lossless' }, playlistOpen: false, volume: 0.8 }, window.__PROMO_SETTINGS || {}), version: 99 }));
   if (window.__PROMO_LAYOUT) localStorage.setItem('lightplayer-layouts', JSON.stringify({ state: { custom: [], active: window.__PROMO_LAYOUT }, version: 1 }));
@@ -67,6 +75,8 @@ PATCHES = [
     ('"副歌一出来眼泪就下来了[大哭]"', '"副歌一出来眼泪就下来了"'),
     ('case "find_lyrics": {',
      'case "find_lyrics": { if (String(path).startsWith("netease:")) return { content: window.__PROMO_LRC, origin: "online", format: "lrc", path: null };'),
+    ("tracks: [], favorites: []", "tracks: window.__PROMO_LIB || [], favorites: []"),
+    ("if (!isTauri || serverBaseCache === null) return null;", "if (!isTauri || serverBaseCache === null) return window.__PROMO_THUMB ? window.__PROMO_THUMB(path) : null;"),
     # the weather the sky shots ask for
     ("code: 2,", "code: window.__PROMO_WX?.code ?? 2,"),
     ("isDay: true,", "isDay: window.__PROMO_WX?.isDay ?? true,"),
@@ -176,7 +186,20 @@ async def main():
         await shot(pg, "daily-c")
         await pg.close()
 
-        # 2. the vinyl player page
+        # 2. the local library: songs in many formats, then the album wall
+        pg = await page(b)
+        await play_daily(pg)
+        await pg.add_style_tag(content=HIDE_PROGRESS)
+        await pg.locator(".sidebar, nav, aside").get_by_text("歌曲", exact=True).first.click()
+        await pg.wait_for_timeout(1200)
+        rects["navAlbums"] = await rect(pg, "text=专辑", 0)
+        await shot(pg, "lib-songs")
+        await pg.get_by_text("专辑", exact=True).first.click()
+        await pg.wait_for_timeout(1500)
+        await shot(pg, "lib-albums")
+        await pg.close()
+
+        # 3. the vinyl player page
         pg = await page(b, layout="vinyl")
         await play_daily(pg)
         await pg.add_style_tag(content=HIDE_PROGRESS)
@@ -186,7 +209,7 @@ async def main():
         await shot(pg, "vinyl")
         await pg.close()
 
-        # 3. a second computer: the same song, dark theme
+        # 4. a second computer: the same song, dark theme
         pg = await page(b, settings={"theme": "dark"})
         await play_daily(pg)
         await pg.add_style_tag(content=HIDE_PROGRESS)
@@ -195,7 +218,7 @@ async def main():
         await shot(pg, "dark")
         await pg.close()
 
-        # 4. skies alone, full frame: the weather theme's own drawing with the UI hidden
+        # 5. skies alone, full frame: the weather theme's own drawing with the UI hidden
         for name, (hh, mm, wx) in SKIES.items():
             when = datetime.datetime.now().replace(hour=hh, minute=mm, second=0, microsecond=0)
             pg = await page(b, settings={"theme": "weather"}, clock=when, wx=wx, size=(1920, 1080, 1))

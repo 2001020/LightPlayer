@@ -10,11 +10,16 @@ body{font-family:var(--text);color:var(--ink)}
 #stage{position:absolute;inset:0;overflow:hidden;background:var(--ground)}
 canvas.full{position:absolute;left:0;top:0;width:1920px;height:1080px}
 #world{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0}
-.abs{position:absolute;left:0;top:0}
 /* app windows: real screens of the app, 1280 × 800 css px shot at 2× */
 .win{position:absolute;width:1280px;height:800px;transform-origin:0 0;filter:drop-shadow(0 30px 50px rgba(30,50,80,.16)) drop-shadow(0 2px 6px rgba(30,50,80,.08))}
 .win .clip{position:absolute;inset:0;overflow:hidden}
 .win img{position:absolute;left:0;top:0;width:1280px;height:800px;display:block}
+/* a desktop for the desktop lyrics */
+#desk{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;
+  background:radial-gradient(60% 70% at 18% 25%,#9fd3ff 0%,rgba(159,211,255,0) 70%),radial-gradient(55% 65% at 85% 80%,#d7b8ff 0%,rgba(215,184,255,0) 70%),
+  radial-gradient(45% 50% at 65% 20%,#ffc6dc 0%,rgba(255,198,220,0) 70%),linear-gradient(135deg,#5d86f2 0%,#8b7cf0 48%,#e59ac4 100%)}
+#desk .bar{position:absolute;left:0;top:0;width:1920px;height:30px;background:rgba(255,255,255,.22);backdrop-filter:blur(6px)}
+#dlBox{position:absolute;left:0;top:0;height:96px;border-radius:16px;background:rgba(18,20,28,.42)}
 /* the sky of the weather theme */
 #sky{position:absolute;left:0;top:0;width:1920px;height:900px;overflow:hidden}
 #sky img{position:absolute;left:0;top:0;width:1920px;height:1080px;display:block}
@@ -33,9 +38,8 @@ canvas.full{position:absolute;left:0;top:0;width:1920px;height:1080px}
 #mark img{width:150px;height:150px;display:block}
 #markText{font:700 150px/1 var(--display);letter-spacing:-.03em;color:var(--ink);white-space:nowrap}
 #markText span{display:inline-block;transform-origin:50% 88%}
-#tag{position:absolute;left:0;top:0;font:700 46px/1 var(--display);letter-spacing:.08em;color:var(--ink);white-space:nowrap}
-#tag b{color:#e8364b;font-weight:700}
-#cursor{position:absolute;left:0;top:0;width:24px;height:32px;transform-origin:0 0;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+#tag{position:absolute;left:0;top:0;font:600 44px/1 var(--text);letter-spacing:.01em;color:var(--mute);white-space:nowrap}
+.cursor{position:absolute;left:0;top:0;width:24px;height:32px;transform-origin:0 0;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
 #heartPop{position:absolute;left:0;top:0;width:18px;height:18px;transform-origin:50% 50%}
 #hud{position:absolute;right:14px;bottom:10px;font:13px monospace;color:#c00;display:none}
 </style>
@@ -45,48 +49,55 @@ canvas.full{position:absolute;left:0;top:0;width:1920px;height:1080px}
 <div id="stage">
   <canvas id="ground" class="full"></canvas>
   <div id="world">
+    <div id="desk"><div class="bar"></div></div>
     <div id="sky"><img id="sky0" src="footage/sky-dusk.png" alt=""><img id="sky1" src="footage/sky-rain.png" alt=""><img id="sky2" src="footage/sky-snow.png" alt=""><img id="sky3" src="footage/sky-night.png" alt=""></div>
+    <div id="dlBox"></div>
     <div id="lyr"></div>
     <div id="disc"><img id="discImg" src="footage/vinyl.png" alt=""></div>
-    <div class="win" id="win"><div class="clip" id="winClip"><img id="wa" src="footage/daily-a.png" alt=""><img id="wb" src="footage/daily-b.png" alt=""></div><div class="clip" id="panelClip"><img src="footage/daily-c.png" alt=""></div></div>
+    <div class="win" id="lib"><div class="clip" id="libClip"><img src="footage/lib-songs.png" alt=""><img id="libB" src="footage/lib-albums.png" alt=""></div></div>
+    <div class="win" id="win"><div class="clip" id="winClip"><img src="footage/daily-a.png" alt=""><img id="wb" src="footage/daily-b.png" alt=""></div><div class="clip" id="panelClip"><img src="footage/daily-c.png" alt=""></div></div>
     <div class="win" id="wl"><div class="clip"><img src="footage/vinyl.png" alt=""></div></div>
     <div class="win" id="wr"><div class="clip"><img src="footage/dark.png" alt=""></div></div>
     <svg id="heartPop" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.9 4.5 6.6 4.5c2.2 0 3.7 1.2 5.4 3.2 1.7-2 3.2-3.2 5.4-3.2 3.7 0 5.7 3.9 4.2 7.3C19.5 16.4 12 21 12 21z" fill="#fb4a68"/></svg>
-    <svg id="cursor" viewBox="0 0 34 44"><path d="M4 3 L30 22 L18 24 L26 40 L20 43 L12 27 L4 36 Z" fill="#111" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>
+    <svg id="cursor" class="cursor" viewBox="0 0 34 44"><path d="M4 3 L30 22 L18 24 L26 40 L20 43 L12 27 L4 36 Z" fill="#111" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>
   </div>
   <canvas id="line" class="full"></canvas>
   <div id="heads"></div>
   <div id="mark"><img id="icon" src="footage/icon.png" alt=""><div id="markText"></div></div>
-  <div id="tag">现已支持<b>网易云音乐</b></div>
+  <div id="tag">github.com/2001020/LightPlayer</div>
   <div id="hud"></div>
 </div>
 <script src="motion.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════════════════════════════════════════
-// One line is the whole film: it is drawn, becomes the progress bar of the real player, the bar
-// grows into the app (NetEase: daily picks, the heart, the comments), the line lifts off as the
-// underline of the lyrics, winds into the vinyl's groove, unrolls into the horizon of the weather
-// sky, links two computers, and ends under the name. Everything is a pure function of t.
+// One line is the whole film. It is drawn, becomes the progress bar of the real player, the bar
+// grows into the app (the library: every format, the album wall), the window folds back into it,
+// it lifts off as the underline of the lyrics and carries them onto the desktop, winds into the
+// vinyl's groove and changes colour, unrolls into the horizon of the weather sky, folds into the
+// player again for NetEase (daily picks, the heart, the comments), links two computers, and ends
+// under the name and the repository's address. Everything is a pure function of t.
 // ══════════════════════════════════════════════════════════════════════════════════════════════
-const DUR = 26.5;
+const DUR = 35.5;
 window.__meta = { dur: DUR, fps: 30, w: 1920, h: 1080 };
-const { clamp, lerp, seg, sstep, ssstep, ease, spring } = OM;
+const { clamp, lerp, seg, sstep, ease, spring } = OM;
 const E = ease;
 const $ = id => document.getElementById(id);
 
 // ───────────── geometry (world = the 1920 × 1080 layout at zoom 1) ─────────────
-const WIN = { x: 320, y: 140, w: 1280, h: 800 };                       // the app window
+const WIN = { x: 320, y: 140, w: 1280, h: 800 };                       // an app window
 const L2W = (x, y) => [WIN.x + x, WIN.y + y];                            // window-local (css px of the shot) → world
 const TRACK = { x0: 417, x1: 1503, y: 864 };                            // the hidden progress slider, from footage/rects.json
 const TLEN = TRACK.x1 - TRACK.x0;
 const BAR = { x: 10, y: 709, w: 1260, h: 81 };                           // the player bar (window-local)
 const FULL = { x: 0, y: 0, w: 1280, h: 800 };
 const SLIT = { x: 97, y: 722, w: 1086, h: 4 };
+const NAV_ALBUMS = L2W(115, 113);
 const HEART = L2W(161, 760), CMT = L2W(956, 760);
 const CMT_R = { x: 939, y: 743, w: 34, h: 34 }, PANEL_R = { x: 886, y: 52, w: 380, h: 634 };
 const DISC = { cx: 720, cy: 540, r: 260 };                              // the vinyl, world
 const DISC_SRC = { x: 439.1, y: 132.2, d: 401.8 };                       // the disc in vinyl.png (css px)
 const HORIZON = 900;
+const DESK_Y = 790;                                                      // the desktop lyric's line
 const LAN_S = 0.42, WL = { x: 150, y: 330 }, WR = { x: 1232, y: 330 };   // two computers
 const LAN_Y = WL.y + 724 * LAN_S;
 const LTR = { a0: WL.x + 97 * LAN_S, a1: WL.x + 1183 * LAN_S, b0: WR.x + 97 * LAN_S, b1: WR.x + 1183 * LAN_S };
@@ -95,16 +106,22 @@ const UNDER = { x0: 690, x1: 1230, y: 640 };                             // unde
 // ───────────── timeline ─────────────
 const T = {
   dot: 0.35, draw0: 0.8, draw1: 1.8,
-  bar0: 2.6, bar1: 3.2, rew0: 2.7, rew1: 3.15, win0: 3.3, win1: 4.1,
-  h1: 4.1, h1out: 5.3,
-  click1: 6.0, h2: 6.15, h2out: 7.0,
-  click2: 7.55, panel0: 7.6, panel1: 8.15, h3: 8.25, h3out: 9.35,
-  lift0: 9.8, lift1: 10.4, winOut0: 9.35, winOut1: 9.85, lyrIn: 10.0, lyr: [10.95, 11.6, 12.2], lyrOut: 12.6,
-  wind0: 12.6, wind1: 13.35, discIn0: 13.05, discIn1: 13.6, h4: 13.6, h4out: 15.15,
-  unwind0: 15.4, unwind1: 16.1, discOut0: 15.25, discOut1: 15.6, sky0: 16.0, sky1: 16.6, h5: 16.55, h5out: 18.7,
-  cuts: [17.3, 17.65, 18.0], drain0: 18.8, drain1: 19.3,
-  lan0: 18.95, lan1: 19.55, lanBar0: 19.55, lanBar1: 19.95, lanWin0: 20.0, lanWin1: 20.6, h6: 20.55, h6out: 22.35,
-  lanOut0: 22.4, lanOut1: 22.85, end0: 22.8, end1: 23.4, mark: 23.15, tag: 23.75,
+  // the library: every format, then the album wall
+  bar0: 2.6, bar1: 3.2, rew0: 2.7, rew1: 3.15, win0: 3.3, win1: 4.1, h1: 4.1, h1out: 5.25,
+  click0: 5.85, h2: 6.0, h2out: 7.15, fold0: 7.2, fold1: 7.7,
+  // lyrics, then the desktop
+  lift0: 7.6, lift1: 8.2, lyrIn: 7.8, lyr: [8.75, 9.4, 10.0, 11.75], desk0: 10.35, desk1: 10.95, h3: 11.05, h3out: 12.45, deskOut0: 12.5, deskOut1: 13.0,
+  // the vinyl, then its colours
+  wind0: 13.0, wind1: 13.75, discIn0: 13.45, discIn1: 14.0, h4: 14.0, h4out: 15.2, colors: [15.3, 15.6, 15.9, 16.2], h5: 15.3, h5out: 16.5,
+  // the weather
+  unwind0: 16.7, unwind1: 17.4, discOut0: 16.55, discOut1: 16.9, sky0: 17.3, sky1: 17.9, h6: 18.0, h6out: 20.05,
+  cuts: [18.7, 19.05, 19.4], drain0: 20.1, drain1: 20.6,
+  // NetEase: back into the player
+  nt0: 20.55, nt1: 21.1, nbar0: 21.1, nbar1: 21.6, nrew0: 21.15, nrew1: 21.55, nwin0: 21.7, nwin1: 22.45, h7: 22.45, h7out: 23.55,
+  click1: 24.3, h8: 24.45, h8out: 25.2, click2: 25.75, panel0: 25.8, panel1: 26.35, h9: 26.45, h9out: 27.5, nfold0: 27.55, nfold1: 28.05,
+  // two computers, then the name
+  lan0: 28.05, lan1: 28.65, lanBar0: 28.65, lanBar1: 29.05, lanWin0: 29.1, lanWin1: 29.7, h10: 29.65, h10out: 31.4,
+  lanOut0: 31.5, lanOut1: 31.95, end0: 31.9, end1: 32.5, mark: 32.25, tag: 32.85,
 };
 
 // ───────────── camera: keyed, with an operator's hand and shakes on the landings ─────────────
@@ -114,26 +131,32 @@ const KEYS = [
   { t: 1.9, x: 960, y: 864, zoom: 1.72, curve: E.quintOut },               // chases the head of the line
   { t: T.bar0, x: 960, y: 864, zoom: 1.72 },
   { t: 3.25, x: 960, y: 872, zoom: 1.32, curve: E.cubicInOut },            // the bar forms
-  { t: 4.15, x: 680, y: 540, zoom: 0.86, curve: E.cubicInOut },            // the app grows out of it
-  { t: 5.3, x: 680, y: 540, zoom: 0.86 },
-  { t: 5.8, x: 560, y: 905, zoom: 2.2, curve: E.expoInOut },               // to the heart
-  { t: 7.0, x: 560, y: 905, zoom: 2.2 },
-  { t: 7.45, x: 1276, y: 905, zoom: 2.2, curve: E.expoInOut },             // whip to the comments button
-  { t: 7.6, x: 1276, y: 905, zoom: 2.2 },
-  { t: 8.25, x: 1578, y: 509, zoom: 1.1, curve: E.cubicInOut },            // pulled back by the panel
-  { t: 9.4, x: 1578, y: 509, zoom: 1.1 },
-  { t: 10.45, x: 960, y: 540, zoom: 1.0, curve: E.quintInOut },            // the window folds into the line; ride it to the lyrics
-  { t: T.wind0, x: 960, y: 540, zoom: 1.0 },
-  { t: 13.4, x: 930, y: 540, zoom: 1.08, curve: E.cubicInOut },            // lean in as it winds
+  { t: 4.15, x: 640, y: 540, zoom: 0.86, curve: E.cubicInOut },            // the app grows out of it
+  { t: T.fold0, x: 640, y: 540, zoom: 0.86 },
+  { t: 8.25, x: 960, y: 540, zoom: 1.0, curve: E.quintInOut },             // the window folds; ride the line to the lyrics
+  { t: T.desk0, x: 960, y: 540, zoom: 1.0 },
+  { t: 11.0, x: 960, y: 560, zoom: 0.94, curve: E.cubicInOut },            // out onto the desktop
+  { t: T.deskOut0, x: 960, y: 560, zoom: 0.94 },
+  { t: 13.8, x: 930, y: 540, zoom: 1.08, curve: E.cubicInOut },            // lean in as it winds
   { t: T.unwind0, x: 930, y: 540, zoom: 1.08 },
-  { t: 16.15, x: 960, y: 540, zoom: 1.0, curve: E.cubicInOut },            // back out for the horizon
+  { t: 17.45, x: 960, y: 540, zoom: 1.0, curve: E.cubicInOut },            // back out for the horizon
   { t: T.drain0, x: 960, y: 540, zoom: 1.0 },
-  { t: 19.6, x: 960, y: 520, zoom: 0.97, curve: E.cubicInOut },
+  { t: T.nt1, x: 960, y: 868, zoom: 1.55, curve: E.cubicInOut },           // down to the player bar again
+  { t: 21.7, x: 960, y: 872, zoom: 1.32, curve: E.cubicInOut },            // and back as the bar forms around the line
+  { t: 22.5, x: 640, y: 540, zoom: 0.86, curve: E.cubicInOut },
+  { t: 23.6, x: 640, y: 540, zoom: 0.86 },
+  { t: 24.1, x: 560, y: 905, zoom: 2.2, curve: E.expoInOut },              // to the heart
+  { t: 25.2, x: 560, y: 905, zoom: 2.2 },
+  { t: 25.65, x: 1276, y: 905, zoom: 2.2, curve: E.expoInOut },            // whip to the comments button
+  { t: 25.8, x: 1276, y: 905, zoom: 2.2 },
+  { t: 26.45, x: 1578, y: 509, zoom: 1.1, curve: E.cubicInOut },           // pulled back by the panel
+  { t: T.nfold0, x: 1578, y: 509, zoom: 1.1 },
+  { t: 28.6, x: 960, y: 520, zoom: 0.97, curve: E.cubicInOut },            // out to two computers
   { t: T.lanOut0, x: 960, y: 520, zoom: 0.97 },
-  { t: 23.5, x: 960, y: 560, zoom: 1.0, curve: E.cubicInOut },
+  { t: 32.6, x: 960, y: 560, zoom: 1.0, curve: E.cubicInOut },
 ];
-const HITS = [[T.dot, 3, 12], [T.click1, 5, 10], [T.click2, 4, 10], [T.panel1, 3, 9], [T.discIn1, 4, 9], [T.sky1, 3, 9], [T.lanWin1, 3, 9], [T.mark + 0.25, 4, 9]];
-const holds = [[1.95, 2.55], [4.2, 5.25], [6.25, 6.95], [8.4, 9.35], [16.7, 17.25], [23.9, DUR]];
+const HITS = [[T.dot, 3, 12], [T.click0, 3, 10], [T.discIn1, 4, 9], [T.sky1, 3, 9], [T.click1, 5, 10], [T.click2, 4, 10], [T.panel1, 3, 9], [T.lanWin1, 3, 9], [T.mark + 0.25, 4, 9]];
+const holds = [[1.95, 2.55], [4.2, 5.2], [6.3, 7.15], [14.2, 15.2], [18.05, 18.65], [22.55, 23.55], [24.45, 25.15], [26.6, 27.45], [33.1, DUR]];
 const handEnv = t => { let e = sstep(0.4, 1.0, t); for (const [a, b] of holds) e *= 1 - sstep(a - 0.15, a, t) * (1 - sstep(b, b + 0.15, t)); return e; };
 function camAt(t) {
   const c = OM.camera(t, KEYS), e = handEnv(t) * 3.2;
@@ -144,43 +167,54 @@ function camAt(t) {
   return { x, y, zoom: c.zoom, rot };
 }
 
-// ───────────── the hand (NetEase beats only) ─────────────
-const HAND = [
-  { t: 5.35, x: 700, y: 1130 }, { t: 5.75, x: 530, y: 960 }, { t: 5.95, x: HEART[0] + 2, y: HEART[1] + 3 }, { t: 6.9, x: HEART[0] + 2, y: HEART[1] + 3 },
-  { t: 7.45, x: CMT[0] + 2, y: CMT[1] + 3 }, { t: 7.9, x: CMT[0] + 2, y: CMT[1] + 3 }, { t: 8.3, x: 1360, y: 1080 }, { t: 8.7, x: 1460, y: 1180 },
+// ───────────── the hand: it opens the album wall, lights the heart, opens the comments ─────────────
+const HANDS = [
+  { knots: [{ t: 5.2, x: 640, y: 1060 }, { t: 5.7, x: NAV_ALBUMS[0] + 30, y: NAV_ALBUMS[1] + 40 }, { t: 5.82, x: NAV_ALBUMS[0] + 2, y: NAV_ALBUMS[1] + 3 },
+      { t: 6.2, x: NAV_ALBUMS[0] + 2, y: NAV_ALBUMS[1] + 3 }, { t: 6.7, x: 140, y: 560 }, { t: 7.0, x: -60, y: 700 }], clicks: [T.click0], scale: 1.15 },
+  { knots: [{ t: 23.65, x: 700, y: 1130 }, { t: 24.05, x: 530, y: 960 }, { t: 24.25, x: HEART[0] + 2, y: HEART[1] + 3 }, { t: 25.1, x: HEART[0] + 2, y: HEART[1] + 3 },
+      { t: 25.65, x: CMT[0] + 2, y: CMT[1] + 3 }, { t: 26.1, x: CMT[0] + 2, y: CMT[1] + 3 }, { t: 26.5, x: 1360, y: 1080 }, { t: 26.9, x: 1460, y: 1180 }], clicks: [T.click1, T.click2], scale: 0.75 },
 ];
-const CLICKS = [T.click1, T.click2];
+const handAt = t => HANDS.find(h => t >= h.knots[0].t && t < h.knots[h.knots.length - 1].t);
 
 // ───────────── progress: the line is the song's position ─────────────
-function progress(t) {   // fraction of the track filled
-  if (t < T.rew0) return 1;
-  const p = 0.05 + 0.33 * clamp((t - T.rew1) / (T.lift0 - T.rew1));
-  return lerp(1, p, E.expoInOut(seg(t, T.rew0, T.rew1)));
+function progress(t, r0, r1, p0, p1, end) {   // full, rewound at r0…r1 to p0, then playing on to p1 at `end`
+  if (t < r0) return 1;
+  const p = p0 + (p1 - p0) * clamp((t - r1) / (end - r1));
+  return lerp(1, p, E.expoInOut(seg(t, r0, r1)));
 }
+const libP = t => progress(t, T.rew0, T.rew1, 0.05, 0.2, T.fold0);
+const neteaseP = t => progress(t, T.nrew0, T.nrew1, 0.3, 0.46, T.nfold0);
 function lanProgress(t) { return 0.12 + 0.3 * clamp((t - T.lanBar0) / (T.lanOut0 - T.lanBar0)); }
 
-// ───────────── lyrics ─────────────
+// ───────────── the accent colour: the app's presets, cut through on the record ─────────────
+const ACC = '#66ccff', TRK = 'rgba(120,135,155,.22)';
+const PRESETS = ['#7c5cff', '#13ce66', '#ff7849', '#ff4d8d'];
+function accentAt(t) {
+  const n = T.colors.filter(c => t >= c).length;
+  if (n === 0 || t >= T.unwind0) return ACC;
+  return PRESETS[n - 1];
+}
+
+// ───────────── lyrics, and the desktop they float onto ─────────────
 const LYRICS = ['晚风经过窗台', '把灯光吹成海', '你说慢一点也没关系', '我们还有整个夏天', '星星落在耳边', '旋律替我说完'];
 const LY = { y: 520, gap: 92, small: 0.7 };
 const lyrEls = LYRICS.map(s => { const d = document.createElement('div'); d.innerHTML = `<span>${s}</span>`; $('lyr').appendChild(d); return d; });
 let lyrW = [];
-function lyrScroll(t) {   // continuous index of the active line
-  let s = 0;
-  T.lyr.forEach(tl => { s += spring(t - tl, 0.72, 15); });
-  return s;
-}
+const lyrScroll = t => T.lyr.reduce((s, tl) => s + spring(t - tl, 0.72, 15), 0);   // continuous index of the active line
+const deskK = t => E.expoInOut(seg(t, T.desk0, T.desk1));
+const lyrBaseY = t => lerp(LY.y, DESK_Y - 22, deskK(t));
 function underline(t) {   // the line under the active lyric: [x0, x1, y]
   const s = lyrScroll(t), i = Math.floor(s), f = s - i;
   const w = lerp(lyrW[i] ?? 0, lyrW[i + 1] ?? lyrW[i], f) + 24;
-  return [960 - w / 2, 960 + w / 2, LY.y + 48];
+  return [960 - w / 2, 960 + w / 2, lyrBaseY(t) + lerp(48, 64, deskK(t))];
 }
 
 // ───────────── the line, as polylines in world space ─────────────
 const N = 220;
 const straight = (x0, x1, y) => Array.from({ length: N }, (_, i) => [lerp(x0, x1, i / (N - 1)), y]);
 const spin = t => { const k = clamp(t - T.wind0); return 0.55 * 2 * Math.PI * Math.max(0, t - T.wind0 - 0.5 + 0.5 * (1 - k) * k); };
-function spiral(t) {   // outer groove inwards; turns with the record
-  const a0 = -Math.PI * 0.5 + spin(t), turns = 4, r0 = 252, r1 = 182;   // the groove ring, outside the label
+function spiral(t) {   // the groove ring outside the label, turning with the record
+  const a0 = -Math.PI * 0.5 + spin(t), turns = 4, r0 = 252, r1 = 182;
   return Array.from({ length: N }, (_, i) => { const u = i / (N - 1), a = a0 + u * turns * 2 * Math.PI, r = lerp(r0, r1, u);
     return [DISC.cx + Math.cos(a) * r, DISC.cy + Math.sin(a) * r]; });
 }
@@ -188,7 +222,11 @@ const mix = (A, B, k) => A.map((p, i) => [lerp(p[0], B[i][0], k), lerp(p[1], B[i
 const mixStagger = (A, B, t, t0, t1, curve, spread = 0.35) => A.map((p, i) => { const u = i / (A.length - 1), d = (t1 - t0) * spread;
   const k = curve(seg(t, t0 + u * d, t1 - (1 - u) * d)); return [lerp(p[0], B[i][0], k), lerp(p[1], B[i][1], k)]; });
 
-const ACC = '#66ccff', TRK = 'rgba(120,135,155,.22)';
+// the player's progress bar inside a window: grey track + blue fill
+function barLine(out, t, p, trackOn, w = 4) {
+  if (trackOn > 0) out.push({ pts: straight(TRACK.x0, TRACK.x1, TRACK.y), w, color: TRK, alpha: trackOn });
+  out.push({ pts: straight(TRACK.x0, TRACK.x0 + TLEN * p, TRACK.y), w, color: ACC });
+}
 // → [{pts, w, color, alpha, dash?}]
 function lineAt(t) {
   const out = [];
@@ -198,53 +236,53 @@ function lineAt(t) {
     out.push({ pts: straight(TRACK.x0, Math.max(TRACK.x0 + 0.01, head), TRACK.y), w: 7 * pop, color: ACC });
     return out;
   }
-  if (t < T.lift0) {                                                           // the progress bar of the player
-    const w = lerp(7, 4, E.cubicInOut(seg(t, T.bar0, T.bar1)));
-    const tr = sstep(T.rew0, T.rew0 + 0.3, t) * (1 - sstep(T.winOut0, T.winOut1, t));
-    if (tr > 0) out.push({ pts: straight(TRACK.x0, TRACK.x1, TRACK.y), w, color: TRK, alpha: tr });
-    out.push({ pts: straight(TRACK.x0, TRACK.x0 + TLEN * progress(t), TRACK.y), w, color: ACC });
+  if (t < T.lift0) {                                                           // the progress bar of the library window
+    barLine(out, t, libP(t), sstep(T.rew0, T.rew0 + 0.3, t) * (1 - sstep(T.fold0 + 0.2, T.fold1, t)), lerp(7, 4, E.cubicInOut(seg(t, T.bar0, T.bar1))));
     return out;
   }
-  if (t < T.wind0) {                                                           // lifts off into the lyrics' underline
-    const tr = 1 - sstep(T.winOut0, T.winOut1, t);
+  if (t < T.wind0) {                                                           // lifts off into the lyrics' underline, onto the desktop
+    const tr = 1 - sstep(T.fold0 + 0.2, T.fold1, t);
     if (tr > 0) out.push({ pts: straight(TRACK.x0, TRACK.x1, TRACK.y), w: 4, color: TRK, alpha: tr });
-    const p = progress(T.lift0), A = straight(TRACK.x0, TRACK.x0 + TLEN * p, TRACK.y), u = underline(t);
+    const A = straight(TRACK.x0, TRACK.x0 + TLEN * libP(T.lift0), TRACK.y), u = underline(t);
     out.push({ pts: mix(A, straight(u[0], u[1], u[2]), E.expoInOut(seg(t, T.lift0, T.lift1))), w: lerp(4, 6, seg(t, T.lift0, T.lift1)), color: ACC });
     return out;
   }
-  if (t < T.unwind0) {                                                         // winds into the groove
+  if (t < T.unwind0) {                                                         // winds into the groove, then changes colour
     const u = underline(T.wind0), A = straight(u[0], u[1], u[2]);
-    const k = E.expoInOut(seg(t, T.wind0, T.wind1));
-    out.push({ pts: mixStagger(A, spiral(t), t, T.wind0, T.wind1, E.expoInOut), w: lerp(6, 3.2, k), color: ACC, alpha: 1 - 0.45 * sstep(T.discIn0, T.discIn1, t) });
+    const k = E.expoInOut(seg(t, T.wind0, T.wind1)), col = t >= T.colors[0];
+    out.push({ pts: mixStagger(A, spiral(t), t, T.wind0, T.wind1, E.expoInOut), w: lerp(6, col ? 4.2 : 3.2, k), color: accentAt(t),
+      alpha: col ? 0.95 : 1 - 0.45 * sstep(T.discIn0, T.discIn1, t) });
     return out;
   }
-  if (t < T.lan0) {                                                            // unrolls into the horizon
-    const B = straight(-120, 2040, HORIZON);
-    out.push({ pts: mixStagger(spiral(t), B, t, T.unwind0, T.unwind1, E.expoInOut, 0.3), w: lerp(3.2, 4, seg(t, T.unwind0, T.unwind1)), color: ACC,
+  if (t < T.nt0) {                                                             // unrolls into the horizon
+    out.push({ pts: mixStagger(spiral(t), straight(-120, 2040, HORIZON), t, T.unwind0, T.unwind1, E.expoInOut, 0.3), w: lerp(3.2, 4, seg(t, T.unwind0, T.unwind1)), color: ACC,
       alpha: lerp(0.55, 1, seg(t, T.unwind0, T.unwind0 + 0.3)) });
     return out;
   }
-  if (t < T.lanOut0 + 0.01 || t < T.end0) {                                    // links two computers
-    const A = straight(-120, 2040, HORIZON), B = straight(LTR.a0, LTR.b1, LAN_Y);
-    const k = E.expoInOut(seg(t, T.lan0, T.lan1));
-    const split = sstep(T.lanBar0, T.lanBar1, t) * (1 - sstep(T.lanOut0, T.lanOut1, t));
-    const whole = mix(A, B, k);
-    const back = seg(t, T.end0, T.end1);
-    if (split <= 0) {
-      const C = straight(UNDER.x0, UNDER.x1, UNDER.y);
-      out.push({ pts: t >= T.end0 ? mix(B, C, E.expoInOut(back)) : whole, w: lerp(4, 5, back), color: ACC });
-      return out;
-    }
-    const p = lanProgress(t), sw = 4;
-    for (const [a0, a1] of [[LTR.a0, LTR.a1], [LTR.b0, LTR.b1]]) {
-      out.push({ pts: straight(a0, a1, LAN_Y), w: sw, color: TRK, alpha: split });
-      out.push({ pts: straight(a0, lerp(a1, a0 + (a1 - a0) * p, split), LAN_Y), w: sw, color: ACC });
-    }
-    out.push({ pts: straight(LTR.a1 + 14 * split, LTR.b0 - 14 * split, LAN_Y), w: lerp(sw, 2.5, split), color: ACC, alpha: lerp(1, 0.55, split), dash: split > 0.5 ? [2, 12] : null });
+  if (t < T.nfold1) {                                                          // the horizon gathers into the player bar again: NetEase
+    if (t < T.nrew0) { out.push({ pts: mix(straight(-120, 2040, HORIZON), straight(TRACK.x0, TRACK.x1, TRACK.y), E.expoInOut(seg(t, T.nt0, T.nt1))), w: 4, color: ACC }); return out; }
+    if (t < T.nfold0) { barLine(out, t, neteaseP(t), sstep(T.nrew0, T.nrew0 + 0.3, t)); return out; }
+    const k = E.expoInOut(seg(t, T.nfold0, T.nfold1));                         // folding: the fill runs out to the end
+    barLine(out, t, lerp(neteaseP(T.nfold0), 1, k), 1 - k);
     return out;
   }
-  out.push({ pts: straight(UNDER.x0, UNDER.x1, UNDER.y), w: 5, color: ACC });
-  return out;
+  {                                                                            // links two computers, then lies under the name
+    const A = straight(TRACK.x0, TRACK.x1, TRACK.y), B = straight(LTR.a0, LTR.b1, LAN_Y);
+    const k = E.expoInOut(seg(t, T.lan0, T.lan1));
+    const split = sstep(T.lanBar0, T.lanBar1, t) * (1 - sstep(T.lanOut0, T.lanOut1, t));
+    if (split <= 0) {
+      const back = seg(t, T.end0, T.end1);
+      out.push({ pts: t >= T.end0 ? mix(B, straight(UNDER.x0, UNDER.x1, UNDER.y), E.expoInOut(back)) : mix(A, B, k), w: lerp(4, 5, back), color: ACC });
+      return out;
+    }
+    const p = lanProgress(t);
+    for (const [a0, a1] of [[LTR.a0, LTR.a1], [LTR.b0, LTR.b1]]) {
+      out.push({ pts: straight(a0, a1, LAN_Y), w: 4, color: TRK, alpha: split });
+      out.push({ pts: straight(a0, lerp(a1, a0 + (a1 - a0) * p, split), LAN_Y), w: 4, color: ACC });
+    }
+    out.push({ pts: straight(LTR.a1 + 14 * split, LTR.b0 - 14 * split, LAN_Y), w: lerp(4, 2.5, split), color: ACC, alpha: lerp(1, 0.55, split), dash: split > 0.5 ? [2, 12] : null });
+    return out;
+  }
 }
 // pulses running along the link, left to right, while the two play together
 function pulses(t) {
@@ -255,12 +293,16 @@ function pulses(t) {
 
 // ───────────── headlines (screen space) ─────────────
 const HEADS = [
-  { lines: ['网易云音乐', '也在这里'], x: 140, y: 372, size: 92, t: T.h1, out: T.h1out },
-  { lines: ['点亮红心'], x: 960, y: 780, size: 84, t: T.h2, out: T.h2out, center: true },
-  { lines: ['一起看评论'], x: 1090, y: 470, size: 84, t: T.h3, out: T.h3out },
+  { lines: ['几乎所有格式', '打开就播'], x: 130, y: 372, size: 84, t: T.h1, out: T.h1out },
+  { lines: ['你的音乐', '一目了然'], x: 130, y: 372, size: 84, t: T.h2, out: T.h2out },
+  { lines: ['歌词', '浮在桌面上'], x: 150, y: 250, size: 96, t: T.h3, out: T.h3out, color: '#ffffff', shadow: true },
   { lines: ['让唱片', '转起来'], x: 1160, y: 392, size: 96, t: T.h4, out: T.h4out },
-  { lines: ['窗外的天气', '就是主题'], x: 150, y: 300, size: 96, t: T.h5, out: T.h5out, color: '#ffffff', shadow: true },
-  { lines: ['两台电脑 同步播放'], x: 960, y: 128, size: 80, t: T.h6, out: T.h6out, center: true },
+  { lines: ['主题色', '随心换'], x: 1160, y: 392, size: 96, t: T.h5, out: T.h5out },
+  { lines: ['窗外的天气', '就是主题'], x: 150, y: 300, size: 96, t: T.h6, out: T.h6out, color: '#ffffff', shadow: true },
+  { lines: ['网易云音乐', '也能听'], x: 130, y: 372, size: 84, t: T.h7, out: T.h7out },
+  { lines: ['点亮红心'], x: 960, y: 780, size: 84, t: T.h8, out: T.h8out, center: true },
+  { lines: ['一起看评论'], x: 1090, y: 470, size: 84, t: T.h9, out: T.h9out },
+  { lines: ['两台电脑 同步播放'], x: 960, y: 128, size: 80, t: T.h10, out: T.h10out, center: true },
 ];
 HEADS.forEach(h => {
   const d = document.createElement('div'); d.className = 'hl'; d.style.fontSize = h.size + 'px';
@@ -275,29 +317,26 @@ const markL = [...'LightPlayer'].map(ch => { const s = document.createElement('s
 const DPR = window.devicePixelRatio || 1;
 const lc = $('line'), lx = lc.getContext('2d'), gc = $('ground'), gx = gc.getContext('2d');
 for (const c of [lc, gc]) { c.width = 1920 * DPR; c.height = 1080 * DPR; }
-const css = (el, s) => { el.style.cssText += s; };
 const M2css = M => `matrix(${M.map(v => +v.toFixed(5)).join(',')})`;
 const inset = (R, r = 12) => `inset(${R.y.toFixed(2)}px ${(1280 - R.x - R.w).toFixed(2)}px ${(800 - R.y - R.h).toFixed(2)}px ${R.x.toFixed(2)}px round ${r.toFixed(2)}px)`;
 const show = (el, on) => { el.style.display = on ? '' : 'none'; };
+const lerpRect = (A, B, k) => ({ x: lerp(A.x, B.x, k), y: lerp(A.y, B.y, k), w: lerp(A.w, B.w, k), h: lerp(A.h, B.h, k) });
 
-function winRect(t, a0, a1, b0, b1) {   // the line opens into the bar, the bar into the window
+// a window opens from the line (a0…a1: into the bar, b0…b1: into the window) and folds back into it (f0…f1)
+function winRect(t, a0, a1, b0, b1, f0 = Infinity, f1 = Infinity) {
   if (t < a0) return null;
-  const k1 = E.expoOut(seg(t, a0, a1));
+  if (t >= f0) { const k = E.expoInOut(seg(t, f0, f1)); return { R: lerpRect(FULL, SLIT, k), r: lerp(12, 2, k) }; }
   let R = OM.morphRect(t, a0, a1, SLIT, BAR, { curve: E.expoOut });
   if (t >= b0) R = OM.morphRect(t, b0, b1, BAR, FULL, { curve: E.expoInOut });
-  return { R, r: lerp(2, 12, k1) };
+  return { R, r: lerp(2, 12, E.expoOut(seg(t, a0, a1))) };
 }
-
-function winRectFold(t) {   // the main window: opens from the line, and folds back into it
-  if (t < T.winOut0) return winRect(t, T.bar0, T.bar1, T.win0, T.win1);
-  const k = E.expoInOut(seg(t, T.winOut0, T.winOut1));
-  return { R: { x: lerp(FULL.x, SLIT.x, k), y: lerp(FULL.y, SLIT.y, k), w: lerp(FULL.w, SLIT.w, k), h: lerp(FULL.h, SLIT.h, k) }, r: lerp(12, 2, k) };
-}
+const libRect = t => winRect(t, T.bar0, T.bar1, T.win0, T.win1, T.fold0, T.fold1);
+const netRect = t => winRect(t, T.nbar0, T.nbar1, T.nwin0, T.nwin1, T.nfold0, T.nfold1);
 
 function drawGround(cam) {
   gx.setTransform(1, 0, 0, 1, 0, 0); gx.fillStyle = LOOK.color.ground; gx.fillRect(0, 0, gc.width, gc.height);
   const G = OM.lattice(cam, { depth: 1.2, spacing: 48, px: 1.5 });
-  gx.setTransform(...G.matrix.map((v, i) => v * DPR));
+  gx.setTransform(...G.matrix.map(v => v * DPR));
   gx.fillStyle = 'rgba(140,155,175,.22)';
   for (let x = G.x0; x <= G.x1; x += G.spacing) for (let y = G.y0; y <= G.y1; y += G.spacing) { gx.beginPath(); gx.arc(x, y, G.r, 0, 6.2832); gx.fill(); }
 }
@@ -313,7 +352,6 @@ function drawLine(t, V) {
   }
   lx.setLineDash([]);
   for (const p of pulses(t)) { lx.globalAlpha = p.a; lx.fillStyle = ACC; lx.beginPath(); lx.arc(p.x, p.y, 6, 0, 6.2832); lx.fill(); }
-  // the dot before the line
   if (t >= T.dot && t < T.draw0 + 0.05) { const pop = spring(t - T.dot, 0.5, 22); lx.globalAlpha = 1; lx.fillStyle = ACC; lx.beginPath(); lx.arc(TRACK.x0, TRACK.y, 9 * pop, 0, 6.2832); lx.fill(); }
   lx.globalAlpha = 1;
 }
@@ -321,7 +359,7 @@ function drawLine(t, V) {
 function heads(t) {
   for (const h of HEADS) {
     const vis = t >= h.t - 0.05 && t < h.out + 0.4; show(h.el, vis); if (!vis) continue;
-    const w = h.w, x = h.center ? h.x - w / 2 : h.x;
+    const x = h.center ? h.x - h.w / 2 : h.x;
     const o = OM.liftOut(t, h.out, { dist: 50, blur: 8 });
     h.el.style.transform = `translate(${x.toFixed(1)}px,${(h.y + o.dy).toFixed(1)}px)`;
     h.el.style.opacity = o.op; h.el.style.filter = o.blur > 0.2 ? `blur(${o.blur.toFixed(1)}px)` : 'none';
@@ -330,43 +368,64 @@ function heads(t) {
   }
 }
 
+function placeWin(el, clip, w, x, y, s = 1) {
+  if (!w) { show(el, false); return false; }
+  show(el, true);
+  el.style.transform = `translate(${x}px,${y}px) scale(${s})`;
+  clip.style.clipPath = inset(w.R, w.r);
+  return true;
+}
+
 let TRACKBOX = {};
 function seek(t) {
   const CAM = camAt(t), V = OM.view(CAM);
   drawGround(CAM);
   $('world').style.transform = M2css(V);
 
-  // the app window (NetEase): bar from the line, window from the bar, heart, comments
-  { const el = $('win'), vis = t >= T.bar0 && t < T.winOut1 + 0.05; show(el, vis);
-    if (vis) {
-      const w = winRectFold(t);
-      el.style.left = WIN.x + 'px'; el.style.top = WIN.y + 'px';
-      el.style.opacity = 1;
-      $('winClip').style.clipPath = inset(w.R, w.r);
+  // the library window: every format, then the hand opens the album wall
+  { const vis = t >= T.bar0 && t < T.fold1;
+    if (placeWin($('lib'), $('libClip'), vis ? libRect(t) : null, WIN.x, WIN.y)) $('libB').style.opacity = t >= T.click0 + 0.05 ? 1 : 0; }
+  // the NetEase window: daily picks, the heart, the comments
+  { const vis = t >= T.nbar0 && t < T.nfold1, el = $('win');
+    if (placeWin(el, $('winClip'), vis ? netRect(t) : null, WIN.x, WIN.y)) {
       $('wb').style.opacity = t >= T.click1 + 0.03 ? 1 : 0;
-      const pk = E.expoOut(seg(t, T.panel0, T.panel1));
-      const pv = t >= T.panel0;
-      show($('panelClip'), pv); $('panelClip').style.opacity = 1 - sstep(T.winOut0 - 0.05, T.winOut0 + 0.15, t);
-      if (pv) { const R = OM.morphRect(t, T.panel0, T.panel1, CMT_R, PANEL_R, { curve: E.expoOut }); $('panelClip').style.clipPath = inset(R, lerp(17, 14, pk)); }
+      const pv = t >= T.panel0; show($('panelClip'), pv);
+      if (pv) { const R = OM.morphRect(t, T.panel0, T.panel1, CMT_R, PANEL_R, { curve: E.expoOut });
+        $('panelClip').style.clipPath = inset(R, lerp(17, 14, E.expoOut(seg(t, T.panel0, T.panel1))));
+        $('panelClip').style.opacity = 1 - sstep(T.nfold0 - 0.05, T.nfold0 + 0.15, t); }
     } }
   // the heart lands with a squash
   { const el = $('heartPop'), vis = t >= T.click1 && t < T.click1 + 0.7; show(el, vis);
     if (vis) { const k = spring(t - T.click1, 0.35, 26), im = OM.impact(t, T.click1 + 0.05, { decay: 8, omega: 24, sqx: 0.2, sqy: 0.24 });
-      const s = lerp(0.4, 1, k) * 1.0; el.style.transform = `translate(${HEART[0] - 9}px,${HEART[1] - 9}px) scale(${(s * im.sx).toFixed(3)},${(s * im.sy).toFixed(3)})`; } }
+      const s = lerp(0.4, 1, k); el.style.transform = `translate(${HEART[0] - 9}px,${HEART[1] - 9}px) scale(${(s * im.sx).toFixed(3)},${(s * im.sy).toFixed(3)})`; } }
   // the hand
-  { const vis = t >= HAND[0].t && t < HAND[HAND.length - 1].t; show($('cursor'), vis);
-    if (vis) { const c = OM.cursor(t, HAND, CLICKS); $('cursor').style.transform = `translate(${(c.x - 3).toFixed(1)}px,${(c.y - 2).toFixed(1)}px) scale(${(c.s * 0.75).toFixed(3)})`; } }
+  { const h = handAt(t); show($('cursor'), !!h);
+    if (h) { const c = OM.cursor(t, h.knots, h.clicks); $('cursor').style.transform = `translate(${(c.x - 3).toFixed(1)}px,${(c.y - 2).toFixed(1)}px) scale(${(c.s * h.scale).toFixed(3)})`; } }
 
-  // lyrics: lines scroll, the active one at full size
-  { const vis = t >= T.lyrIn - 0.05 && t < T.lyrOut + 0.45; show($('lyr'), vis);
+  // lyrics: lines scroll, the active one at full size; then the active one floats down onto the desktop
+  { const vis = t >= T.lyrIn - 0.05 && t < T.deskOut1 + 0.05; show($('lyr'), vis);
+    const kd = deskK(t);
     if (vis) {
-      const s = lyrScroll(t), op = sstep(T.lyrIn, T.lyrIn + 0.45, t) * (1 - sstep(T.lyrOut, T.lyrOut + 0.35, t));
+      const s = lyrScroll(t), op = sstep(T.lyrIn, T.lyrIn + 0.45, t) * (1 - sstep(T.deskOut0, T.deskOut0 + 0.3, t)), base = lyrBaseY(t);
+      const col = kd;
       lyrEls.forEach((el, i) => { const d = i - s, big = clamp(1 - Math.abs(d));
-        const sc = lerp(LY.small, 1, big), y = LY.y + d * LY.gap + (d > 0 ? 6 : 0) - 30;
+        const sc = lerp(LY.small, 1, big), y = base + d * LY.gap * (1 - 0.4 * kd) + (d > 0 ? 6 : 0) - 30;
         const fade = clamp(1 - (Math.abs(d) - 1.6) / 1.2) * (d < -1.4 ? clamp(1 - (-d - 1.4) / 0.6) : 1);
         el.style.transform = `translateY(${y.toFixed(1)}px) scale(${sc.toFixed(4)})`;
-        el.style.color = big > 0.5 ? LOOK.color.ink : LOOK.color.mute;
-        el.style.opacity = (op * fade * (0.45 + 0.55 * big)).toFixed(3); });
+        el.style.color = big > 0.5 ? (col > 0.5 ? ACC : LOOK.color.ink) : LOOK.color.mute;
+        el.style.textShadow = col > 0.5 && big > 0.5 ? '0 0 2px rgba(0,0,0,.85),0 2px 8px rgba(0,0,0,.5)' : 'none';
+        el.style.opacity = (op * fade * (0.45 + 0.55 * big) * lerp(1, big * big, kd)).toFixed(3); });
+    }
+    // the desktop opens from the lyric like a stage, and closes back into the line
+    const dv = t >= T.desk0 && t < T.deskOut1; show($('desk'), dv); show($('dlBox'), dv);
+    if (dv) {
+      const u = underline(t), cx = 960, cy = u[2] - 40;
+      const far = Math.max(Math.hypot(cx, cy), Math.hypot(1920 - cx, cy), Math.hypot(cx, 1080 - cy), Math.hypot(1920 - cx, 1080 - cy)) + 40;
+      const r = far * E.expoInOut(seg(t, T.desk0, T.desk1 + 0.1)) * (1 - E.expoInOut(seg(t, T.deskOut0, T.deskOut1)));
+      $('desk').style.clipPath = `circle(${r.toFixed(1)}px at ${cx}px ${cy.toFixed(1)}px)`;
+      const bw = (u[1] - u[0]) + 40, bk = sstep(T.desk1 - 0.2, T.desk1 + 0.2, t) * (1 - sstep(T.deskOut0, T.deskOut0 + 0.25, t));
+      const b = $('dlBox'); b.style.width = bw.toFixed(1) + 'px'; b.style.opacity = bk;
+      b.style.transform = `translate(${(cx - bw / 2).toFixed(1)}px,${(DESK_Y - 22 - 30 - 18).toFixed(1)}px)`;
     } }
   // the vinyl
   { const vis = t >= T.discIn0 && t < T.discOut1; show($('disc'), vis);
@@ -381,26 +440,20 @@ function seek(t) {
   // the weather sky rises from the horizon, cuts through four weathers, drains back
   { const vis = t >= T.sky0 && t < T.drain1; show($('sky'), vis);
     if (vis) { const up = E.expoOut(seg(t, T.sky0, T.sky1)), down = E.expoInOut(seg(t, T.drain0, T.drain1));
-      const top = HORIZON * (1 - up + down);
-      $('sky').style.clipPath = `inset(${top.toFixed(1)}px 0 0 0)`;
+      $('sky').style.clipPath = `inset(${(HORIZON * (1 - up + down)).toFixed(1)}px 0 0 0)`;
       const n = T.cuts.filter(c => t >= c).length;
       for (let i = 0; i < 4; i++) $('sky' + i).style.display = i === n ? '' : 'none'; } }
   // two computers on one line
   for (const [id, P, d] of [['wl', WL, 0], ['wr', WR, 0.06]]) {
-    const el = $(id), vis = t >= T.lanBar0 && t < T.lanOut1; show(el, vis); if (!vis) continue;
-    let w = winRect(t, T.lanBar0 + d, T.lanBar1 + d, T.lanWin0 + d, T.lanWin1 + d);
-    if (!w) { show(el, false); continue; }
-    if (t >= T.lanOut0) { const k = E.expoInOut(seg(t, T.lanOut0, T.lanOut1)); const R0 = FULL, R1 = SLIT;
-      w = { R: { x: lerp(R0.x, R1.x, k), y: lerp(R0.y, R1.y, k), w: lerp(R0.w, R1.w, k), h: lerp(R0.h, R1.h, k) }, r: lerp(12, 2, k) }; }
-    el.style.transform = `translate(${P.x}px,${P.y}px) scale(${LAN_S})`;
-    el.style.opacity = 1;
-    el.firstChild.style.clipPath = inset(w.R, w.r);
+    const el = $(id), vis = t >= T.lanBar0 && t < T.lanOut1;
+    let w = vis ? winRect(t, T.lanBar0 + d, T.lanBar1 + d, T.lanWin0 + d, T.lanWin1 + d, T.lanOut0, T.lanOut1) : null;
+    placeWin(el, el.firstChild, w, P.x, P.y, LAN_S);
   }
 
   drawLine(t, V);
   heads(t);
 
-  // the name
+  // the name, and the repository's address under the line
   { const vis = t >= T.mark - 0.3; show($('mark'), vis); show($('tag'), t >= T.tag - 0.05);
     if (vis) {
       const ic = OM.popIn(t, T.mark - 0.12, { rise: 30, s0: 0.6, ds: 0.4 });
@@ -408,12 +461,12 @@ function seek(t) {
       markL.forEach((s, i) => { const d = OM.letterDrop(t, T.mark, i, { stagger: 0.045 });
         s.style.opacity = d.op; s.style.transform = `translateY(${d.y.toFixed(1)}px) scale(${(1 + d.sq * 0.6).toFixed(4)},${(1 - d.sq).toFixed(4)})`; });
       const P = OM.project(V, 960, UNDER.y);
-      $('mark').style.transform = `translate(${(P[0] - MARK_W / 2).toFixed(1)}px,${(P[1] - 40 - 150).toFixed(1)}px) scale(${(CAM.zoom).toFixed(4)})`;
       $('mark').style.transformOrigin = `${MARK_W / 2}px 190px`;
+      $('mark').style.transform = `translate(${(P[0] - MARK_W / 2).toFixed(1)}px,${(P[1] - 190).toFixed(1)}px) scale(${CAM.zoom.toFixed(4)})`;
       const tg = OM.wordRise(t, T.tag, { dist: 24 });
       $('tag').style.opacity = tg.op;
-      $('tag').style.transform = `translate(${(P[0] - TAG_W / 2).toFixed(1)}px,${(P[1] + 50 * CAM.zoom + tg.y).toFixed(1)}px) scale(${(tg.s * CAM.zoom).toFixed(4)})`;
       $('tag').style.transformOrigin = `${TAG_W / 2}px 0px`;
+      $('tag').style.transform = `translate(${(P[0] - TAG_W / 2).toFixed(1)}px,${(P[1] + 50 * CAM.zoom + tg.y).toFixed(1)}px) scale(${(tg.s * CAM.zoom).toFixed(4)})`;
     } }
 
   TRACKBOX = track(t, V);
@@ -428,16 +481,17 @@ function track(t, V) {
   if (segs.length) { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
     for (const s of segs) for (const p of s.pts) { const q = OM.project(V, p[0], p[1]); x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
     out.line = { x: x0, y: y0 - 3, w: Math.max(6, x1 - x0), h: Math.max(6, y1 - y0 + 6), op: 1 }; }
-  if (t >= T.bar0 && t < T.winOut1) { const w = winRectFold(t); out.win = OM.projectBox(V, { x: WIN.x + w.R.x, y: WIN.y + w.R.y, w: w.R.w, h: w.R.h, op: 1 }); }
-  if (t >= T.panel0 && t < T.winOut0 + 0.15) { const R = OM.morphRect(t, T.panel0, T.panel1, CMT_R, PANEL_R, { curve: E.expoOut }); out.panel = OM.projectBox(V, { x: WIN.x + R.x, y: WIN.y + R.y, w: R.w, h: R.h, op: 1 }); }
+  for (const [k, w] of [['lib', t >= T.bar0 && t < T.fold1 ? libRect(t) : null], ['win', t >= T.nbar0 && t < T.nfold1 ? netRect(t) : null]])
+    if (w) out[k] = OM.projectBox(V, { x: WIN.x + w.R.x, y: WIN.y + w.R.y, w: w.R.w, h: w.R.h, op: 1 });
+  if (t >= T.panel0 && t < T.nfold0 + 0.15) { const R = OM.morphRect(t, T.panel0, T.panel1, CMT_R, PANEL_R, { curve: E.expoOut }); out.panel = OM.projectBox(V, { x: WIN.x + R.x, y: WIN.y + R.y, w: R.w, h: R.h, op: 1 }); }
   if (t >= T.discIn0 && t < T.discOut1) out.disc = OM.projectBox(V, { x: DISC.cx - DISC.r, y: DISC.cy - DISC.r, w: 2 * DISC.r, h: 2 * DISC.r, op: 1 });
-  if (t >= HAND[0].t && t < HAND[HAND.length - 1].t) { const c = OM.spline(HAND, t), q = OM.project(V, c[0], c[1]); out.hand = { x: q[0], y: q[1], w: 20, h: 28, op: 1 }; }
+  const h = handAt(t); if (h) { const c = OM.spline(h.knots, t), q = OM.project(V, c[0], c[1]); out.hand = { x: q[0], y: q[1], w: 20, h: 28, op: 1 }; }
   if (t >= T.mark) { const r = $('mark').getBoundingClientRect(); out.mark = { x: r.x, y: r.y, w: r.width, h: r.height, op: 1 }; }
   return out;
 }
 window.__track = t => { seek(t); return TRACKBOX; };
 window.__motion = (t0, t1) => {
-  const tm = (t0 + t1) / 2, c0 = camAt(t0), c1 = camAt(t1), d = OM.screenTravel(c0, c1, camAt(tm));
+  const c0 = camAt(t0), c1 = camAt(t1), d = OM.screenTravel(c0, c1, camAt((t0 + t1) / 2));
   const b0 = track(t0, OM.view(c0)), b1 = track(t1, OM.view(c1));
   let e = 0;
   for (const k of Object.keys(b0)) if (b1[k]) { const A = b0[k], B = b1[k];
@@ -448,7 +502,7 @@ window.__motion = (t0, t1) => {
   return Math.max(d, e);
 };
 window.__meta.inFrame = { line: [0.4, DUR], mark: [T.mark + 0.6, DUR, 'whole'] };
-window.__meta.cuts = T.cuts;
+window.__meta.cuts = [...T.cuts, ...T.colors];
 
 window.__seek = async t => { await seek(t); return true; };
 let MARK_W = 0, TAG_W = 0;
