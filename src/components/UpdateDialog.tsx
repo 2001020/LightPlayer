@@ -119,17 +119,21 @@ export function UpdateDialog() {
         <footer className="update-foot">
           {status === "downloading" && progress ? (
             <div className="update-progress">
-              <div className="bar">
-                <i style={{ width: `${pct}%` }} />
+              {/* The bar has its own column so changing numbers never resize it. */}
+              <div className="update-progress-main">
+                <div className="bar">
+                  <i style={{ width: `${pct}%` }} />
+                </div>
+                <div className="update-progress-meta muted">
+                  <span>
+                    正在下载 {formatBytes(progress.received)} / {formatBytes(progress.total)}
+                  </span>
+                  <span className="update-speed" {...(progress.speed ? tip(progress.connections && progress.connections > 1 ? `aria2 多线程下载（${progress.connections} 个连接）` : "单线程下载") : {})}>
+                    {progress.speed ? `${formatBytes(progress.speed)}/s` : ""}
+                  </span>
+                </div>
+                {progress.restarted && <div className="update-restart muted">多线程下载中断，已改用单线程重新下载</div>}
               </div>
-              <span className="muted">
-                正在下载 {formatBytes(progress.received)} / {formatBytes(progress.total)}
-              </span>
-              {!!progress.speed && (
-                <span className="muted update-speed" {...tip(progress.connections && progress.connections > 1 ? `aria2 多线程下载（${progress.connections} 个连接）` : "单线程下载")}>
-                  {`${formatBytes(progress.speed)}/s`}
-                </span>
-              )}
               <button className="btn" onClick={cancelUpdate}>
                 取消
               </button>

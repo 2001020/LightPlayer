@@ -1165,10 +1165,12 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
     case "update_download": {
       mockUpdateCancel = false;
       const total = 44_400_000;
-      for (let got = 0; got < total; got += 2_220_000) {
+      // Uneven like a real download: the speed jumps around and is sometimes 0.
+      const speeds = [0, 850_000, 12_400_000, 0, 3_100_000, 980_000, 22_200_000];
+      for (let i = 0, got = 0; got < total; i++, got += 1_110_000) {
         await new Promise((r) => setTimeout(r, 100));
         if (mockUpdateCancel) throw new Error("已取消");
-        mockEmit("update://progress", { received: got, total, speed: 22_200_000, connections: 16 });
+        mockEmit("update://progress", { received: got, total, speed: speeds[i % speeds.length], connections: 16 });
       }
       mockEmit("update://progress", { received: total, total, speed: 0, connections: 0 });
       return "/mock/LightPlayer_1.6.1_aarch64.app.zip" as T;

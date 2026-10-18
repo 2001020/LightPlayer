@@ -5,8 +5,11 @@ import { api, isTauri, on, type AppInfo, type UpdateInfo } from "../lib/ipc";
 import { toast, useUI } from "./player";
 import { useSettings } from "./settings";
 
-/** speed: bytes per second; connections: several when aria2 downloads. */
-export type UpdateProgress = { received: number; total: number; speed?: number; connections?: number };
+/**
+ * speed: bytes per second; connections: several when aria2 downloads;
+ * restarted: aria2 failed and a single connection started over.
+ */
+export type UpdateProgress = { received: number; total: number; speed?: number; connections?: number; restarted?: boolean };
 
 export type UpdateStatus = "idle" | "checking" | "latest" | "available" | "downloading" | "installing" | "error";
 
