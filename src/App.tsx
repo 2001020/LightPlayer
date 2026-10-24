@@ -5,6 +5,7 @@ import { useArchiveActive, useArchiveChrome } from "./components/archive/Archive
 import { AsrSetupDialog } from "./components/AsrSetupDialog";
 import { AsrTasks, AsrTasksButton } from "./components/AsrTasks";
 import { CommentsPanel } from "./components/CommentsPanel";
+import { HappyEndingEgg } from "./components/egg/HappyEnding";
 import { ContextMenuHost } from "./components/ContextMenu";
 import { LanDialog } from "./components/LanDialog";
 import { LanHost } from "./components/LanHost";
@@ -105,6 +106,7 @@ export default function App() {
       className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""} ${archive ? "archive-chrome" : ""} ${chrome.top ? "show-top" : ""}`}
     >
       <Background />
+      <HappyEndingEgg />
       <header className="titlebar" data-lp="titlebar" data-tauri-drag-region>
         <div className="brand" data-tauri-drag-region>
           <span className="dot" /> LightPlayer

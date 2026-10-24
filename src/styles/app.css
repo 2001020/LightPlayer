@@ -5973,3 +5973,259 @@ html.desktop-lyrics #root {
 .app.archive-chrome .pl-toggle {
   display: none;
 }
+
+/* ---------------------------------------------------------------- Happy ending egg */
+/* While "What do you want more than a Happy ending?" plays from NetEase, the
+   player looks like its artwork: a sunny station platform, sky blue and
+   white with cherry pink, doves, vines and flowers. */
+:root[data-egg="happy-ending"] {
+  --bg: #eaf4fb;
+  --bg-grad: none;
+  --panel: rgba(255, 255, 255, 0.58);
+  --panel-solid: #fbfdff;
+  --panel-2: rgba(255, 255, 255, 0.42);
+  --hover: rgba(232, 107, 154, 0.1);
+  --border: rgba(120, 170, 210, 0.38);
+  --text: #24324a;
+  --text-dim: #43546e;
+  --text-faint: #6c809c;
+  --track: rgba(36, 50, 74, 0.14);
+  --shadow: 0 10px 34px rgba(60, 110, 160, 0.18), 0 2px 8px rgba(60, 110, 160, 0.12);
+  --lyric-hl: #e05590;
+  --halo: 0 0 10px rgba(255, 255, 255, 0.85), 0 0 2px rgba(255, 255, 255, 0.7);
+  color-scheme: light;
+}
+.egg-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url("/egg/happy-ending.webp") 55% 40% / cover no-repeat;
+}
+.egg-veil {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(240, 248, 255, 0.3), rgba(255, 255, 255, 0.5));
+}
+:root[data-egg="happy-ending"] .panel {
+  box-shadow: 0 8px 30px rgba(80, 140, 200, 0.16);
+}
+:root[data-egg="happy-ending"] .play-btn {
+  background: linear-gradient(135deg, #f7a1c2, #e86b9a);
+  border: 2px solid #fff;
+  box-shadow: 0 6px 20px rgba(232, 107, 154, 0.38);
+}
+:root[data-egg="happy-ending"] .slider .fill {
+  background: linear-gradient(90deg, #f28bb3, #7cc3ef);
+}
+/* The progress handle is a small dove. */
+:root[data-egg="happy-ending"] .slider:not(.vertical) .thumb {
+  width: 26px;
+  height: 18px;
+  margin-left: -13px;
+  border-radius: 0;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 80'%3E%3Cpath d='M58 38C48 14 30 4 12 6c14 8 22 18 28 30z' fill='%23e3eaf3'/%3E%3Cpath d='M22 44c12-10 36-12 56-8 12 2 22-2 30-6-4 10-12 16-22 18-16 6-40 8-56 4-6-2-10-4-8-8z' fill='%23fff' stroke='%23b9c8da' stroke-width='2'/%3E%3Cpath d='M100 31l14-3-10 7z' fill='%23c9a98a'/%3E%3Cpath d='M60 38C52 12 36-2 14 0c16 10 26 22 32 40z' fill='%23fff' stroke='%23b9c8da' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 1px 2px rgba(40, 70, 110, 0.35));
+}
+/* A sprig of flowers on the cover's corner. */
+:root[data-egg="happy-ending"] [data-lp="cover"] {
+  position: relative;
+}
+:root[data-egg="happy-ending"] [data-lp="cover"]::after {
+  content: "";
+  position: absolute;
+  right: -14px;
+  top: -16px;
+  width: 38%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M95 5C70 20 50 40 30 80' fill='none' stroke='%235f9e86' stroke-width='3'/%3E%3Cpath d='M70 22c6-8 18-8 24 0-6 8-18 8-24 0z' fill='%237cc9b4'/%3E%3Cpath d='M50 45c6-8 18-8 24 0-6 8-18 8-24 0z' fill='%2356a894' transform='rotate(-40 62 45)'/%3E%3Cg fill='%23fff'%3E%3Ccircle cx='80' cy='12' r='6'/%3E%3Ccircle cx='60' cy='30' r='5'/%3E%3Ccircle cx='40' cy='58' r='6'/%3E%3C/g%3E%3Cg fill='%23d9c8f2'%3E%3Ccircle cx='68' cy='16' r='4'/%3E%3Ccircle cx='46' cy='44' r='4'/%3E%3C/g%3E%3Cg fill='%23f6d77a'%3E%3Ccircle cx='80' cy='12' r='2'/%3E%3Ccircle cx='40' cy='58' r='2'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 2px 4px rgba(40, 80, 60, 0.25));
+}
+
+.egg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  pointer-events: none;
+  overflow: hidden;
+}
+.app.immersive .egg-layer {
+  display: none;
+}
+.egg-vine {
+  position: absolute;
+  top: -6px;
+  width: min(17vw, 200px);
+  opacity: 0.95;
+  animation: egg-sway 7s ease-in-out infinite alternate;
+}
+/* Lists sit close to the corners there; the vines step back. */
+:root[data-page="library"] .egg-vine {
+  opacity: 0.45;
+}
+.egg-vine.left {
+  left: -12px;
+  transform-origin: top left;
+}
+.egg-vine.right {
+  right: -12px;
+  transform-origin: top right;
+  scale: -1 1;
+  animation-delay: -3s;
+}
+@keyframes egg-sway {
+  from {
+    rotate: -1.6deg;
+  }
+  to {
+    rotate: 2deg;
+  }
+}
+.egg-bush {
+  position: fixed;
+  left: -10px;
+  bottom: -10px;
+  z-index: -1;
+  width: min(24vw, 280px);
+  pointer-events: none;
+  opacity: 0.92;
+}
+.egg-fall {
+  position: absolute;
+  top: 0;
+  width: 16px;
+  animation: egg-fall linear infinite;
+  opacity: 0.9;
+}
+@keyframes egg-fall {
+  from {
+    transform: translate(0, -6vh) rotate(0deg);
+  }
+  to {
+    transform: translate(var(--sway), 106vh) rotate(540deg);
+  }
+}
+.egg-butterfly {
+  position: absolute;
+  width: 28px;
+  left: 0;
+  top: 0;
+}
+.egg-butterfly.one {
+  animation: egg-bf-one 22s ease-in-out infinite;
+}
+.egg-butterfly.two {
+  width: 22px;
+  animation: egg-bf-two 27s ease-in-out infinite;
+}
+@keyframes egg-bf-one {
+  0% {
+    translate: 70vw 30vh;
+  }
+  25% {
+    translate: 82vw 18vh;
+  }
+  50% {
+    translate: 60vw 12vh;
+  }
+  75% {
+    translate: 52vw 26vh;
+  }
+  100% {
+    translate: 70vw 30vh;
+  }
+}
+@keyframes egg-bf-two {
+  0% {
+    translate: 20vw 40vh;
+  }
+  30% {
+    translate: 32vw 24vh;
+  }
+  60% {
+    translate: 14vw 18vh;
+  }
+  100% {
+    translate: 20vw 40vh;
+  }
+}
+.bf-wing {
+  transform-origin: 20px 15px;
+  animation: egg-wing 0.22s ease-in-out infinite alternate;
+}
+@keyframes egg-wing {
+  to {
+    transform: scaleX(0.3);
+  }
+}
+.egg-glint {
+  position: absolute;
+  width: 54px;
+  height: 9px;
+  border-radius: 50%;
+  rotate: -32deg;
+  background: linear-gradient(90deg, transparent, rgba(255, 130, 130, 0.45), rgba(255, 220, 120, 0.45), rgba(140, 230, 160, 0.45), rgba(120, 180, 255, 0.45), rgba(200, 140, 255, 0.45), transparent);
+  opacity: 0;
+  animation: egg-glint 5s ease-in-out infinite;
+}
+@keyframes egg-glint {
+  40%,
+  60% {
+    opacity: 0.9;
+  }
+}
+.egg-flock {
+  position: absolute;
+  inset: 0;
+}
+.egg-dove {
+  position: absolute;
+  left: 0;
+  animation: egg-fly linear both;
+  filter: drop-shadow(0 6px 10px rgba(60, 90, 130, 0.25));
+}
+.egg-dove svg {
+  display: block;
+  width: 100%;
+}
+.egg-dove.blur {
+  filter: blur(3px);
+  opacity: 0.85;
+}
+@keyframes egg-fly {
+  from {
+    transform: translate(-25vw, 6vh);
+  }
+  to {
+    transform: translate(115vw, var(--rise));
+  }
+}
+.egg-dove .wing {
+  transform-origin: 58px 38px;
+  animation: egg-flap 0.34s ease-in-out infinite alternate;
+}
+.egg-dove .wing.back {
+  animation-delay: -0.05s;
+}
+@keyframes egg-flap {
+  to {
+    transform: scaleY(-0.55);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .egg-layer *,
+  .egg-vine {
+    animation: none !important;
+  }
+  .egg-fall,
+  .egg-flock,
+  .egg-butterfly,
+  .egg-glint {
+    display: none;
+  }
+}

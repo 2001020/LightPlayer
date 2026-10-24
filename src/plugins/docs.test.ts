@@ -59,7 +59,7 @@ describe.each(["docs/plugins/README.md", "docs/plugins/README.en.md"])("plugin s
 
   it("documents the <html> state attributes that are set", () => {
     const attrs = firstColumn(section("root-attrs"));
-    const code = read("src/App.tsx") + read("src/main.tsx") + read("src/hooks.tsx") + read("src/i18n/index.ts");
+    const code = read("src/App.tsx") + read("src/main.tsx") + read("src/hooks.tsx") + read("src/i18n/index.ts") + read("src/components/egg/HappyEnding.tsx");
     for (const a of attrs) {
       const key = a.replace(/^data-/, "").replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
       expect(code, a).toMatch(new RegExp(`\\.${key} =`));

@@ -180,6 +180,7 @@ The main areas of the interface have a `data-lp` attribute; select them with `[d
 | `archive-controls` | The playback controls in `archive-now`: play mode, previous, play/pause, next, NetEase comments, playback speed, volume and "Back to the current song" (since 1.6.10) |
 | `archive-lyrics` | The lyrics at the top left in the Archive theme: the current line and one line before and after it, each a `lyric-line`, not clickable (since 1.6.10; only these three lines, without a `lyric-scroll`, since 1.6.11) |
 | `archive-selected` | The song picked in the Archive theme: title, artist and duration (since 1.6.9) |
+| `egg` | The easter egg's decoration layer (doves, vines, flowers, butterflies), present only while `data-egg` is set; it takes no pointer input (since 1.6.12) |
 | `desktop-lyrics` | Desktop lyrics window |
 | `desktop-lyrics-line` | The text of the desktop lyrics |
 <!-- /anchors -->
@@ -197,6 +198,7 @@ Attributes on the `<html>` element reflect the app's current state, so styles ca
 | `data-platform` | `macos` / `windows` | Operating system |
 | `data-theme` | `light` / `dark` | The light/dark mode actually in use |
 | `data-bg` | `image` / `weather` / `archive` / none | The background is an image (custom background or cover), the weather animation, the 3D archive array (since 1.6.9), or a plain color |
+| `data-egg` | `happy-ending` / none | An easter egg: `happy-ending` while "What do you want more than a Happy ending?" plays from NetEase, when the whole UI takes on the song's artwork (not in the Archive theme; since 1.6.12) |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | The weather, in the weather theme |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | The rough time of day, in the weather theme |
 | `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | The stage of the day, in the weather theme (since 1.6.3) |

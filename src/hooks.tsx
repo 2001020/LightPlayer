@@ -12,7 +12,11 @@ import { setSafeMode, usePlugins } from "./stores/plugins";
 import { clampLyricSize, useSettings } from "./stores/settings";
 import { lastFullscreenToggle, toggleFullscreen } from "./components/TransportBar";
 import { toggleComments } from "./components/CommentsPanel";
+import { HappyEndingBackground, useHappyEnding } from "./components/egg/HappyEnding";
 import { isWindows } from "./lib/platform";
+
+/** Cherry pink, from the Happy ending egg's artwork. */
+const EGG_ACCENT = "#e86b9a";
 
 function useSystemDark() {
   const [dark, setDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -33,19 +37,21 @@ export function useTheme() {
   const dynamicColor = useUI((s) => s.dynamicAccent);
   const timeAccent = useTimeAccent();
   const systemDark = useSystemDark();
+  const egg = useHappyEnding();
   // The weather theme uses white text on the sky, like the iOS Weather app.
-  const dark = theme === "dark" || theme === "weather" || (theme === "system" && systemDark);
+  // The Happy ending egg is a bright, sunny day in every theme.
+  const dark = !egg && (theme === "dark" || theme === "weather" || (theme === "system" && systemDark));
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = dark ? "dark" : "light";
-    const p = accentPalette(dynamic && dynamicColor ? dynamicColor : timeAccent ?? accent, dark);
+    const p = accentPalette(egg ? EGG_ACCENT : dynamic && dynamicColor ? dynamicColor : timeAccent ?? accent, dark);
     root.style.setProperty("--accent", p.accent);
     root.style.setProperty("--accent-hover", p.hover);
     root.style.setProperty("--accent-text", p.text);
     root.style.setProperty("--accent-strong", p.strong);
     root.style.setProperty("--accent-soft", p.soft);
     root.style.setProperty("--on-accent", p.onAccent);
-  }, [dark, accent, dynamic, dynamicColor, timeAccent]);
+  }, [dark, accent, dynamic, dynamicColor, timeAccent, egg]);
   return dark;
 }
 
@@ -101,6 +107,8 @@ function WeatherBackground() {
 
 export function Background() {
   const theme = useSettings((s) => s.theme);
+  const egg = useHappyEnding();
+  if (egg) return <HappyEndingBackground />;
   if (theme === "weather") return <WeatherBackground />;
   // The archive field is a light, paper-white room.
   if (theme === "archive") return <ArchiveBackground />;
