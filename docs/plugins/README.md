@@ -438,6 +438,7 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `archive-controls` | `archive-now` 中的播放控制：播放模式、上一首、播放/暂停、下一首、网易云评论、播放速度、音量和“回到当前歌曲”（1.6.10 起） |
 | `archive-lyrics` | 档案主题左上角的歌词：当前句和上下各一句，每句是一个 `lyric-line`，不能点击（1.6.10 起；1.6.11 起只有这三句，不再包含 `lyric-scroll`） |
 | `archive-selected` | 档案主题中选中的歌曲：歌名、歌手和时长（1.6.9 起） |
+| `egg` | 彩蛋的装饰层（白鸽、藤蔓、花朵、蝴蝶等），只在 `data-egg` 有值时出现，不接收鼠标（1.6.12 起） |
 | `desktop-lyrics` | 桌面歌词窗口 |
 | `desktop-lyrics-line` | 桌面歌词的文字 |
 <!-- /anchors -->
@@ -469,6 +470,7 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `data-platform` | `macos` / `windows` | 操作系统 |
 | `data-theme` | `light` / `dark` | 当前实际使用的明暗模式 |
 | `data-bg` | `image` / `weather` / `archive` / 无 | 背景是图片（自定义背景或封面）、天气动画、三维档案阵列（1.6.9 起），还是纯色 |
+| `data-egg` | `happy-ending` / 无 | 彩蛋：在网易云播放《What do you want more than a Happy ending?》时为 `happy-ending`，整个界面换成这首歌的插画风格（档案主题下不触发，1.6.12 起） |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | 天气主题下的天气 |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | 天气主题下的大致时段 |
 | `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | 天气主题下的时段：破晓、日出、上午、中午、下午、傍晚、日落、夜晚、午夜（1.6.3 起） |
@@ -1713,6 +1715,7 @@ pnpm dev
 | 1.6.9 | 档案主题：锚点 `archive`、`archive-now`、`archive-selected`；`data-bg` 的值 `archive`；`config.theme` 可以设为 `archive` |
 | 1.6.10 | 档案主题：锚点 `archive-lyrics`、`archive-controls`；这个视图中不再显示播放栏 `transport` |
 | 1.6.11 | 档案主题的 `archive-lyrics` 只显示当前句和上下句，不再包含 `lyric-scroll` |
+| 1.6.12 | 状态属性 `data-egg`；彩蛋装饰层锚点 `egg` |
 
 用到表中某个版本的功能时，把 `minAppVersion` 设为那个版本（预发布版本请写对应的正式版本号，例如 `1.6.0`）。
 
