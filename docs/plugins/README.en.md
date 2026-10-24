@@ -178,7 +178,7 @@ The main areas of the interface have a `data-lp` attribute; select them with `[d
 | `archive` | The player page in the Archive theme: the text layer over the 3D archive array that fills the window (since 1.6.9) |
 | `archive-now` | The song playing, bottom left in the Archive theme: title, artist, a draggable progress bar and the playback controls (since 1.6.9; usable since 1.6.10) |
 | `archive-controls` | The playback controls in `archive-now`: play mode, previous, play/pause, next, NetEase comments, playback speed, volume and "Back to the current song" (since 1.6.10) |
-| `archive-lyrics` | The lyrics at the top left in the Archive theme, holding a `lyric-scroll` (since 1.6.10) |
+| `archive-lyrics` | The lyrics at the top left in the Archive theme: the current line and one line before and after it, each a `lyric-line`, not clickable (since 1.6.10; only these three lines, without a `lyric-scroll`, since 1.6.11) |
 | `archive-selected` | The song picked in the Archive theme: title, artist and duration (since 1.6.9) |
 | `desktop-lyrics` | Desktop lyrics window |
 | `desktop-lyrics-line` | The text of the desktop lyrics |

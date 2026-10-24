@@ -59,7 +59,8 @@ const ATLAS = 2048;
 const TILE = 96;
 const PER_ROW = Math.floor(ATLAS / TILE);
 const CHOSEN_TILE = 256;
-const MAX_LOADS = 6;
+/** Covers asked for at once; the media server also streams the audio. */
+const MAX_LOADS = 3;
 /** The cover on the front of each box (box space), at its upper left. */
 const COVER_SIZE = 1.7;
 const COVER_CENTER = new THREE.Vector3(-1.1, 2.7, 0.216);
@@ -120,8 +121,9 @@ export class ArchiveScene {
   private coverUrl: CoverUrl = () => null;
   private atlas = document.createElement("canvas");
   private atlasTexture = new THREE.CanvasTexture(this.atlas);
-  private atlasDirty = false;
-  private atlasUploaded = 0;
+  /** Tiles drawn since the last frame, to send to the GPU one by one. */
+  private newTiles: number[] = [];
+  private tileCanvas = document.createElement("canvas");
   private slots = new Map<string, Slot>();
   private freeTiles = Array.from({ length: PER_ROW * PER_ROW }, (_, i) => i);
   private loads = 0;
@@ -130,9 +132,13 @@ export class ArchiveScene {
   private chosenCanvas = document.createElement("canvas");
   private chosenTexture = new THREE.CanvasTexture(this.chosenCanvas);
   private chosenCover = "";
+  /** The song whose sharp cover the chosen box shows. */
+  private chosenSharp = "";
   private chosenTimer = 0;
   private wanted: { song: ArchiveSong; distance: number }[] = [];
   private frameNo = 0;
+  /** Only the idle drift moves: a slower frame rate is enough. */
+  private drifting = false;
 
   private quality: ArchiveQuality = "standard";
   private motion = true;
@@ -161,7 +167,12 @@ export class ArchiveScene {
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.domElement.className = "archive-canvas";
     container.appendChild(this.renderer.domElement);
-    this.renderer.domElement.addEventListener("webglcontextrestored", () => this.invalidate());
+    this.renderer.domElement.addEventListener("webglcontextrestored", () => {
+      // The canvases still hold every picture.
+      for (const t of [this.atlasTexture, this.chosenTexture, this.labelTexture]) t.needsUpdate = true;
+      this.newTiles = [];
+      this.invalidate();
+    });
 
     this.scene.background = new THREE.Color(BACKGROUND);
     this.scene.fog = new THREE.Fog(BACKGROUND, 22, 47);
@@ -190,10 +201,12 @@ export class ArchiveScene {
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    this.labelCanvas.width = 1024;
-    this.labelCanvas.height = 440;
+    this.labelCanvas.width = 512;
+    this.labelCanvas.height = 220;
     this.labelTexture.colorSpace = THREE.SRGBColorSpace;
+    this.labelTexture.anisotropy = 4;
     this.atlas.width = this.atlas.height = ATLAS;
+    this.tileCanvas.width = this.tileCanvas.height = TILE;
     this.atlasTexture.colorSpace = THREE.SRGBColorSpace;
     this.atlasTexture.anisotropy = 4;
     this.chosenCanvas.width = this.chosenCanvas.height = CHOSEN_TILE;
@@ -266,6 +279,8 @@ export class ArchiveScene {
     label.position.set(0.32, 3.36, 0.225);
     this.chosenModel.add(label);
     this.scene.add(this.chosenModel);
+    // The atlas goes to the GPU once; new covers are added tile by tile.
+    this.renderer.initTexture(this.atlasTexture);
     this.loaded = true;
     this.applyQuality();
     this.drawLabel();
@@ -460,6 +475,8 @@ export class ArchiveScene {
     this.atlasTexture.dispose();
     this.chosenTexture.dispose();
     this.renderer.dispose();
+    // Give the GPU context back now rather than whenever it is collected.
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }
 
@@ -514,6 +531,8 @@ export class ArchiveScene {
   private drawLabel() {
     const c = this.labelCanvas.getContext("2d");
     if (!c) return;
+    // Drawn at half size: it is small on screen and redrawn while dragging.
+    c.setTransform(0.5, 0, 0, 0.5, 0, 0);
     c.fillStyle = "#e6e2d9";
     c.fillRect(0, 0, 1024, 440);
     c.fillStyle = "#171713";
@@ -569,9 +588,9 @@ export class ArchiveScene {
           if (img) drawCover(c, img, x, y, TILE);
           else drawTitle(c, song.name, x, y, TILE);
           slot.ready = true;
-          this.atlasDirty = true;
+          this.newTiles.push(tile);
           // Until its sharp copy arrives, the chosen box shows this one.
-          if (song === this.songs[this.chosenIndex] && this.chosenTimer) this.paintChosenFromAtlas(slot);
+          if (song === this.songs[this.chosenIndex] && this.chosenSharp !== song.path) this.paintChosenFromAtlas(slot);
         }
         this.invalidate();
       });
@@ -595,28 +614,63 @@ export class ArchiveScene {
     this.chosenTexture.needsUpdate = true;
   }
 
-  /** The chosen box's own sharper cover; the array's copy until it arrives. */
+  /** Adds the covers drawn since the last frame to the atlas on the GPU. */
+  private uploadTiles() {
+    if (!this.newTiles.length) return;
+    const tex = (this.renderer.properties.get(this.atlasTexture) as { __webglTexture?: WebGLTexture }).__webglTexture;
+    if (!tex) {
+      this.atlasTexture.needsUpdate = true;
+      this.newTiles = [];
+      return;
+    }
+    const gl = this.renderer.getContext();
+    const t = this.tileCanvas.getContext("2d")!;
+    this.renderer.state.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    for (const tile of this.newTiles) {
+      const x = (tile % PER_ROW) * TILE;
+      const y = Math.floor(tile / PER_ROW) * TILE;
+      t.drawImage(this.atlas, x, y, TILE, TILE, 0, 0, TILE, TILE);
+      // Flipped like the whole atlas: canvas rows run down, texture rows up.
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, x, ATLAS - y - TILE, gl.RGBA, gl.UNSIGNED_BYTE, this.tileCanvas);
+    }
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    this.newTiles = [];
+  }
+
+  /** The chosen box's cover: the array's copy at once, a sharper one once settled. */
   private showChosenCover() {
     const song = this.songs[this.chosenIndex];
     const path = song?.path ?? "";
     if (path === this.chosenCover) return;
     this.chosenCover = path;
+    this.chosenSharp = "";
     const c = this.chosenCanvas.getContext("2d")!;
     c.fillStyle = PAPER;
     c.fillRect(0, 0, CHOSEN_TILE, CHOSEN_TILE);
     const slot = song ? this.slots.get(path) : undefined;
     if (slot?.ready) this.paintChosenFromAtlas(slot);
     this.chosenTexture.needsUpdate = true;
+    this.requestSharpCover();
+  }
+
+  /** Loads the chosen box's sharp cover, unless the field is still moving. */
+  private requestSharpCover() {
     clearTimeout(this.chosenTimer);
     this.chosenTimer = 0;
-    if (!song) return;
-    // Boxes passing by during a drag keep the small copy.
+    const song = this.songs[this.chosenIndex];
+    if (!song || this.free || this.chosenSharp === song.path) return;
+    const path = song.path;
     this.chosenTimer = window.setTimeout(() => {
+      this.chosenTimer = 0;
       void loadImage(this.coverUrl(path, CHOSEN_TILE)).then((img) => {
-        this.chosenTimer = 0;
         if (this.disposed || this.chosenCover !== path) return;
+        const c = this.chosenCanvas.getContext("2d")!;
         if (img) drawCover(c, img, 0, 0, CHOSEN_TILE);
         else drawTitle(c, song.name, 0, 0, CHOSEN_TILE);
+        this.chosenSharp = path;
         this.chosenTexture.needsUpdate = true;
         this.invalidate();
       });
@@ -640,8 +694,8 @@ export class ArchiveScene {
     this.frame = 0;
     const hidden = document.visibilityState === "hidden";
     if (!this.active || hidden || !this.loaded) return;
-    // Low quality draws at most 30 frames a second.
-    if (this.quality === "low" && now - this.lastDraw < 30) {
+    // At most 60 frames a second, 30 at low quality or while only drifting.
+    if (now - this.lastDraw < (this.quality === "low" || this.drifting ? 31 : 15)) {
       this.frame = requestAnimationFrame(this.tick);
       return;
     }
@@ -651,12 +705,7 @@ export class ArchiveScene {
     this.lastDraw = now;
     this.clock += dt;
     const moving = this.update(dt);
-    // New covers reach the GPU together, a few times a second at most.
-    if (this.atlasDirty && now - this.atlasUploaded > 120) {
-      this.atlasTexture.needsUpdate = true;
-      this.atlasDirty = false;
-      this.atlasUploaded = now;
-    }
+    this.uploadTiles();
     this.renderer.shadowMap.needsUpdate = true;
     this.renderer.render(this.scene, this.camera);
     if (moving) this.frame = requestAnimationFrame(this.tick);
@@ -681,6 +730,7 @@ export class ArchiveScene {
       if (Math.abs(f.vLane) < 0.08 && Math.abs(f.vRow) < 0.8) {
         this.free = null;
         this.chooseCell({ lane: Math.round(f.lane), row: Math.round(f.row) }, true);
+        this.requestSharpCover();
       }
     }
     const targetX = this.free ? this.free.lane * COLUMN_SPACING : this.chosen.lane * COLUMN_SPACING;
@@ -748,7 +798,9 @@ export class ArchiveScene {
     for (const inst of this.instances) inst.count = this.drawn.length;
     this.instances[0].instanceMatrix.needsUpdate = true;
     this.coverAttr.needsUpdate = true;
-    this.loadCovers();
+    // New covers are asked for once the field stops: a long drag would
+    // otherwise ask for every box it passes.
+    if (!this.free) this.loadCovers();
     this.instances[0].computeBoundingSphere();
 
     const { row, lane } = this.chosen;
@@ -766,18 +818,17 @@ export class ArchiveScene {
       const song = this.hoverCell ? trackAt(this.hoverCell, this.plan) : null;
       this.onHover(song !== null && song >= 0 ? song : null);
     }
-    return (
-      idle ||
+    const busy =
       this.free !== null ||
-      this.atlasDirty ||
       this.pulses.length > 0 ||
       hoverMoving ||
       !settled(this.camX, targetX) ||
       !settled(this.camZ, targetZ) ||
       !settled(this.rowFocus, this.chosen.row) ||
       !settled(this.laneFocus, this.chosen.lane) ||
-      !settled(this.lift, this.plan.n ? CHOSEN_LIFT : 0)
-    );
+      !settled(this.lift, this.plan.n ? CHOSEN_LIFT : 0);
+    this.drifting = idle && !busy;
+    return idle || busy;
   }
 
   /** The reference's settled archive shot: a long lens from high on the left. */

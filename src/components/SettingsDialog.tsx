@@ -18,7 +18,7 @@ import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
 import { LanSettings } from "./LanSettings";
 import { PluginSettings } from "./PluginSettings";
-import { Row, Seg, Switch } from "./SettingsControls";
+import { BetaTag, Row, Seg, Switch } from "./SettingsControls";
 import { tip } from "./Tooltip";
 import { useWeatherScene } from "../hooks";
 import { UpdateSettings } from "./UpdateSettings";
@@ -168,7 +168,13 @@ function ArchiveOptions() {
   const set = useSettings((s) => s.set);
   return (
     <>
-      <h3>档案</h3>
+      <h3>
+        档案 <BetaTag />
+      </h3>
+      <p className="note warn">
+        <Icon name="warning" size={14} />
+        <span>档案主题仍是测试版：三维档案阵列对显卡要求较高，可能不够稳定。如果出现卡顿、发热或画面异常，请把画质调成“省电”，或换回其他主题。</span>
+      </p>
       <Row label="档案浮动" hint="播放时档案盒缓缓起伏；系统开启“减少动态效果”时不浮动">
         <Switch on={a.motion} onChange={(motion) => set({ archive: { ...a, motion } })} />
       </Row>
@@ -226,7 +232,18 @@ function Appearance() {
       <Row label="外观模式">
         <Seg
           value={s.theme}
-          options={[["system", "跟随系统"], ["light", "浅色"], ["dark", "深色"], ["weather", "天气"], ["archive", "档案"]]}
+          options={[
+            ["system", "跟随系统"],
+            ["light", "浅色"],
+            ["dark", "深色"],
+            ["weather", "天气"],
+            [
+              "archive",
+              <>
+                档案 <BetaTag />
+              </>,
+            ],
+          ]}
           onChange={(theme) => s.set({ theme })}
         />
       </Row>
