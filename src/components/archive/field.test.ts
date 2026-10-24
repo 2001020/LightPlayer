@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cellOf, damp, homeOf, idleWave, layout, selectionWave, settled, shoulder, trackAt } from "./field";
+import { cellOf, damp, homeOf, idleWave, layout, panToCells, selectionWave, settled, shoulder, trackAt } from "./field";
 
 describe("archive layout", () => {
   it("splits a playlist into at most five columns", () => {
@@ -60,5 +60,24 @@ describe("archive waves", () => {
     const s = { value: 0, velocity: 0 };
     for (let i = 0; i < 300; i++) damp(s, 5, 4, 1 / 60);
     expect(settled(s, 5)).toBe(true);
+  });
+});
+
+describe("archive drag", () => {
+  it("moves the view against the pointer along both axes", () => {
+    // One column 300 px up-right, one box 40 px down-right on screen.
+    const lane = { x: 260, y: -150 };
+    const row = { x: 20, y: 35 };
+    const at = (d: { x: number; y: number }) => panToCells(lane, row, d);
+    // Dragging by exactly one column's / one box's offset moves the view back by one.
+    expect(at(lane).lane).toBeCloseTo(-1);
+    expect(at(lane).row).toBeCloseTo(0);
+    expect(at(row).lane).toBeCloseTo(0);
+    expect(at(row).row).toBeCloseTo(-1);
+    // A diagonal drag moves both.
+    const d = at({ x: lane.x * 0.5 + row.x * 2, y: lane.y * 0.5 + row.y * 2 });
+    expect(d.lane).toBeCloseTo(-0.5);
+    expect(d.row).toBeCloseTo(-2);
+    expect(panToCells(lane, lane, { x: 5, y: 5 })).toEqual({ lane: 0, row: 0 });
   });
 });

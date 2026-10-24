@@ -44,6 +44,7 @@ export function ArchiveBackground() {
         if (disposed || !host.current) return;
         made = new ArchiveScene(host.current);
         made.onHover = (hover) => useArchive.getState().hover !== hover && useArchive.setState({ hover });
+        made.onChoose = (chosen) => useArchive.setState({ chosen });
         await made.load(`${import.meta.env.BASE_URL}archive/archive-cassette.glb`);
         if (disposed) return;
         useArchive.setState({ scene: made, failed: false });
@@ -73,35 +74,26 @@ export function ArchiveBackground() {
   );
 }
 
-/** Edges of the window that show the title bar / play bar when the pointer is near. */
+/** Edge of the window that shows the title bar when the pointer is near. */
 const TOP_EDGE = 56;
-const BOTTOM_EDGE = 110;
 
 /**
- * In the archive view the title bar and play bar stay hidden: they fade in
- * while the pointer is near their edge (or over them, or a menu of theirs is
- * open), and the play bar shows for a moment after a key press.
+ * In the archive view the title bar stays hidden: it fades in while the
+ * pointer is near the top edge (or over it, or a menu of it is open). The
+ * play bar is not shown at all; the view has its own controls.
  */
 export function useArchiveChrome(active: boolean) {
-  const [show, setShow] = useState({ top: false, bottom: false });
+  const [top, setTop] = useState(false);
   useEffect(() => {
     if (!active) {
-      setShow({ top: false, bottom: false });
+      setTop(false);
       return;
     }
-    let keyUntil = 0;
-    let timer = 0;
     let last = { x: -1, y: -1 };
     const update = () => {
       const { x, y } = last;
-      const over = (sel: string) => {
-        const el = x >= 0 ? document.elementFromPoint(x, y) : null;
-        return !!el?.closest(sel);
-      };
-      const menu = !!document.querySelector(".transport .popover, .ctx-menu");
-      const top = (y >= 0 && y < TOP_EDGE) || over(".titlebar");
-      const bottom = (y >= 0 && y > window.innerHeight - BOTTOM_EDGE) || over(".transport") || menu || Date.now() < keyUntil;
-      setShow((s) => (s.top === top && s.bottom === bottom ? s : { top, bottom }));
+      const el = x >= 0 ? document.elementFromPoint(x, y) : null;
+      setTop((y >= 0 && y < TOP_EDGE) || !!el?.closest(".titlebar"));
     };
     const move = (e: PointerEvent) => {
       last = { x: e.clientX, y: e.clientY };
@@ -111,26 +103,12 @@ export function useArchiveChrome(active: boolean) {
       last = { x: -1, y: -1 };
       update();
     };
-    const key = (e: KeyboardEvent) => {
-      // Shift alone steers the wheel sideways; it is not a command.
-      if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
-      keyUntil = Date.now() + 2500;
-      update();
-      clearTimeout(timer);
-      timer = window.setTimeout(update, 2600);
-    };
-    // Menus open and close without the pointer moving.
-    const poll = window.setInterval(update, 500);
     window.addEventListener("pointermove", move, { passive: true });
     document.documentElement.addEventListener("pointerleave", leave);
-    window.addEventListener("keydown", key);
     return () => {
-      clearInterval(poll);
-      clearTimeout(timer);
       window.removeEventListener("pointermove", move);
       document.documentElement.removeEventListener("pointerleave", leave);
-      window.removeEventListener("keydown", key);
     };
   }, [active]);
-  return show;
+  return { top };
 }

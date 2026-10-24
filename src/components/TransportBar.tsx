@@ -18,7 +18,7 @@ import { tip } from "./Tooltip";
 import { keys } from "../lib/platform";
 import { fitRow, type RowFit } from "../lib/fit";
 
-const MODE_META: Record<string, { icon: IconName; label: string }> = {
+export const MODE_META: Record<string, { icon: IconName; label: string }> = {
   sequential: { icon: "sequential", label: "顺序播放" },
   loop: { icon: "loop", label: "列表循环" },
   single: { icon: "single", label: "单曲循环" },
@@ -53,7 +53,7 @@ function volumeIcon(volume: number, muted: boolean): IconName {
   return muted || volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume";
 }
 
-function Volume() {
+export function Volume() {
   const volume = useSettings((s) => s.volume);
   const muted = useSettings((s) => s.muted);
   return (
@@ -206,7 +206,7 @@ function RateItems({ close }: { close: () => void }) {
   );
 }
 
-function RateMenu() {
+export function RateMenu() {
   const rate = useSettings((s) => s.rate);
   return (
     <Popover

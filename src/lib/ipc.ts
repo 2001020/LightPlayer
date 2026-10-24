@@ -710,7 +710,7 @@ let mockQrPolls = 0;
 /** A generated gradient album cover for the preview's online songs. */
 const mockCover = (i: number) => {
   const h = (i * 47) % 360;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h},70%,62%)"/><stop offset="1" stop-color="hsl(${(h + 50) % 360},65%,32%)"/></linearGradient></defs><rect width="100" height="100" fill="url(#g)"/><circle cx="72" cy="30" r="18" fill="rgba(255,255,255,.25)"/><text x="10" y="88" font-family="sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,.9)">${i + 1}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h},70%,62%)"/><stop offset="1" stop-color="hsl(${(h + 50) % 360},65%,32%)"/></linearGradient></defs><rect width="100" height="100" fill="url(#g)"/><circle cx="72" cy="30" r="18" fill="rgba(255,255,255,.25)"/><text x="10" y="88" font-family="sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,.9)">${i + 1}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 };
 const mockSongs = (seed: string, n: number): NeteaseSong[] =>
@@ -1440,6 +1440,12 @@ export function thumbUrl(path: string, size = 256): string | null {
   }
   if (!isTauri || serverBaseCache === null) return null;
   return `${serverBaseCache}/thumb?p=${encodeURIComponent(path)}&s=${size}`;
+}
+
+/** Browser preview: a made-up cover for local songs (every fifth has none). */
+export function previewCover(path: string): string | null {
+  const h = [...path].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  return h % 5 === 0 ? null : mockCover(h % 97);
 }
 
 /** Loads the media server base so `thumbUrl` can be used synchronously. */

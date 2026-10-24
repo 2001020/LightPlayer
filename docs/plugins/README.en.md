@@ -176,7 +176,9 @@ The main areas of the interface have a `data-lp` attribute; select them with `[d
 | `lan-transfer` | The receiving progress and "received" card at the bottom right (since 1.6.7) |
 | `lan-banner` | The bar at the top of the window while following another device's playback (since 1.6.7) |
 | `archive` | The player page in the Archive theme: the text layer over the 3D archive array that fills the window (since 1.6.9) |
-| `archive-now` | The song playing, bottom left in the Archive theme: title, artist and progress (since 1.6.9) |
+| `archive-now` | The song playing, bottom left in the Archive theme: title, artist, a draggable progress bar and the playback controls (since 1.6.9; usable since 1.6.10) |
+| `archive-controls` | The playback controls in `archive-now`: play mode, previous, play/pause, next, NetEase comments, playback speed, volume and "Back to the current song" (since 1.6.10) |
+| `archive-lyrics` | The lyrics at the top left in the Archive theme, holding a `lyric-scroll` (since 1.6.10) |
 | `archive-selected` | The song picked in the Archive theme: title, artist and duration (since 1.6.9) |
 | `desktop-lyrics` | Desktop lyrics window |
 | `desktop-lyrics-line` | The text of the desktop lyrics |

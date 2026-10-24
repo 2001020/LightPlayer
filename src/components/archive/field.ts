@@ -118,3 +118,22 @@ export function damp(s: Spring, target: number, rate: number, dt: number) {
 }
 
 export const settled = (s: Spring, target: number, eps = 1e-3) => Math.abs(s.value - target) < eps && Math.abs(s.velocity) < eps;
+
+export interface Vec2 {
+  x: number;
+  y: number;
+}
+
+/**
+ * Columns and boxes the field moves when dragged by `d` pixels, so the box
+ * under the pointer follows it. `lane` / `row` are how far one column / one
+ * box moves on screen (pixels). The result moves the view, hence the sign.
+ */
+export function panToCells(lane: Vec2, row: Vec2, d: Vec2): Cell {
+  const det = lane.x * row.y - lane.y * row.x;
+  if (Math.abs(det) < 1e-6) return { lane: 0, row: 0 };
+  return {
+    lane: (row.x * d.y - row.y * d.x) / det,
+    row: (lane.y * d.x - lane.x * d.y) / det,
+  };
+}
