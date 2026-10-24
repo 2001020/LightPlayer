@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { PlayMode } from "../core/playlist/queue";
 import { isLangSetting, type LangSetting } from "../i18n";
 
-export type ThemeMode = "system" | "light" | "dark" | "weather";
+export type ThemeMode = "system" | "light" | "dark" | "weather" | "archive";
 
 export interface DesktopLyricsSettings {
   /** The floating, always-on-top lyrics window is shown. */
@@ -19,6 +19,13 @@ export interface WeatherSettings {
   motion: boolean;
   /** The accent colour follows the time of day. */
   timeAccent: boolean;
+}
+
+export interface ArchiveSettings {
+  /** The boxes drift gently while music plays. */
+  motion: boolean;
+  /** low: no shadows, 30 fps; high: frosted see-through boxes. */
+  quality: "low" | "standard" | "high";
 }
 
 export interface AsrSettings {
@@ -67,6 +74,7 @@ export interface Settings {
   background: BackgroundSettings;
   coverBackground: boolean;
   weather: WeatherSettings;
+  archive: ArchiveSettings;
   seekStep: number;
   jumpStep: number;
   resume: boolean;
@@ -146,6 +154,7 @@ export const defaultSettings: Settings = {
   background: { path: null, blur: 16, dim: 0.35, fit: "cover" },
   coverBackground: true,
   weather: { source: "auto", city: null, motion: true, timeAccent: true },
+  archive: { motion: true, quality: "standard" },
   seekStep: 5,
   jumpStep: 15,
   resume: true,
@@ -251,6 +260,7 @@ export const useSettings = create<SettingsStore>()(
           asr: { ...current.asr, ...(p.asr ?? {}) },
           background: { ...current.background, ...(p.background ?? {}) },
           weather: { ...current.weather, ...(p.weather ?? {}) },
+          archive: { ...current.archive, ...(p.archive ?? {}) },
           desktopLyrics: { ...current.desktopLyrics, ...(p.desktopLyrics ?? {}) },
           update: { ...current.update, ...(p.update ?? {}) },
           lan: { ...current.lan, ...(p.lan ?? {}) },

@@ -231,6 +231,24 @@ select:focus {
 :root[data-bg="weather"] .transport .btn {
   text-shadow: none;
 }
+/* Archive theme: the 3D field fills the window behind everything. */
+.archive-field {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: #eae5e1;
+}
+.archive-field canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: filter 0.6s ease, opacity 0.6s ease;
+}
+/* Library, lyrics and video pages cover a still, softened field. */
+.archive-field.covered canvas {
+  filter: blur(18px) saturate(0.9);
+  opacity: 0.6;
+}
 .weather-sky {
   position: fixed;
   inset: 0;
@@ -5631,4 +5649,215 @@ html.desktop-lyrics #root {
 /* Messages appear below the follow bar instead of on top of it. */
 .app:has(.lan-banner) .toasts {
   top: calc(var(--titlebar-h) + 52px);
+}
+
+/* ---------------------------------------------------------------- archive theme */
+/* The bars float over the field and only show near their edge. */
+.app.archive-chrome {
+  grid-template-rows: 1fr;
+}
+.app.archive-chrome .main {
+  grid-row: 1;
+}
+.app.archive-chrome .titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--titlebar-h);
+  background: linear-gradient(to bottom, rgba(234, 229, 225, 0.92), rgba(234, 229, 225, 0));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.app.archive-chrome .transport {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--transport-h);
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.35s var(--ease);
+}
+.app.archive-chrome.show-top .titlebar,
+.app.archive-chrome.show-bottom .transport {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.archive-page {
+  padding: 0;
+}
+.archive-view {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  color: #171713;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.archive-view.pointing {
+  cursor: pointer;
+}
+.archive-view.grabbing {
+  cursor: grabbing;
+}
+.archive-caption {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #878476;
+  margin-bottom: 10px;
+}
+.archive-selected {
+  position: absolute;
+  left: 58%;
+  top: 41%;
+  width: min(36vw, 520px);
+  pointer-events: none;
+  text-shadow: 0 0 18px rgba(240, 236, 231, 0.9);
+}
+.archive-title {
+  margin: 0;
+  font-size: clamp(26px, 3.1vw, 46px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  max-height: 2.2em;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.archive-rule {
+  position: relative;
+  height: 1px;
+  margin: 18px 0 12px;
+  background: rgba(23, 23, 19, 0.75);
+}
+.archive-rule::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -3px;
+  width: 4px;
+  height: 7px;
+  background: #171713;
+}
+.archive-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.archive-meta span:last-child,
+.archive-now-progress {
+  font-variant-numeric: tabular-nums;
+}
+.archive-meta span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archive-now {
+  position: absolute;
+  left: 48px;
+  bottom: 40px;
+  width: min(340px, 40vw);
+  pointer-events: none;
+  text-shadow: 0 0 16px rgba(240, 236, 231, 0.9);
+}
+.archive-now,
+.archive-hint {
+  transition: transform 0.35s var(--ease);
+}
+/* Make room for the play bar when it slides in. */
+.app.show-bottom .archive-now,
+.app.show-bottom .archive-hint {
+  transform: translateY(calc(-1 * var(--transport-h) - 6px));
+}
+.archive-now-title {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archive-now-artist {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #4d4b44;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archive-now-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 11.5px;
+  color: #4d4b44;
+}
+.archive-line {
+  flex: 1;
+  height: 2px;
+  background: rgba(23, 23, 19, 0.16);
+}
+.archive-line i {
+  display: block;
+  height: 100%;
+  background: #171713;
+  transition: width 0.25s linear;
+}
+.archive-hint {
+  position: absolute;
+  left: 48px;
+  bottom: 44px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: #6d6a60;
+}
+/* Letters of a new title roll up into place. */
+.roll > span {
+  display: inline-block;
+  animation: archive-roll 0.48s var(--ease) both;
+}
+@keyframes archive-roll {
+  from {
+    opacity: 0;
+    transform: translateY(0.55em);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roll > span {
+    animation: none;
+  }
+}
+@media (max-width: 760px) {
+  .archive-selected {
+    left: 24px;
+    right: 24px;
+    top: auto;
+    bottom: 170px;
+    width: auto;
+  }
+  .archive-now {
+    left: 24px;
+    bottom: 32px;
+    width: calc(100% - 48px);
+  }
+}
+/* The field is the playlist in the archive view. */
+.app.archive-chrome .pl-toggle {
+  display: none;
 }

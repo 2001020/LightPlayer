@@ -874,6 +874,15 @@ pub struct AddPathsResult {
     pub files: usize,
 }
 
+/// Title, artist and duration of songs that are not in the library (one
+/// entry per path, `None` for a missing or unreadable file).
+#[tauri::command]
+pub async fn track_tags(paths: Vec<String>) -> AppResult<Vec<Option<medialib::scan::TrackTags>>> {
+    tokio::task::spawn_blocking(move || paths.iter().map(|p| medialib::scan::track_tags(Path::new(p))).collect())
+        .await
+        .map_err(|e| AppError::msg(e.to_string()))
+}
+
 /// Files and folders dropped onto the library page.
 #[tauri::command]
 pub async fn library_add_paths(app: AppHandle, state: State<'_, AppState>, paths: Vec<String>) -> AppResult<AddPathsResult> {

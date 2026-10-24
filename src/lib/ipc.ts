@@ -170,6 +170,13 @@ export interface AsrDone {
 
 export type TrackSource = "folder" | "played" | "added";
 
+/** Tags of a song outside the library (`track_tags`). */
+export interface TrackTags {
+  title?: string | null;
+  artist?: string | null;
+  duration?: number | null;
+}
+
 export interface LibraryTrack {
   path: string;
   kind: MediaKind;
@@ -605,6 +612,12 @@ function mockLibrary(cmd: string, args: Record<string, unknown>): unknown {
   switch (cmd) {
     case "library_get":
       return structuredClone(l);
+    case "track_tags":
+      return (args.paths as string[]).map((p, i) => {
+        const stem = p.split("/").pop()!.replace(/\.[^.]+$/, "");
+        const [artist, title] = stem.includes(" - ") ? stem.split(" - ", 2) : ["", stem];
+        return { title, artist: artist || null, duration: 150 + ((stem.length * 37 + i * 11) % 180) };
+      });
     case "library_add_paths": {
       let files = 0;
       for (const p of args.paths as string[]) {
@@ -986,7 +999,7 @@ async function mockLan(cmd: string, args: Record<string, unknown>): Promise<unkn
 
 async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const path = (args.path ?? args.mediaPath) as string | undefined;
-  if (cmd.startsWith("library_") || cmd.startsWith("playlist_")) return mockLibrary(cmd, args) as T;
+  if (cmd.startsWith("library_") || cmd.startsWith("playlist_") || cmd === "track_tags") return mockLibrary(cmd, args) as T;
   if (cmd.startsWith("lan_")) return mockLan(cmd, args) as T;
   switch (cmd) {
     case "open_media": {
@@ -1331,6 +1344,8 @@ export const api = {
   weatherFetch: (lat: number, lon: number, name?: string | null) => call<WeatherReport>("weather_fetch", { lat, lon, name: name ?? null }),
   weatherSearch: (query: string) => call<CityHit[]>("weather_search", { query }),
   libraryGet: () => call<LibraryData>("library_get"),
+  /** Title, artist and duration of songs outside the library (null: unreadable). */
+  trackTags: (paths: string[]) => call<(TrackTags | null)[]>("track_tags", { paths }),
   libraryAddFolder: (path: string) => call<boolean>("library_add_folder", { path }),
   libraryRemoveFolder: (path: string) => call<void>("library_remove_folder", { path }),
   libraryRescan: () => call<void>("library_rescan"),

@@ -52,7 +52,7 @@
       "type": "object",
       "description": "启用插件时写入的 App 设置，停用后恢复",
       "properties": {
-        "theme": { "enum": ["system", "light", "dark", "weather"] },
+        "theme": { "enum": ["system", "light", "dark", "weather", "archive"] },
         "accent": { "$ref": "#/$defs/color" },
         "dynamicAccent": { "type": "boolean" },
         "coverBackground": { "type": "boolean" },

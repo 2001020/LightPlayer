@@ -21,6 +21,11 @@ on:
         type: boolean
         required: false
         default: false
+      macos_only:
+        description: "Build only the macOS app (a test build; no release is published)"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   # Release runs get their own group so a later push can't cancel them.
@@ -205,6 +210,7 @@ jobs:
 
   build-windows:
     name: Build installer (Windows x64)
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.macos_only) }}
     runs-on: windows-latest
     timeout-minutes: 90
     env:

@@ -208,6 +208,23 @@ pub fn scan(
     ScanResult { roots_ok, tracks }
 }
 
+/// Title, artist and duration of a song, for showing one that is not in the library.
+#[derive(Debug, serde::Serialize)]
+pub struct TrackTags {
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub duration: Option<f64>,
+}
+
+/// `None` when the file is missing or not media.
+pub fn track_tags(path: &Path) -> Option<TrackTags> {
+    if !path.is_file() {
+        return None;
+    }
+    let t = read_track(path, Source::Played)?;
+    Some(TrackTags { title: t.title, artist: t.artist, duration: t.duration })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,5 +255,35 @@ mod tests {
         let r2 = scan(&[root], &excluded, &known, &|_, _| {});
         assert_eq!(r2.tracks.len(), 1);
         assert_eq!(r2.tracks[0].title.as_deref(), Some("cached"));
+    }
+
+    #[test]
+    fn reads_tags_of_single_files() {
+        let dir = tempfile::tempdir().unwrap();
+        // One second of 8 kHz mono 16-bit silence.
+        let wav = dir.path().join("周杰伦 - 晴天.wav");
+        let data = vec![0u8; 16_000];
+        let mut b = Vec::new();
+        b.extend(b"RIFF");
+        b.extend(&(36 + data.len() as u32).to_le_bytes());
+        b.extend(b"WAVEfmt ");
+        b.extend(&16u32.to_le_bytes());
+        b.extend(&1u16.to_le_bytes());
+        b.extend(&1u16.to_le_bytes());
+        b.extend(&8000u32.to_le_bytes());
+        b.extend(&16000u32.to_le_bytes());
+        b.extend(&2u16.to_le_bytes());
+        b.extend(&16u16.to_le_bytes());
+        b.extend(b"data");
+        b.extend(&(data.len() as u32).to_le_bytes());
+        b.extend(&data);
+        std::fs::write(&wav, b).unwrap();
+        let t = track_tags(&wav).unwrap();
+        assert_eq!(t.title.as_deref(), Some("晴天"));
+        assert_eq!(t.artist.as_deref(), Some("周杰伦"));
+        assert!((t.duration.unwrap() - 1.0).abs() < 0.01, "{:?}", t.duration);
+        assert!(track_tags(&dir.path().join("missing.mp3")).is_none());
+        std::fs::write(dir.path().join("notes.txt"), b"x").unwrap();
+        assert!(track_tags(&dir.path().join("notes.txt")).is_none());
     }
 }

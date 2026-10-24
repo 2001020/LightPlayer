@@ -66,7 +66,7 @@ export function optionEffects(m: PluginManifest, saved: Record<string, PluginOpt
 
 /** App settings a plugin may set (`config`), with the values each accepts. */
 export const CONFIG_KEYS: Record<string, (v: unknown) => boolean> = {
-  theme: (v) => ["system", "light", "dark", "weather"].includes(v as string),
+  theme: (v) => ["system", "light", "dark", "weather", "archive"].includes(v as string),
   accent: validColor,
   dynamicAccent: (v) => typeof v === "boolean",
   coverBackground: (v) => typeof v === "boolean",
