@@ -434,7 +434,9 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `lan-transfer` | 右下角的接收进度和接收完成卡片（1.6.7 起） |
 | `lan-banner` | 跟随其他设备播放时，窗口顶部的提示条（1.6.7 起） |
 | `archive` | 档案主题的播放页：铺满窗口的三维档案阵列上的文字层（1.6.9 起） |
-| `archive-now` | 档案主题左下角的正在播放：歌名、歌手和进度（1.6.9 起） |
+| `archive-now` | 档案主题左下角的正在播放：歌名、歌手、可拖动的进度条和播放控制（1.6.9 起；1.6.10 起可以操作） |
+| `archive-controls` | `archive-now` 中的播放控制：播放模式、上一首、播放/暂停、下一首、网易云评论、播放速度、音量和“回到当前歌曲”（1.6.10 起） |
+| `archive-lyrics` | 档案主题左上角的歌词，内部是 `lyric-scroll`（1.6.10 起） |
 | `archive-selected` | 档案主题中选中的歌曲：歌名、歌手和时长（1.6.9 起） |
 | `desktop-lyrics` | 桌面歌词窗口 |
 | `desktop-lyrics-line` | 桌面歌词的文字 |
@@ -1709,6 +1711,7 @@ pnpm dev
 | 1.6.6 | `transport-right` 中放不下的按钮收进「更多」菜单；`transport-now` 和 `lyrics-head` 的歌名和歌手过长时滚动显示 |
 | 1.6.7 | 局域网同步：锚点 `lan-dialog`、`lan-offer`、`lan-transfer`、`lan-banner`；`transport-right` 中多了“局域网同步”按钮 |
 | 1.6.9 | 档案主题：锚点 `archive`、`archive-now`、`archive-selected`；`data-bg` 的值 `archive`；`config.theme` 可以设为 `archive` |
+| 1.6.10 | 档案主题：锚点 `archive-lyrics`、`archive-controls`；这个视图中不再显示播放栏 `transport` |
 
 用到表中某个版本的功能时，把 `minAppVersion` 设为那个版本（预发布版本请写对应的正式版本号，例如 `1.6.0`）。
 
