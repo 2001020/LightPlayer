@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import * as C from "./core/controller";
 import { startLan } from "./core/lan";
+import { useArchiveActive, useArchiveChrome } from "./components/archive/ArchiveBackground";
 import { AsrSetupDialog } from "./components/AsrSetupDialog";
 import { AsrTasks, AsrTasksButton } from "./components/AsrTasks";
 import { CommentsPanel } from "./components/CommentsPanel";
@@ -61,6 +62,9 @@ export default function App() {
   const weatherTheme = useSettings((s) => s.theme === "weather");
   const immersive = fullscreen && media?.kind === "video";
   const idle = useIdle(immersive);
+  // The archive theme hides the bars until the pointer comes near them.
+  const archive = useArchiveActive() && !immersive;
+  const chrome = useArchiveChrome(archive);
 
   useEffect(() => {
     void C.init();
@@ -79,7 +83,7 @@ export default function App() {
   const listShown = usePlaylistShown();
   const listBeside = showLyrics && listShown && listLayout === "side";
   const commentsOpen = useUI((s) => s.commentsOpen);
-  const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive;
+  const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive && !archive;
   const playerStyle = useSettings((s) => s.playerStyle);
   const freeLayout = useLayouts((s) => !activeLayout(s).classic || !!s.draft);
   const sample = useSample();
@@ -96,7 +100,9 @@ export default function App() {
   }, [showLyrics, showLibrary, media?.kind, playerStyle, fullscreen, freeLayout, sample]);
 
   return (
-    <div className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""}`}>
+    <div
+      className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""} ${archive ? "archive-chrome" : ""} ${chrome.top ? "show-top" : ""} ${chrome.bottom ? "show-bottom" : ""}`}
+    >
       <Background />
       <header className="titlebar" data-lp="titlebar" data-tauri-drag-region>
         <div className="brand" data-tauri-drag-region>

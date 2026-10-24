@@ -1290,5 +1290,18 @@
   "（队列已暂停）": " (queue paused)",
   "，发布于 {a}": ", released {a}",
   "，当前任务完成后不再开始新的任务": "; no new tasks start after the current one",
-  "，约": ", about"
+  "，约": ", about",
+  "打开或拖入音频文件": "Open or drop audio files",
+  "播放时档案盒缓缓起伏；系统开启“减少动态效果”时不浮动": "The boxes rise and fall gently while music plays; they stay still when the system's Reduce Motion is on",
+  "播放页上每个档案盒是播放列表中的一首歌：点击播放，滚动鼠标滚轮或拖动来挑选。页面上只显示正在播放和选中的歌曲，标题栏和播放栏在鼠标移到窗口上下边缘时出现。三维档案阵列移植自 LBEILC 的开源项目 RhineLabUI（MIT 许可）。": "On the player page each box is a song in the playlist: click one to play it, scroll the mouse wheel or drag to pick. The page shows only the song that is playing and the one picked; the title bar and play bar appear when the mouse reaches the top or bottom edge of the window. The 3D archive array is ported from RhineLabUI, an open-source project by LBEILC (MIT license).",
+  "档案": "Archive",
+  "档案主题下由三维档案阵列作为背景，以下设置在切换回其他主题后生效。": "The Archive theme uses the 3D archive array as its background; the settings below apply after switching back to another theme.",
+  "档案浮动": "Floating boxes",
+  "正在播放": "Now playing",
+  "画质": "Quality",
+  "省电": "Power saving",
+  "省电：不画阴影，每秒最多 30 帧；精细：半透明的磨砂档案盒，更耗电": "Power saving: no shadows, at most 30 frames a second. Fine: translucent frosted boxes, uses more power",
+  "精细": "Fine",
+  "这台电脑不能显示三维档案阵列": "This computer can't show the 3D archive array",
+  "选中": "Picked"
 }

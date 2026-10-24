@@ -258,6 +258,7 @@ pub fn run() {
             commands::library_remove_folder,
             commands::library_rescan,
             commands::library_add_paths,
+            commands::track_tags,
             commands::library_remove_tracks,
             commands::library_record_play,
             commands::library_set_favorite,

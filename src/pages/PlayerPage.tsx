@@ -15,6 +15,8 @@ import { keys } from "../lib/platform";
 import { FreeLayout } from "../layout/FreeLayout";
 import { LayoutEditor, LayoutMenu } from "../layout/LayoutEditor";
 import { useActiveLayout, useLayouts } from "../stores/layout";
+import { ArchiveView } from "../components/archive/ArchiveView";
+import { useArchiveActive } from "../components/archive/ArchiveBackground";
 
 function EmptyState() {
   const recent = useSettings((s) => s.recent);
@@ -198,6 +200,18 @@ export function PlayerPage() {
   const sample = useSample();
   const nowPlaying = audio || sample;
   const editing = useLayouts((s) => !!s.draft) && nowPlaying && style !== "flow";
+  // The archive theme writes only the song names on its 3D field, which is
+  // itself the playlist (so no playlist panel there).
+  const archive = useArchiveActive() && !sample && !editing;
+  if (archive) {
+    return (
+      <div className="player-page archive-page" data-lp="player">
+        <div className="stage">
+          <ArchiveView />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={`player-page ${showList ? "with-list" : ""}`} data-lp="player">
       <div className={`stage ${media?.kind === "video" && !sample ? "is-video" : ""} ${editing ? "layout-editing" : ""} ${sample ? "layout-sample" : ""}`}>

@@ -175,6 +175,9 @@ The main areas of the interface have a `data-lp` attribute; select them with `[d
 | `lan-offer` | The confirmation window when another device sends a file (since 1.6.7) |
 | `lan-transfer` | The receiving progress and "received" card at the bottom right (since 1.6.7) |
 | `lan-banner` | The bar at the top of the window while following another device's playback (since 1.6.7) |
+| `archive` | The player page in the Archive theme: the text layer over the 3D archive array that fills the window (since 1.6.9) |
+| `archive-now` | The song playing, bottom left in the Archive theme: title, artist and progress (since 1.6.9) |
+| `archive-selected` | The song picked in the Archive theme: title, artist and duration (since 1.6.9) |
 | `desktop-lyrics` | Desktop lyrics window |
 | `desktop-lyrics-line` | The text of the desktop lyrics |
 <!-- /anchors -->
@@ -191,7 +194,7 @@ Attributes on the `<html>` element reflect the app's current state, so styles ca
 | `data-window` | `main` / `desktop-lyrics` | Main window or desktop lyrics window |
 | `data-platform` | `macos` / `windows` | Operating system |
 | `data-theme` | `light` / `dark` | The light/dark mode actually in use |
-| `data-bg` | `image` / `weather` / none | The background is an image (custom background or cover), the weather animation, or a plain color |
+| `data-bg` | `image` / `weather` / `archive` / none | The background is an image (custom background or cover), the weather animation, the 3D archive array (since 1.6.9), or a plain color |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | The weather, in the weather theme |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | The rough time of day, in the weather theme |
 | `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | The stage of the day, in the weather theme (since 1.6.3) |
@@ -347,7 +350,7 @@ The settings in `config` are written to the app's settings **when the plugin is 
 <!-- config-keys -->
 | Key | Values | Setting |
 | --- | --- | --- |
-| `theme` | `system` / `light` / `dark` / `weather` | Appearance mode |
+| `theme` | `system` / `light` / `dark` / `weather` / `archive` | Appearance mode |
 | `accent` | `#RRGGBB` | Accent color |
 | `dynamicAccent` | true / false | Color from cover |
 | `coverBackground` | true / false | Use the cover as the background while music plays |
