@@ -1,5 +1,5 @@
 // The player page in the archive theme: the 3D field (drawn by the
-// background) takes the whole window. On it: the lyrics at the top left, the
+// background) takes the whole window. On it: three lines of lyrics at the top left, the
 // song chosen in the field, and the playing song with a few controls at the
 // bottom left (the play bar is not shown in this view).
 
@@ -7,10 +7,11 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import * as C from "../../core/controller";
 import { formatTime } from "../../lib/format";
 import { ensureServerBase, isCloudPath, isTauri, previewCover, thumbUrl } from "../../lib/ipc";
+import { findLineIndex, spokenLines } from "../../core/lyrics/lrc";
 import { useLyrics, usePlayer, usePlaylist, useUI } from "../../stores/player";
 import { useSettings } from "../../stores/settings";
 import { Icon } from "../Icon";
-import { LyricsView } from "../LyricsView";
+import { KaraokeWords } from "../LyricsView";
 import { Slider } from "../Slider";
 import { tip } from "../Tooltip";
 import { toggleComments } from "../CommentsPanel";
@@ -28,7 +29,7 @@ const IDLE_RETURN = 5000;
 const coverUrl: CoverUrl = (path, size) => thumbUrl(path, size) ?? (isTauri ? null : previewCover(path));
 
 /** Text and controls laid over the field, which take the pointer from it. */
-const overUi = (e: { target: EventTarget }) => !!(e.target as Element).closest?.(".archive-lyrics, .archive-now");
+const overUi = (e: { target: EventTarget }) => !!(e.target as Element).closest?.(".archive-now");
 
 /** A title whose letters roll into place whenever it changes. */
 function RollText({ text }: { text: string }) {
@@ -43,26 +44,40 @@ function RollText({ text }: { text: string }) {
   );
 }
 
+/** The line being sung with the one before and after it; only shown, not clickable. */
 function ArchiveLyrics() {
   const media = usePlayer((s) => s.media);
+  const position = usePlayer((s) => s.position);
   const status = useLyrics((s) => s.status);
   const lyrics = useLyrics((s) => s.lyrics);
   const offset = useSettings((s) => (media ? s.lyricOffsets[media.path] ?? 0 : 0));
   const showTranslation = useSettings((s) => s.showTranslation);
   const karaoke = useSettings((s) => s.karaoke);
-  if (!media || status !== "loaded" || !lyrics?.lines.length) return null;
+  const said = useMemo(() => (lyrics?.synced ? spokenLines(lyrics.lines) : []), [lyrics]);
+  if (!media || status !== "loaded" || !said.length) return null;
+  const i = findLineIndex(said, position + offset);
   return (
-    <div className="archive-lyrics" data-lp="archive-lyrics">
-      <LyricsView
-        lines={lyrics.lines}
-        synced={lyrics.synced}
-        offset={offset}
-        fontSize={18}
-        align="left"
-        showTranslation={showTranslation}
-        karaoke={karaoke}
-        onSeek={C.seek}
-      />
+    <div className="archive-lyrics" data-lp="archive-lyrics" data-lp-raw>
+      {[i - 1, i, i + 1].map((k) => {
+        const l = said[k];
+        const active = k === i;
+        // Keyed by line, so a line keeps its element as it moves up a place.
+        return (
+          <div
+            key={k}
+            data-lp="lyric-line"
+            data-active={active ? "" : undefined}
+            className={`lyric-line ${active ? "active" : ""} ${active && karaoke && l?.words?.length ? "karaoke" : ""}`}
+          >
+            {!l ? "\u00a0" : active && karaoke && l.words?.length ? <KaraokeWords line={l} offset={offset} /> : l.text || "\u00a0"}
+            {showTranslation && l?.translation && (
+              <span className="tr" data-lp="lyric-translation">
+                {l.translation}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

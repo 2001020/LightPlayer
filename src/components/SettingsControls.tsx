@@ -4,6 +4,11 @@ export function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) =
   return <button className={`switch ${on ? "on" : ""}`} onClick={() => onChange(!on)} role="switch" aria-checked={on} />;
 }
 
+/** Marks a feature that is still being tried out. */
+export function BetaTag() {
+  return <span className="beta-tag">Beta</span>;
+}
+
 export function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="setting-row">
@@ -16,7 +21,7 @@ export function Row({ label, hint, children }: { label: string; hint?: string; c
   );
 }
 
-export function Seg<T extends string | number>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
+export function Seg<T extends string | number>({ value, options, onChange }: { value: T; options: [T, React.ReactNode][]; onChange: (v: T) => void }) {
   return (
     <div className="seg">
       {options.map(([v, l]) => (

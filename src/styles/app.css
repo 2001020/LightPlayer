@@ -242,12 +242,13 @@ select:focus {
   display: block;
   width: 100%;
   height: 100%;
-  transition: filter 0.6s ease, opacity 0.6s ease;
+  transition: opacity 0.4s ease, visibility 0.4s;
 }
-/* Library, lyrics and video pages cover a still, softened field. */
+/* Under the library, lyrics or a video the field is put away: a CSS filter
+   on a canvas this size would be redrawn with every change on screen. */
 .archive-field.covered canvas {
-  filter: blur(18px) saturate(0.9);
-  opacity: 0.6;
+  opacity: 0;
+  visibility: hidden;
 }
 .weather-sky {
   position: fixed;
@@ -3124,6 +3125,20 @@ button.cm-foot {
   cursor: pointer;
   color: var(--text-dim);
 }
+/* A feature still being tried out. */
+.beta-tag {
+  display: inline-block;
+  margin-left: 3px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 13px;
+  letter-spacing: 0.04em;
+  vertical-align: 2px;
+  opacity: 0.7;
+}
 .seg button.on {
   background: var(--panel-solid);
   color: var(--text);
@@ -3273,6 +3288,21 @@ kbd {
   font-size: 12.5px;
   color: var(--text-faint);
   line-height: 1.6;
+}
+.note.warn {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text-dim);
+  background: color-mix(in srgb, #e0a100 12%, transparent);
+}
+.note.warn svg {
+  flex: none;
+  margin-top: 3px;
+  color: #c98a00;
 }
 
 /* ---------------------------------------------------------------- editor */
@@ -5858,15 +5888,15 @@ html.desktop-lyrics #root {
   left: 0;
   right: auto;
 }
-/* The lyrics at the top left. */
+/* Three lines of lyrics at the top left: shown only, the field stays draggable under them. */
 .archive-lyrics {
   position: absolute;
   left: 34px;
   top: 64px;
   width: min(440px, 38vw);
-  height: 38vh;
-  min-height: 160px;
-  cursor: default;
+  pointer-events: none;
+  font-family: var(--lyric-font);
+  font-size: 18px;
   --text: #171713;
   --lyric-hl: #171713;
   --lyric-near: 55%;
@@ -5907,12 +5937,10 @@ html.desktop-lyrics #root {
   from {
     opacity: 0;
     transform: translateY(0.55em);
-    filter: blur(3px);
   }
   to {
     opacity: 1;
     transform: none;
-    filter: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -5936,8 +5964,6 @@ html.desktop-lyrics #root {
   .archive-lyrics {
     left: 10px;
     width: calc(100% - 20px);
-    height: 24vh;
-    min-height: 110px;
   }
   .archive-controls .volume {
     width: 84px;
