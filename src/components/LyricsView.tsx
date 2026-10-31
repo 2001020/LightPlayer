@@ -15,7 +15,7 @@ interface Props {
   onSeek?: (t: number) => void;
 }
 
-export function KaraokeWords({ line, offset }: { line: LyricLine; offset: number }) {
+function KaraokeWords({ line, offset }: { line: LyricLine; offset: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     let raf = 0;

@@ -433,11 +433,6 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `lan-offer` | 其他设备发来文件时的确认窗口（1.6.7 起） |
 | `lan-transfer` | 右下角的接收进度和接收完成卡片（1.6.7 起） |
 | `lan-banner` | 跟随其他设备播放时，窗口顶部的提示条（1.6.7 起） |
-| `archive` | 档案主题的播放页：铺满窗口的三维档案阵列上的文字层（1.6.9 起） |
-| `archive-now` | 档案主题左下角的正在播放：歌名、歌手、可拖动的进度条和播放控制（1.6.9 起；1.6.10 起可以操作） |
-| `archive-controls` | `archive-now` 中的播放控制：播放模式、上一首、播放/暂停、下一首、网易云评论、播放速度、音量和“回到当前歌曲”（1.6.10 起） |
-| `archive-lyrics` | 档案主题左上角的歌词：当前句和上下各一句，每句是一个 `lyric-line`，不能点击（1.6.10 起；1.6.11 起只有这三句，不再包含 `lyric-scroll`） |
-| `archive-selected` | 档案主题中选中的歌曲：歌名、歌手和时长（1.6.9 起） |
 | `egg` | 彩蛋的装饰层（白鸽、藤蔓、花朵、蝴蝶等），只在 `data-egg` 有值时出现，不接收鼠标（1.6.12 起） |
 | `desktop-lyrics` | 桌面歌词窗口 |
 | `desktop-lyrics-line` | 桌面歌词的文字 |
@@ -469,8 +464,8 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `data-window` | `main` / `desktop-lyrics` | 主窗口或桌面歌词窗口 |
 | `data-platform` | `macos` / `windows` | 操作系统 |
 | `data-theme` | `light` / `dark` | 当前实际使用的明暗模式 |
-| `data-bg` | `image` / `weather` / `archive` / 无 | 背景是图片（自定义背景或封面）、天气动画、三维档案阵列（1.6.9 起），还是纯色 |
-| `data-egg` | `happy-ending` / 无 | 彩蛋：在网易云播放《What do you want more than a Happy ending?》时为 `happy-ending`，整个界面换成这首歌的插画风格（档案主题下不触发，1.6.12 起） |
+| `data-bg` | `image` / `weather` / 无 | 背景是图片（自定义背景或封面）、天气动画，还是纯色 |
+| `data-egg` | `happy-ending` / 无 | 彩蛋：在网易云播放《What do you want more than a Happy ending?》时为 `happy-ending`，整个界面换成这首歌的插画风格（1.6.12 起） |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | 天气主题下的天气 |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | 天气主题下的大致时段 |
 | `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | 天气主题下的时段：破晓、日出、上午、中午、下午、傍晚、日落、夜晚、午夜（1.6.3 起） |
@@ -484,7 +479,7 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 
 说明：
 
-- `data-theme` 是**实际使用**的明暗模式。用户选择“跟随系统”时，它会随系统切换；选择“天气”主题时，它总是 `dark`（天空背景上用白色文字），同时 `data-bg` 为 `weather`；选择“档案”主题时，它总是 `light`，同时 `data-bg` 为 `archive`。
+- `data-theme` 是**实际使用**的明暗模式。用户选择“跟随系统”时，它会随系统切换；选择“天气”主题时，它总是 `dark`（天空背景上用白色文字），同时 `data-bg` 为 `weather`。
 - `data-bg` 没有值（属性不存在）时表示纯色背景。用 `:root:not([data-bg])` 选择纯色背景的情况。
 - `data-player-layout` 只在 `data-player-style` 为 `classic` 时可能是 `free`。Flow 样式下它总是 `classic`。编辑布局期间它也是 `free`。
 - 这些属性都在 `<html>` 上，所以要写成 `:root[data-xxx="…"]`，并且放在选择器的最前面。
@@ -563,7 +558,6 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | 图片背景（浅色） | `:root[data-bg="image"]` |
 | 图片背景（深色） | `:root[data-theme="dark"][data-bg="image"]` |
 | 天气主题 | `:root[data-bg="weather"]` |
-| 档案主题 | `:root[data-bg="archive"]` |
 
 带属性的选择器优先级比单独的 `:root` 高。所以插件只写 `:root { --panel: … }` 时，在深色模式下会被 App 的 `:root[data-theme="dark"]` 盖过。请为每种情况分别写：
 
@@ -931,7 +925,7 @@ macOS 和 Windows 自带的中文字体不同，请为两个系统各写一个�
 <!-- config-keys -->
 | 键 | 取值 | 对应的设置 |
 | --- | --- | --- |
-| `theme` | `system` / `light` / `dark` / `weather` / `archive` | 外观模式 |
+| `theme` | `system` / `light` / `dark` / `weather` | 外观模式 |
 | `accent` | `#RRGGBB` | 主题色 |
 | `dynamicAccent` | true / false | 随封面变色 |
 | `coverBackground` | true / false | 播放音乐时使用封面作为背景 |
@@ -949,7 +943,7 @@ macOS 和 Windows 自带的中文字体不同，请为两个系统各写一个�
 - 颜色写成 `#RRGGBB` 或 `#RGB`，十六进制，不区分大小写，例如 `#ffd166`、`#FFF`。不支持 `rgb()`、颜色名称或透明度。
 - `true` / `false` 是 JSON 布尔值，不要加引号。
 - `lyricFontSize` 是数字（单位 px），范围 14–56，可以是小数。
-- `theme` 中的 `weather` 是“天气”主题（随天气变化的动态背景），`archive` 是“档案”主题（三维档案阵列，1.6.9 起）。
+- `theme` 中的 `weather` 是“天气”主题（随天气变化的动态背景）。
 - `desktopLyrics.color` 是带点的完整键名，直接写成 `"desktopLyrics.color": "#ffffff"`，不要写成嵌套对象。
 - 不在表中的键、或值不符合要求，都会导致插件校验失败（例如“config 不支持 volume”“config.lyricFontSize 的值无效：100”）。
 
@@ -1716,6 +1710,7 @@ pnpm dev
 | 1.6.10 | 档案主题：锚点 `archive-lyrics`、`archive-controls`；这个视图中不再显示播放栏 `transport` |
 | 1.6.11 | 档案主题的 `archive-lyrics` 只显示当前句和上下句，不再包含 `lyric-scroll` |
 | 1.6.12 | 状态属性 `data-egg`；彩蛋装饰层锚点 `egg` |
+| 1.6.13 | 移除档案主题：上面 1.6.9 至 1.6.11 列出的 `archive` 系列锚点、`data-bg` 的值 `archive` 和 `config.theme` 的值 `archive` 都不再存在 |
 
 用到表中某个版本的功能时，把 `minAppVersion` 设为那个版本（预发布版本请写对应的正式版本号，例如 `1.6.0`）。
 
