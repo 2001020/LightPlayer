@@ -18,7 +18,7 @@ import { Icon, type IconName } from "./Icon";
 import { AsrOptions, ModelManager } from "./ModelManager";
 import { LanSettings } from "./LanSettings";
 import { PluginSettings } from "./PluginSettings";
-import { BetaTag, Row, Seg, Switch } from "./SettingsControls";
+import { Row, Seg, Switch } from "./SettingsControls";
 import { tip } from "./Tooltip";
 import { useWeatherScene } from "../hooks";
 import { UpdateSettings } from "./UpdateSettings";
@@ -163,39 +163,9 @@ function WeatherOptions() {
   );
 }
 
-function ArchiveOptions() {
-  const a = useSettings((s) => s.archive);
-  const set = useSettings((s) => s.set);
-  return (
-    <>
-      <h3>
-        档案 <BetaTag />
-      </h3>
-      <p className="note warn">
-        <Icon name="warning" size={14} />
-        <span>档案主题仍是测试版：三维档案阵列对显卡要求较高，可能不够稳定。如果出现卡顿、发热或画面异常，请把画质调成“省电”，或换回其他主题。</span>
-      </p>
-      <Row label="档案浮动" hint="播放时档案盒缓缓起伏；系统开启“减少动态效果”时不浮动">
-        <Switch on={a.motion} onChange={(motion) => set({ archive: { ...a, motion } })} />
-      </Row>
-      <Row label="画质" hint="省电：不画阴影，每秒最多 30 帧；精细：半透明的磨砂档案盒，更耗电">
-        <Seg
-          value={a.quality}
-          options={[["low", "省电"], ["standard", "标准"], ["high", "精细"]]}
-          onChange={(quality) => set({ archive: { ...a, quality } })}
-        />
-      </Row>
-      <p className="note">
-        播放页上每个档案盒是播放列表中的一首歌，印着它的封面：点击播放，滚动鼠标滚轮或向任意方向拖动来挑选，5 秒不操作会回到正在播放的歌曲。左上角显示歌词，左下角是正在播放的歌曲和播放控制，标题栏在鼠标移到窗口上边缘时出现。三维档案阵列移植自 LBEILC 的开源项目 RhineLabUI（MIT 许可）。
-      </p>
-    </>
-  );
-}
-
 function Appearance() {
   const s = useSettings();
   const weather = s.theme === "weather";
-  const archive = s.theme === "archive";
   const [preview, setPreview] = useState<string | null>(null);
   useEffect(() => {
     if (s.background.path) localFileUrl(s.background.path).then(setPreview);
@@ -232,18 +202,7 @@ function Appearance() {
       <Row label="外观模式">
         <Seg
           value={s.theme}
-          options={[
-            ["system", "跟随系统"],
-            ["light", "浅色"],
-            ["dark", "深色"],
-            ["weather", "天气"],
-            [
-              "archive",
-              <>
-                档案 <BetaTag />
-              </>,
-            ],
-          ]}
+          options={[["system", "跟随系统"], ["light", "浅色"], ["dark", "深色"], ["weather", "天气"]]}
           onChange={(theme) => s.set({ theme })}
         />
       </Row>
@@ -264,11 +223,9 @@ function Appearance() {
       </Row>
 
       {weather && <WeatherOptions />}
-      {archive && <ArchiveOptions />}
 
       <h3>背景</h3>
       {weather && <p className="note">天气主题下由实时天气效果作为背景，以下设置在切换回其他主题后生效。</p>}
-      {archive && <p className="note">档案主题下由三维档案阵列作为背景，以下设置在切换回其他主题后生效。</p>}
       <Row label="自定义背景图片" hint="图片会复制到应用数据目录">
         <div className="bg-preview" style={preview ? { backgroundImage: `url("${preview}")` } : undefined} />
         <button className="btn" onClick={pickBackground}>

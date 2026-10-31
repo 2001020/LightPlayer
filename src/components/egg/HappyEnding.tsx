@@ -1,17 +1,15 @@
 // An easter egg for one NetEase song, "What do you want more than a Happy
-// ending?": while it plays (in any theme but the archive), the whole player
+// ending?": while it plays (in any theme), the whole player
 // takes on the look of its artwork, a sunny platform with doves, vines and
 // flowers. Switching songs brings everything back.
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePlayer } from "../../stores/player";
-import { useSettings } from "../../stores/settings";
 import { DOVES_AT, isHappyEnding } from "./egg";
 
 export function useHappyEnding() {
   const path = usePlayer((s) => s.media?.path);
-  const theme = useSettings((s) => s.theme);
-  return isHappyEnding(path, theme);
+  return isHappyEnding(path);
 }
 
 /** The artwork behind the UI, softened so the text stays readable. */

@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import * as C from "./core/controller";
 import { startLan } from "./core/lan";
-import { useArchiveActive, useArchiveChrome } from "./components/archive/ArchiveBackground";
 import { AsrSetupDialog } from "./components/AsrSetupDialog";
 import { AsrTasks, AsrTasksButton } from "./components/AsrTasks";
 import { CommentsPanel } from "./components/CommentsPanel";
@@ -63,10 +62,6 @@ export default function App() {
   const weatherTheme = useSettings((s) => s.theme === "weather");
   const immersive = fullscreen && media?.kind === "video";
   const idle = useIdle(immersive);
-  // The archive theme hides the title bar until the pointer comes near it,
-  // and has its own controls instead of the play bar.
-  const archive = useArchiveActive() && !immersive;
-  const chrome = useArchiveChrome(archive);
 
   useEffect(() => {
     void C.init();
@@ -85,7 +80,7 @@ export default function App() {
   const listShown = usePlaylistShown();
   const listBeside = showLyrics && listShown && listLayout === "side";
   const commentsOpen = useUI((s) => s.commentsOpen);
-  const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive && !archive;
+  const listFloating = !!media && listShown && listLayout === "float" && !showLibrary && !immersive;
   const playerStyle = useSettings((s) => s.playerStyle);
   const freeLayout = useLayouts((s) => !activeLayout(s).classic || !!s.draft);
   const sample = useSample();
@@ -102,9 +97,7 @@ export default function App() {
   }, [showLyrics, showLibrary, media?.kind, playerStyle, fullscreen, freeLayout, sample]);
 
   return (
-    <div
-      className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""} ${archive ? "archive-chrome" : ""} ${chrome.top ? "show-top" : ""}`}
-    >
+    <div className={`app ${immersive ? "immersive" : ""} ${immersive && idle ? "idle" : ""}`}>
       <Background />
       <HappyEndingEgg />
       <header className="titlebar" data-lp="titlebar" data-tauri-drag-region>
@@ -162,7 +155,7 @@ export default function App() {
           <div className="name">{media.meta?.title || media.fileName}</div>
         </div>
       )}
-      {!archive && <TransportBar />}
+      <TransportBar />
       {overlay === "settings" && <SettingsDialog />}
       {overlay === "editor" && <LyricsEditor />}
       {overlay === "videoInfo" && <VideoInfoDialog />}

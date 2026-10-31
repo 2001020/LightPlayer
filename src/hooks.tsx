@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { WeatherSky } from "./components/WeatherSky";
-import { ArchiveBackground } from "./components/archive/ArchiveBackground";
 import { fallbackScene, previewScene, sceneOf, type Scene } from "./core/weather/scene";
 import { useWeather } from "./stores/weather";
 import * as C from "./core/controller";
@@ -110,8 +109,6 @@ export function Background() {
   const egg = useHappyEnding();
   if (egg) return <HappyEndingBackground />;
   if (theme === "weather") return <WeatherBackground />;
-  // The archive field is a light, paper-white room.
-  if (theme === "archive") return <ArchiveBackground />;
   return <PictureBackground />;
 }
 
