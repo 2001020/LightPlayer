@@ -33,6 +33,7 @@ import { basename, stem } from "../lib/format";
 import { useLyrics, useModels, usePlayer, usePlaylist, useSubtitles, useUI, toast } from "../stores/player";
 import { useSettings, type NeteaseQuality } from "../stores/settings";
 import { initLibrary, libraryAction, useLibrary } from "../stores/library";
+import { addedKeys, nowPlayingInfo } from "./private";
 import { neteaseId, setNeteaseLiked, useNetease } from "../stores/netease";
 import {
   addTasks,
@@ -1004,25 +1005,47 @@ function onModelDownload(p: DownloadProgress) {
 
 // ------------------------------------------------------------------ misc
 
-/** Private browsing: nothing opened from now on is remembered. */
+/** Private playback: nothing opened from now on is remembered. */
 export function setPrivateMode(on: boolean) {
   if (settings().privateMode === on) return;
   useSettings.getState().set({ privateMode: on });
-  toast(on ? "已开启无痕浏览，不会记录打开的文件" : "已关闭无痕浏览", on ? "success" : "info");
+  toast(on ? "已开启无痕播放，不会留下播放记录" : "已关闭无痕播放", on ? "success" : "info");
+  if (!on) forgetPrivateSession();
+  // The system's "now playing" shows or hides the song right away.
+  void updateNowPlaying();
+}
+
+/** What was first stored for a file during this private session (lyric offsets, exact seeking). */
+const privateTraces = { offsets: new Set<string>(), precise: new Set<string>() };
+
+function trackPrivateTraces(s: { privateMode: boolean; lyricOffsets: Record<string, number>; precisePaths: string[] }, prev: typeof s) {
+  if (!s.privateMode || !prev.privateMode) return;
+  if (s.lyricOffsets !== prev.lyricOffsets) for (const k of addedKeys(Object.keys(prev.lyricOffsets), Object.keys(s.lyricOffsets))) privateTraces.offsets.add(k);
+  if (s.precisePaths !== prev.precisePaths) for (const k of addedKeys(prev.precisePaths, s.precisePaths)) privateTraces.precise.add(k);
+}
+
+/** Leaving private mode: drops what the session left behind in the app. */
+function forgetPrivateSession() {
+  const st = settings();
+  if (privateTraces.offsets.size || privateTraces.precise.size) {
+    const lyricOffsets = Object.fromEntries(Object.entries(st.lyricOffsets).filter(([k]) => !privateTraces.offsets.has(k)));
+    useSettings.getState().set({ lyricOffsets, precisePaths: st.precisePaths.filter((p) => !privateTraces.precise.has(p)) });
+    privateTraces.offsets.clear();
+    privateTraces.precise.clear();
+  }
+  usePlaylist.setState({ history: [] });
+  // The NetEase search box and its results.
+  useNetease.setState((n) => {
+    const lists = { ...n.lists };
+    delete lists.search;
+    return { searchQuery: "", lists };
+  });
 }
 
 async function updateNowPlaying() {
   const m = engine.media;
   if (!m || !isTauri) return;
-  await api
-    .nowPlayingMetadata({
-      title: m.meta?.title ?? m.name,
-      artist: m.meta?.artist ?? null,
-      album: m.meta?.album ?? null,
-      duration: m.duration ?? null,
-      cover: m.meta?.cover ?? null,
-    })
-    .catch(() => {});
+  await api.nowPlayingMetadata(nowPlayingInfo(m, settings().privateMode)).catch(() => {});
 }
 
 async function updateDynamicAccent() {
@@ -1165,7 +1188,11 @@ export async function init() {
   });
   void initLibrary();
 
-  window.addEventListener("beforeunload", () => rememberPosition(true));
+  window.addEventListener("beforeunload", () => {
+    rememberPosition(true);
+    if (settings().privateMode) forgetPrivateSession();
+  });
+  useSettings.subscribe(trackPrivateTraces);
 
   // Menu bar icon, "keep running when the window is closed" and private mode.
   const syncBackground = (s: { runInBackground: boolean; trayShowTitle: boolean; privateMode: boolean }) =>

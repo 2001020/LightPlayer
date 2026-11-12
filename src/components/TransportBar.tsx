@@ -518,6 +518,7 @@ function TransportRight({ abRef }: { abRef: RefObject<HTMLButtonElement | null> 
   const isVideo = media?.kind === "video";
   const cloud = isCloudPath(media?.path);
   const lanOn = useLan((s) => activeSend(s) || s.follow.mode === "following" || s.follow.mode === "paused");
+  const privateMode = useSettings((s) => s.privateMode);
 
   const slots: Slot[] = [];
   if (cloud) {
@@ -589,6 +590,20 @@ function TransportRight({ abRef }: { abRef: RefObject<HTMLButtonElement | null> 
         </button>
       ),
       row: { icon: "devices", label: "局域网同步", on: lanOn, run: openLan },
+    });
+  }
+
+  // Always there, so private playback can be turned on before anything is opened.
+  {
+    const togglePrivate = () => C.setPrivateMode(!privateMode);
+    slots.push({
+      id: "private",
+      node: (
+        <button className={`icon-btn ${privateMode ? "active" : ""}`} onClick={togglePrivate} {...tip(privateMode ? "关闭无痕播放" : "无痕播放", "⇧⌘N")}>
+          <Icon name="incognito" />
+        </button>
+      ),
+      row: { icon: "incognito", label: "无痕播放", kbd: "⇧⌘N", on: privateMode, run: togglePrivate },
     });
   }
 

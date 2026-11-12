@@ -464,7 +464,8 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `data-window` | `main` / `desktop-lyrics` | 主窗口或桌面歌词窗口 |
 | `data-platform` | `macos` / `windows` | 操作系统 |
 | `data-theme` | `light` / `dark` | 当前实际使用的明暗模式 |
-| `data-bg` | `image` / `weather` / 无 | 背景是图片（自定义背景或封面）、天气动画，还是纯色 |
+| `data-bg` | `image` / `weather` / `season` / 无 | 背景是图片（自定义背景或封面）、天气动画、季节景色（1.6.14 起），还是纯色 |
+| `data-season` | `spring` / `summer` / `autumn` / `winter` / 无 | 季节主题下显示的季节；“自动”时按日期决定（1.6.14 起） |
 | `data-egg` | `happy-ending` / 无 | 彩蛋：在网易云播放《What do you want more than a Happy ending?》时为 `happy-ending`，整个界面换成这首歌的插画风格（1.6.12 起） |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | 天气主题下的天气 |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | 天气主题下的大致时段 |
@@ -479,7 +480,7 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 
 说明：
 
-- `data-theme` 是**实际使用**的明暗模式。用户选择“跟随系统”时，它会随系统切换；选择“天气”主题时，它总是 `dark`（天空背景上用白色文字），同时 `data-bg` 为 `weather`。
+- `data-theme` 是**实际使用**的明暗模式。用户选择“跟随系统”时，它会随系统切换；选择“天气”主题时，它总是 `dark`（天空背景上用白色文字），同时 `data-bg` 为 `weather`。季节主题下春、夏、秋为 `light`，冬为 `dark`，同时 `data-bg` 为 `season`。
 - `data-bg` 没有值（属性不存在）时表示纯色背景。用 `:root:not([data-bg])` 选择纯色背景的情况。
 - `data-player-layout` 只在 `data-player-style` 为 `classic` 时可能是 `free`。Flow 样式下它总是 `classic`。编辑布局期间它也是 `free`。
 - 这些属性都在 `<html>` 上，所以要写成 `:root[data-xxx="…"]`，并且放在选择器的最前面。
@@ -558,6 +559,7 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | 图片背景（浅色） | `:root[data-bg="image"]` |
 | 图片背景（深色） | `:root[data-theme="dark"][data-bg="image"]` |
 | 天气主题 | `:root[data-bg="weather"]` |
+| 季节主题 | `:root[data-bg="season"]`，某个季节用 `:root[data-season="autumn"]` |
 
 带属性的选择器优先级比单独的 `:root` 高。所以插件只写 `:root { --panel: … }` 时，在深色模式下会被 App 的 `:root[data-theme="dark"]` 盖过。请为每种情况分别写：
 
@@ -925,7 +927,7 @@ macOS 和 Windows 自带的中文字体不同，请为两个系统各写一个�
 <!-- config-keys -->
 | 键 | 取值 | 对应的设置 |
 | --- | --- | --- |
-| `theme` | `system` / `light` / `dark` / `weather` | 外观模式 |
+| `theme` | `system` / `light` / `dark` / `weather` / `season` / `spring` / `summer` / `autumn` / `winter` | 外观模式 |
 | `accent` | `#RRGGBB` | 主题色 |
 | `dynamicAccent` | true / false | 随封面变色 |
 | `coverBackground` | true / false | 播放音乐时使用封面作为背景 |
@@ -944,6 +946,7 @@ macOS 和 Windows 自带的中文字体不同，请为两个系统各写一个�
 - `true` / `false` 是 JSON 布尔值，不要加引号。
 - `lyricFontSize` 是数字（单位 px），范围 14–56，可以是小数。
 - `theme` 中的 `weather` 是“天气”主题（随天气变化的动态背景）。
+- `theme` 中的 `season` 是按日期自动选择季节的季节主题，`spring`、`summer`、`autumn`、`winter` 固定为某个季节（1.6.14 起）。
 - `desktopLyrics.color` 是带点的完整键名，直接写成 `"desktopLyrics.color": "#ffffff"`，不要写成嵌套对象。
 - 不在表中的键、或值不符合要求，都会导致插件校验失败（例如“config 不支持 volume”“config.lyricFontSize 的值无效：100”）。
 
@@ -1711,6 +1714,7 @@ pnpm dev
 | 1.6.11 | 档案主题的 `archive-lyrics` 只显示当前句和上下句，不再包含 `lyric-scroll` |
 | 1.6.12 | 状态属性 `data-egg`；彩蛋装饰层锚点 `egg` |
 | 1.6.13 | 移除档案主题：上面 1.6.9 至 1.6.11 列出的 `archive` 系列锚点、`data-bg` 的值 `archive` 和 `config.theme` 的值 `archive` 都不再存在 |
+| 1.6.14 | 季节主题：状态属性 `data-season`，`data-bg` 的值 `season`，`config.theme` 可以设为 `season`、`spring`、`summer`、`autumn`、`winter`；`transport-right` 中多了“无痕播放”按钮 |
 
 用到表中某个版本的功能时，把 `minAppVersion` 设为那个版本（预发布版本请写对应的正式版本号，例如 `1.6.0`）。
 

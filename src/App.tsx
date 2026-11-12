@@ -113,7 +113,7 @@ export default function App() {
         <div className="spacer" data-tauri-drag-region />
         {weatherTheme && <WeatherChip />}
         {privateMode && (
-          <button className="private-badge" onClick={() => C.setPrivateMode(false)} {...tip("无痕浏览中，打开的文件不会被记录。点击关闭", "⇧⌘N")}>
+          <button className="private-badge" onClick={() => C.setPrivateMode(false)} {...tip("无痕播放中，不会留下播放记录。点击关闭", "⇧⌘N")}>
             <Icon name="incognito" size={15} /> 无痕
           </button>
         )}

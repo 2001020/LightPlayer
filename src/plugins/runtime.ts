@@ -116,7 +116,7 @@ function langSetting(): LangSetting {
 }
 
 /** The menu bar / notification area menu, which the page's replacer cannot reach. */
-const TRAY_LABELS = ["未在播放", "播放", "暂停", "上一首", "下一首", "无痕浏览模式", "显示 LightPlayer", "退出 LightPlayer"];
+const TRAY_LABELS = ["未在播放", "播放", "暂停", "上一首", "下一首", "无痕播放模式", "显示 LightPlayer", "退出 LightPlayer"];
 
 async function applyStrings(active: Active[], rev: number) {
   const lang: Lang = resolveLang(langSetting());
