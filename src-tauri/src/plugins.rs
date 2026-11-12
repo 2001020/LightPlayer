@@ -196,7 +196,7 @@ fn check_config(v: &Value) -> Result<(), String> {
     for (k, v) in map {
         let one_of = |opts: &[&str]| v.as_str().is_some_and(|s| opts.contains(&s));
         let ok = match k.as_str() {
-            "theme" => one_of(&["system", "light", "dark", "weather"]),
+            "theme" => one_of(&["system", "light", "dark", "weather", "season", "spring", "summer", "autumn", "winter"]),
             "playerStyle" => one_of(&["classic", "flow"]),
             "lyricAlign" => one_of(&["center", "left"]),
             "accent" | "desktopLyrics.color" => v.as_str().is_some_and(valid_color),
