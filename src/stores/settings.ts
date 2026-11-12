@@ -3,8 +3,15 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { PlayMode } from "../core/playlist/queue";
 import { isLangSetting, type LangSetting } from "../i18n";
 
-export type ThemeMode = "system" | "light" | "dark" | "weather";
-const THEMES: ThemeMode[] = ["system", "light", "dark", "weather"];
+export type ThemeMode = "system" | "light" | "dark" | "weather" | "season" | "spring" | "summer" | "autumn" | "winter";
+const THEMES: ThemeMode[] = ["system", "light", "dark", "weather", "season", "spring", "summer", "autumn", "winter"];
+
+export interface SeasonSettings {
+  /** The automatic season theme goes by the southern hemisphere's calendar. */
+  southern: boolean;
+  /** Falling petals, leaves and snow. */
+  motion: boolean;
+}
 
 export interface DesktopLyricsSettings {
   /** The floating, always-on-top lyrics window is shown. */
@@ -68,6 +75,7 @@ export interface Settings {
   background: BackgroundSettings;
   coverBackground: boolean;
   weather: WeatherSettings;
+  season: SeasonSettings;
   seekStep: number;
   jumpStep: number;
   resume: boolean;
@@ -97,7 +105,7 @@ export interface Settings {
   autoNextVideo: boolean;
   /** Show the song title next to the menu bar icon. */
   trayShowTitle: boolean;
-  /** Private browsing: opened files leave no history (recent list, plays, positions). */
+  /** Private playback: opened files leave no history (recent list, plays, positions). */
   privateMode: boolean;
   /** Files played through an ffmpeg copy because WebKit's clock drifts on them. */
   precisePaths: string[];
@@ -147,6 +155,7 @@ export const defaultSettings: Settings = {
   background: { path: null, blur: 16, dim: 0.35, fit: "cover" },
   coverBackground: true,
   weather: { source: "auto", city: null, motion: true, timeAccent: true },
+  season: { southern: false, motion: true },
   seekStep: 5,
   jumpStep: 15,
   resume: true,
@@ -254,6 +263,7 @@ export const useSettings = create<SettingsStore>()(
           asr: { ...current.asr, ...(p.asr ?? {}) },
           background: { ...current.background, ...(p.background ?? {}) },
           weather: { ...current.weather, ...(p.weather ?? {}) },
+          season: { ...current.season, ...(p.season ?? {}) },
           desktopLyrics: { ...current.desktopLyrics, ...(p.desktopLyrics ?? {}) },
           update: { ...current.update, ...(p.update ?? {}) },
           lan: { ...current.lan, ...(p.lan ?? {}) },

@@ -20,7 +20,8 @@ import { LanSettings } from "./LanSettings";
 import { PluginSettings } from "./PluginSettings";
 import { Row, Seg, Switch } from "./SettingsControls";
 import { tip } from "./Tooltip";
-import { useWeatherScene } from "../hooks";
+import { useSeason, useWeatherScene } from "../hooks";
+import { SEASON_LABELS } from "../core/season";
 import { UpdateSettings } from "./UpdateSettings";
 import { isWindows, keys, TRAY } from "../lib/platform";
 import { LANGS, locale, systemLang, type LangSetting } from "../i18n";
@@ -166,6 +167,7 @@ function WeatherOptions() {
 function Appearance() {
   const s = useSettings();
   const weather = s.theme === "weather";
+  const season = useSeason();
   const [preview, setPreview] = useState<string | null>(null);
   useEffect(() => {
     if (s.background.path) localFileUrl(s.background.path).then(setPreview);
@@ -206,6 +208,28 @@ function Appearance() {
           onChange={(theme) => s.set({ theme })}
         />
       </Row>
+      <Row label="季节主题" hint="随季节变化的景色和配色。“自动”按当前日期选择季节">
+        <Seg
+          value={s.theme}
+          options={[["season", "自动"], ["spring", "春"], ["summer", "夏"], ["autumn", "秋"], ["winter", "冬"]]}
+          onChange={(theme) => s.set({ theme })}
+        />
+      </Row>
+      {s.theme === "season" && season && (
+        <>
+          <Row label="当前季节">
+            <span className="season-now">{SEASON_LABELS[season]}</span>
+          </Row>
+          <Row label="南半球" hint="季节与北半球相反">
+            <Switch on={s.season.southern} onChange={(southern) => s.set({ season: { ...s.season, southern } })} />
+          </Row>
+        </>
+      )}
+      {season && (
+        <Row label="飘落动画" hint="花瓣、落叶和雪花">
+          <Switch on={s.season.motion} onChange={(motion) => s.set({ season: { ...s.season, motion } })} />
+        </Row>
+      )}
       <Row label="播放器样式" hint="Flow：仿早年 Coverflow 的封面墙，左右翻看播放列表">
         <Seg value={s.playerStyle} options={[["classic", "经典"], ["flow", "Flow"]]} onChange={(playerStyle) => s.set({ playerStyle })} />
       </Row>
@@ -226,6 +250,7 @@ function Appearance() {
 
       <h3>背景</h3>
       {weather && <p className="note">天气主题下由实时天气效果作为背景，以下设置在切换回其他主题后生效。</p>}
+      {season && <p className="note">季节主题下由季节景色作为背景，主题色也随季节变化；以下设置在切换回其他主题后生效。</p>}
       <Row label="自定义背景图片" hint="图片会复制到应用数据目录">
         <div className="bg-preview" style={preview ? { backgroundImage: `url("${preview}")` } : undefined} />
         <button className="btn" onClick={pickBackground}>
@@ -366,8 +391,8 @@ function Playback() {
 
       <h3>隐私</h3>
       <Row
-        label="无痕浏览模式"
-        hint={`开启后，打开的文件不会出现在最近播放中，不记录播放次数和播放位置，也不会自动加入媒体库。也可以按 ${keys("⇧⌘N")} 或在${TRAY}中切换`}
+        label="无痕播放模式"
+        hint={`开启后，播放的内容不会出现在最近播放中，不记录播放次数和播放位置，不会自动加入媒体库；系统的“正在播放”和菜单栏不显示歌名、歌手和封面；关闭时清除期间的搜索词、播放顺序记录和为文件保存的歌词偏移。也可以按 ${keys("⇧⌘N")} 或在${TRAY}中切换`}
       >
         <Switch on={s.privateMode} onChange={(on) => C.setPrivateMode(on)} />
       </Row>
@@ -473,7 +498,7 @@ const SHORTCUTS: [string, string][] = [
   ["⌘O", "打开文件"],
   ["⌘L", "媒体库"],
   ["⌘,", "设置"],
-  ["⇧⌘N", "开启 / 关闭无痕浏览"],
+  ["⇧⌘N", "开启 / 关闭无痕播放"],
   ["⌥⇧⌘P", "插件安全模式（临时停用所有插件）"],
   ["Y", "打开歌词页"],
   ["C", "网易云评论（仅网易云歌曲）"],

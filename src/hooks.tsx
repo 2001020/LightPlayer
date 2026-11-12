@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { WeatherSky } from "./components/WeatherSky";
+import { SeasonSky } from "./components/SeasonSky";
+import { activeSeason, SEASON_ACCENT, seasonIsDark, type Season } from "./core/season";
 import { fallbackScene, previewScene, sceneOf, type Scene } from "./core/weather/scene";
 import { useWeather } from "./stores/weather";
 import * as C from "./core/controller";
@@ -37,21 +39,51 @@ export function useTheme() {
   const timeAccent = useTimeAccent();
   const systemDark = useSystemDark();
   const egg = useHappyEnding();
+  const season = useSeason();
   // The weather theme uses white text on the sky, like the iOS Weather app.
   // The Happy ending egg is a bright, sunny day in every theme.
-  const dark = !egg && (theme === "dark" || theme === "weather" || (theme === "system" && systemDark));
+  // Of the seasons, only winter (a snowy night) is dark.
+  const dark = !egg && (season ? seasonIsDark(season) : theme === "dark" || theme === "weather" || (theme === "system" && systemDark));
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = dark ? "dark" : "light";
-    const p = accentPalette(egg ? EGG_ACCENT : dynamic && dynamicColor ? dynamicColor : timeAccent ?? accent, dark);
+    const p = accentPalette(egg ? EGG_ACCENT : dynamic && dynamicColor ? dynamicColor : timeAccent ?? (season ? SEASON_ACCENT[season] : accent), dark);
     root.style.setProperty("--accent", p.accent);
     root.style.setProperty("--accent-hover", p.hover);
     root.style.setProperty("--accent-text", p.text);
     root.style.setProperty("--accent-strong", p.strong);
     root.style.setProperty("--accent-soft", p.soft);
     root.style.setProperty("--on-accent", p.onAccent);
-  }, [dark, accent, dynamic, dynamicColor, timeAccent, egg]);
+  }, [dark, accent, dynamic, dynamicColor, timeAccent, egg, season]);
   return dark;
+}
+
+/** The season the theme shows (null in other themes); the automatic one follows the calendar. */
+export function useSeason(): Season | null {
+  const theme = useSettings((s) => s.theme);
+  const southern = useSettings((s) => s.season.southern);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (theme !== "season") return;
+    const t = window.setInterval(() => setTick((x) => x + 1), 60 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [theme]);
+  return useMemo(() => {
+    void tick;
+    return activeSeason(theme, new Date(), southern);
+  }, [theme, southern, tick]);
+}
+
+function SeasonBackground({ season }: { season: Season }) {
+  const motion = useSettings((s) => s.season.motion);
+  const fullscreen = useUI((s) => s.fullscreen);
+  const video = usePlayer((s) => s.media?.kind === "video");
+  return (
+    <>
+      <div className="bg-layer" />
+      <SeasonSky season={season} motion={motion} paused={fullscreen && video} />
+    </>
+  );
 }
 
 /** In the weather theme, the accent colour of the time of day (when that option is on). */
@@ -107,8 +139,10 @@ function WeatherBackground() {
 export function Background() {
   const theme = useSettings((s) => s.theme);
   const egg = useHappyEnding();
+  const season = useSeason();
   if (egg) return <HappyEndingBackground />;
   if (theme === "weather") return <WeatherBackground />;
+  if (season) return <SeasonBackground season={season} />;
   return <PictureBackground />;
 }
 

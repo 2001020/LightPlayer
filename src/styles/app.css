@@ -3093,6 +3093,7 @@ button.cm-foot {
 }
 .seg {
   display: inline-flex;
+  flex-wrap: wrap;
   padding: 2px;
   background: var(--panel-2);
   border: 1px solid var(--border);
@@ -5633,6 +5634,240 @@ html.desktop-lyrics #root {
   top: calc(var(--titlebar-h) + 52px);
 }
 
+/* ---------------------------------------------------------------- Season theme */
+/* A sky, rolling ground and something falling, for each season. Spring,
+   summer and autumn are bright; winter is a snowy night. */
+.season-now {
+  font-weight: 600;
+  color: var(--accent-text);
+}
+:root[data-bg="season"] {
+  --bg-grad: none;
+  --panel: rgba(255, 255, 255, 0.5);
+  --panel-2: rgba(255, 255, 255, 0.36);
+  --border: rgba(60, 60, 80, 0.14);
+  --halo: 0 0 8px rgba(255, 255, 255, 0.7);
+  --lyric-dim: 60%;
+  --lyric-near: 74%;
+}
+:root[data-season="spring"] {
+  --bg: #fdeef3;
+  --season-sky: linear-gradient(to bottom, #bfe3f7 0%, #e6f1fb 34%, #fde7ef 68%, #fbd3e0 100%);
+  --season-glow: radial-gradient(60vw 46vh at 78% 8%, rgba(255, 244, 214, 0.9), transparent 70%);
+  --ridge-far: #cfe8cf;
+  --ridge-mid: #b4dcb4;
+  --ridge-near: #9bd0a0;
+  --crown: #ffc2d6;
+  --crown-2: #ffdbe7;
+  --trunk: #8a6a62;
+  --light: rgba(255, 255, 255, 0.55);
+  --text: #3a2733;
+  --text-dim: #6a4d5c;
+  --text-faint: #957a88;
+  --panel-solid: #fff8fa;
+  --hover: rgba(232, 121, 159, 0.1);
+  --shadow: 0 10px 36px rgba(190, 110, 140, 0.18), 0 2px 8px rgba(190, 110, 140, 0.1);
+}
+:root[data-season="summer"] {
+  --bg: #e4f6ee;
+  --season-sky: linear-gradient(to bottom, #58b7f0 0%, #9fd8f6 38%, #d9f3ec 74%, #c8eccf 100%);
+  --season-glow: radial-gradient(52vw 44vh at 84% 4%, rgba(255, 250, 200, 0.95), transparent 68%);
+  --ridge-far: #9fd8a8;
+  --ridge-mid: #72c487;
+  --ridge-near: #4daf6e;
+  --crown: #3fa468;
+  --crown-2: #63bf82;
+  --trunk: #6f5a44;
+  --light: rgba(255, 255, 220, 0.42);
+  --text: #12302a;
+  --text-dim: #2f5247;
+  --text-faint: #5a7d72;
+  --panel-solid: #f6fdf9;
+  --hover: rgba(47, 158, 110, 0.1);
+  --shadow: 0 10px 36px rgba(40, 120, 100, 0.18), 0 2px 8px rgba(40, 120, 100, 0.1);
+}
+:root[data-season="autumn"] {
+  --bg: #fbf0df;
+  --season-sky: linear-gradient(to bottom, #f6d9a8 0%, #fbe7c6 36%, #fdf1dc 70%, #f7d9b4 100%);
+  --season-glow: radial-gradient(56vw 44vh at 20% 10%, rgba(255, 214, 150, 0.85), transparent 70%);
+  --ridge-far: #edc48a;
+  --ridge-mid: #e0a25c;
+  --ridge-near: #c97f3c;
+  --crown: #e4672f;
+  --crown-2: #f2a23a;
+  --trunk: #6b4a36;
+  --light: rgba(255, 236, 190, 0.5);
+  --text: #3b2416;
+  --text-dim: #6a4a34;
+  --text-faint: #96765e;
+  --panel-solid: #fffaf2;
+  --hover: rgba(217, 119, 43, 0.1);
+  --shadow: 0 10px 36px rgba(150, 90, 40, 0.2), 0 2px 8px rgba(150, 90, 40, 0.1);
+}
+:root[data-season="winter"] {
+  --bg: #0f1a2e;
+  --season-sky: linear-gradient(to bottom, #0b1428 0%, #16284a 42%, #2c4a78 78%, #5b7fae 100%);
+  --season-glow: radial-gradient(40vw 40vh at 80% 12%, rgba(190, 215, 255, 0.34), transparent 70%);
+  --ridge-far: #9db6d6;
+  --ridge-mid: #c4d6ec;
+  --ridge-near: #eef4fb;
+  --trunk: #2a3a55;
+  --light: rgba(255, 255, 255, 0.9);
+  --panel: rgba(16, 28, 52, 0.42);
+  --panel-solid: #172543;
+  --panel-2: rgba(255, 255, 255, 0.07);
+  --hover: rgba(255, 255, 255, 0.11);
+  --border: rgba(255, 255, 255, 0.15);
+  --text: #f4f8ff;
+  --text-dim: rgba(240, 246, 255, 0.82);
+  --text-faint: rgba(240, 246, 255, 0.6);
+  --track: rgba(255, 255, 255, 0.24);
+  --shadow: 0 10px 40px rgba(4, 10, 26, 0.45), 0 2px 8px rgba(4, 10, 26, 0.25);
+  --halo: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+:root[data-bg="season"] .panel,
+:root[data-bg="season"] .lib-side {
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+}
+.season-sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--season-sky);
+}
+.season-glow {
+  position: absolute;
+  inset: 0;
+  background: var(--season-glow);
+}
+.season-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: min(38vh, 300px);
+}
+.season-ground .ridge.far {
+  fill: var(--ridge-far);
+}
+.season-ground .ridge.mid {
+  fill: var(--ridge-mid);
+}
+.season-ground .ridge.near {
+  fill: var(--ridge-near);
+}
+.season-ground .trunk {
+  fill: var(--trunk);
+}
+.season-ground .twig {
+  fill: none;
+  stroke: var(--trunk);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.season-ground .frost {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.85;
+  transform: translateY(-1.2px);
+}
+.season-ground .crown {
+  fill: var(--crown);
+}
+.season-ground .crown.two {
+  fill: var(--crown-2);
+}
+.season-light {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--light), transparent 70%);
+  animation: season-light ease-in-out infinite alternate;
+}
+/* Stars in winter: small and sharp. */
+:root[data-season="winter"] .season-light {
+  background: var(--light);
+}
+@keyframes season-light {
+  from {
+    opacity: 0.25;
+    transform: translate(0, 0) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(10px, -14px) scale(1.08);
+  }
+}
+:root[data-season="winter"] .season-light {
+  animation-name: season-twinkle;
+}
+@keyframes season-twinkle {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.season-fall {
+  position: absolute;
+  top: 0;
+  animation: season-fall linear infinite;
+  will-change: transform;
+}
+.season-fall svg {
+  display: block;
+  width: 100%;
+  animation: season-tumble var(--spin, 4s) ease-in-out infinite alternate;
+}
+.season-fall.snow {
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
+}
+@keyframes season-fall {
+  0% {
+    transform: translate(0, -6vh);
+  }
+  25% {
+    transform: translate(calc(var(--sway) * 0.6), 22vh);
+  }
+  50% {
+    transform: translate(calc(var(--sway) * 0.15), 50vh);
+  }
+  75% {
+    transform: translate(calc(var(--sway) * 0.85), 78vh);
+  }
+  100% {
+    transform: translate(calc(var(--sway) * 0.45), 106vh);
+  }
+}
+@keyframes season-tumble {
+  from {
+    transform: rotate(-50deg) rotateX(0deg) rotateY(-50deg);
+  }
+  to {
+    transform: rotate(160deg) rotateX(180deg) rotateY(60deg);
+  }
+}
+.season-sky.still *,
+.season-sky.paused * {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .season-sky * {
+    animation: none !important;
+  }
+  .season-fall {
+    display: none;
+  }
+}
+
 /* ---------------------------------------------------------------- Happy ending egg */
 /* While "What do you want more than a Happy ending?" plays from NetEase, the
    player looks like its artwork: a sunny station platform, sky blue and
@@ -5680,14 +5915,14 @@ html.desktop-lyrics #root {
 }
 /* The progress handle is a small dove. */
 :root[data-egg="happy-ending"] .slider:not(.vertical) .thumb {
-  width: 26px;
-  height: 18px;
-  margin-left: -13px;
+  width: 30px;
+  height: 21px;
+  margin-left: -15px;
   border-radius: 0;
   box-shadow: none;
   opacity: 1;
   transform: none;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 80'%3E%3Cpath d='M58 38C48 14 30 4 12 6c14 8 22 18 28 30z' fill='%23e3eaf3'/%3E%3Cpath d='M22 44c12-10 36-12 56-8 12 2 22-2 30-6-4 10-12 16-22 18-16 6-40 8-56 4-6-2-10-4-8-8z' fill='%23fff' stroke='%23b9c8da' stroke-width='2'/%3E%3Cpath d='M100 31l14-3-10 7z' fill='%23c9a98a'/%3E%3Cpath d='M60 38C52 12 36-2 14 0c16 10 26 22 32 40z' fill='%23fff' stroke='%23b9c8da' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 110'%3E%3Cpath d='M46 62L8 52l14 10-18 4 18 3-12 9 38-8z' fill='%23dfe7f1' stroke='%23b4c3d6' stroke-width='2'/%3E%3Cpath d='M40 64c12-15 44-19 68-15 10 1 18-2 23-7 7-6 18-4 19 5 1 7-6 12-14 14-12 10-40 16-66 13-14-2-26-4-30-10z' fill='%23fff' stroke='%23b4c3d6' stroke-width='2'/%3E%3Cpath d='M149 44l10 3.5-10 2.5z' fill='%23eab08c'/%3E%3Ccircle cx='141.5' cy='45.5' r='2.6' fill='%2333394a'/%3E%3Cpath d='M98 56C92 32 76 10 46 2c6 8 9 14 10 20-8-4-16-4-22-2 8 4 13 9 16 14-7-1-13 0-18 3 10 3 18 9 26 15 10 6 26 8 40 4z' fill='%23fff' stroke='%23b4c3d6' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
   filter: drop-shadow(0 1px 2px rgba(40, 70, 110, 0.35));
 }
 /* A sprig of flowers on the cover's corner. */
@@ -5697,15 +5932,18 @@ html.desktop-lyrics #root {
 :root[data-egg="happy-ending"] [data-lp="cover"]::after {
   content: "";
   position: absolute;
-  right: -14px;
-  top: -16px;
-  width: 38%;
+  right: -16px;
+  top: -18px;
+  width: 42%;
   aspect-ratio: 1;
   pointer-events: none;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M95 5C70 20 50 40 30 80' fill='none' stroke='%235f9e86' stroke-width='3'/%3E%3Cpath d='M70 22c6-8 18-8 24 0-6 8-18 8-24 0z' fill='%237cc9b4'/%3E%3Cpath d='M50 45c6-8 18-8 24 0-6 8-18 8-24 0z' fill='%2356a894' transform='rotate(-40 62 45)'/%3E%3Cg fill='%23fff'%3E%3Ccircle cx='80' cy='12' r='6'/%3E%3Ccircle cx='60' cy='30' r='5'/%3E%3Ccircle cx='40' cy='58' r='6'/%3E%3C/g%3E%3Cg fill='%23d9c8f2'%3E%3Ccircle cx='68' cy='16' r='4'/%3E%3Ccircle cx='46' cy='44' r='4'/%3E%3C/g%3E%3Cg fill='%23f6d77a'%3E%3Ccircle cx='80' cy='12' r='2'/%3E%3Ccircle cx='40' cy='58' r='2'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M97 3C74 16 52 38 30 84' fill='none' stroke='%235f9e86' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M0 0C6-9 19-10 27 0 19 9 6 8 0 0z' fill='%238fd3bd' transform='translate(84 11) rotate(150) scale(0.75)'/%3E%3Cpath d='M0 0C6-9 19-10 27 0 19 9 6 8 0 0z' fill='%2363b89f' transform='translate(74 20) rotate(40) scale(0.7)'/%3E%3Cpath d='M0 0C6-9 19-10 27 0 19 9 6 8 0 0z' fill='%23a9dfcc' transform='translate(62 33) rotate(165) scale(0.85)'/%3E%3Cpath d='M0 0C6-9 19-10 27 0 19 9 6 8 0 0z' fill='%2363b89f' transform='translate(53 45) rotate(55) scale(0.8)'/%3E%3Cpath d='M0 0C6-9 19-10 27 0 19 9 6 8 0 0z' fill='%238fd3bd' transform='translate(44 58) rotate(170) scale(0.8)'/%3E%3Cpath d='M0 0C6-9 19-10 27 0 19 9 6 8 0 0z' fill='%23a9dfcc' transform='translate(37 70) rotate(60) scale(0.7)'/%3E%3Cg transform='translate(88 14) scale(0.75)'%3E%3Cg fill='%23fff' stroke='%23c9bedd' stroke-width='.6'%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(0)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(72)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(144)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(216)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(288)'/%3E%3C/g%3E%3Ccircle r='2.6' fill='%23f7d778'/%3E%3C/g%3E%3Cg transform='translate(66 34) scale(0.62)'%3E%3Cg fill='%23dccdf5' stroke='%23c9bedd' stroke-width='.6'%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(0)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(72)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(144)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(216)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(288)'/%3E%3C/g%3E%3Ccircle r='2.6' fill='%23f7d778'/%3E%3C/g%3E%3Cg transform='translate(50 54) scale(0.8)'%3E%3Cg fill='%23fff' stroke='%23c9bedd' stroke-width='.6'%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(0)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(72)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(144)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(216)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(288)'/%3E%3C/g%3E%3Ccircle r='2.6' fill='%23f7d778'/%3E%3C/g%3E%3Cg transform='translate(32 80) scale(0.62)'%3E%3Cg fill='%23ffd9e6' stroke='%23c9bedd' stroke-width='.6'%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(0)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(72)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(144)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(216)'/%3E%3Cpath d='M0 0C-7-4-8-11-3.4-14.5L0-12.4l3.4-2.100C8-11 7-4 0 0z' transform='rotate(288)'/%3E%3C/g%3E%3Ccircle r='2.6' fill='%23f7d778'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
   filter: drop-shadow(0 2px 4px rgba(40, 80, 60, 0.25));
 }
 
+.egg-paints {
+  position: absolute;
+}
 .egg-layer {
   position: fixed;
   inset: 0;
@@ -5719,8 +5957,9 @@ html.desktop-lyrics #root {
 .egg-vine {
   position: absolute;
   top: -6px;
-  width: min(17vw, 200px);
-  opacity: 0.95;
+  width: min(19vw, 230px);
+  overflow: visible;
+  filter: drop-shadow(0 3px 5px rgba(40, 90, 80, 0.18));
   animation: egg-sway 7s ease-in-out infinite alternate;
 }
 /* Lists sit close to the corners there; the vines step back. */
@@ -5739,48 +5978,109 @@ html.desktop-lyrics #root {
 }
 @keyframes egg-sway {
   from {
-    rotate: -1.6deg;
+    rotate: -1.2deg;
   }
   to {
-    rotate: 2deg;
+    rotate: 1.6deg;
+  }
+}
+/* Each strand also moves a little by itself, from where it is rooted. */
+.egg-strand {
+  transform-box: fill-box;
+  transform-origin: 0 0;
+  animation: egg-strand 5.5s ease-in-out infinite alternate;
+}
+.egg-strand.slow {
+  animation-duration: 8s;
+}
+.egg-strand.quick {
+  animation-duration: 4.2s;
+  animation-delay: -2s;
+}
+.egg-bush .egg-strand {
+  transform-origin: 50% 100%;
+}
+@keyframes egg-strand {
+  from {
+    rotate: -1.4deg;
+  }
+  to {
+    rotate: 1.8deg;
   }
 }
 .egg-bush {
   position: fixed;
   left: -10px;
-  bottom: -10px;
+  bottom: -8px;
   z-index: -1;
-  width: min(24vw, 280px);
+  width: min(26vw, 310px);
+  overflow: visible;
   pointer-events: none;
-  opacity: 0.92;
+  filter: drop-shadow(0 2px 4px rgba(40, 90, 80, 0.16));
 }
 .egg-fall {
   position: absolute;
   top: 0;
-  width: 16px;
   animation: egg-fall linear infinite;
-  opacity: 0.9;
+  opacity: 0.92;
+}
+.egg-fall svg {
+  display: block;
+  width: 100%;
+  animation: egg-tumble var(--spin, 4s) ease-in-out infinite alternate;
+  filter: drop-shadow(0 1px 1px rgba(160, 90, 120, 0.2));
 }
 @keyframes egg-fall {
+  0% {
+    transform: translate(0, -6vh);
+  }
+  25% {
+    transform: translate(calc(var(--sway) * 0.6), 22vh);
+  }
+  50% {
+    transform: translate(calc(var(--sway) * 0.2), 50vh);
+  }
+  75% {
+    transform: translate(calc(var(--sway) * 0.9), 78vh);
+  }
+  100% {
+    transform: translate(calc(var(--sway) * 0.5), 106vh);
+  }
+}
+@keyframes egg-tumble {
   from {
-    transform: translate(0, -6vh) rotate(0deg);
+    transform: rotate(-40deg) rotateX(0deg) rotateY(-50deg);
   }
   to {
-    transform: translate(var(--sway), 106vh) rotate(540deg);
+    transform: rotate(150deg) rotateX(180deg) rotateY(60deg);
   }
 }
 .egg-butterfly {
   position: absolute;
-  width: 28px;
+  width: 34px;
   left: 0;
   top: 0;
+  filter: drop-shadow(0 2px 3px rgba(150, 60, 100, 0.25));
+}
+.egg-butterfly svg {
+  display: block;
+  width: 100%;
+  animation: egg-bf-bob 1.3s ease-in-out infinite alternate;
 }
 .egg-butterfly.one {
   animation: egg-bf-one 22s ease-in-out infinite;
 }
 .egg-butterfly.two {
-  width: 22px;
+  width: 26px;
   animation: egg-bf-two 27s ease-in-out infinite;
+}
+@keyframes egg-bf-bob {
+  from {
+    transform: translateY(-3px) rotate(-8deg);
+  }
+  to {
+    transform: translateY(4px) rotate(10deg);
+  }
 }
 @keyframes egg-bf-one {
   0% {
@@ -5814,28 +6114,51 @@ html.desktop-lyrics #root {
   }
 }
 .bf-wing {
-  transform-origin: 20px 15px;
-  animation: egg-wing 0.22s ease-in-out infinite alternate;
+  transform-origin: 24px 20px;
+  animation: egg-wing 0.2s ease-in-out infinite alternate;
 }
 @keyframes egg-wing {
+  from {
+    transform: scaleX(1);
+  }
   to {
-    transform: scaleX(0.3);
+    transform: scaleX(0.22);
   }
 }
+/* A soft round glow with a four-pointed sparkle in it. */
 .egg-glint {
   position: absolute;
-  width: 54px;
-  height: 9px;
   border-radius: 50%;
-  rotate: -32deg;
-  background: linear-gradient(90deg, transparent, rgba(255, 130, 130, 0.45), rgba(255, 220, 120, 0.45), rgba(140, 230, 160, 0.45), rgba(120, 180, 255, 0.45), rgba(200, 140, 255, 0.45), transparent);
+  background: radial-gradient(circle, rgba(var(--c), 0.75) 0%, rgba(var(--c), 0.28) 38%, transparent 70%);
   opacity: 0;
-  animation: egg-glint 5s ease-in-out infinite;
+  animation: egg-glint 5.4s ease-in-out infinite;
+}
+.egg-glint::before,
+.egg-glint::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  height: 2px;
+  translate: -50% -50%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+}
+.egg-glint::after {
+  rotate: 90deg;
 }
 @keyframes egg-glint {
-  40%,
-  60% {
-    opacity: 0.9;
+  0%,
+  100% {
+    opacity: 0;
+    scale: 0.5;
+    rotate: 0deg;
+  }
+  50% {
+    opacity: 0.95;
+    scale: 1;
+    rotate: 35deg;
   }
 }
 .egg-flock {
@@ -5851,6 +6174,9 @@ html.desktop-lyrics #root {
 .egg-dove svg {
   display: block;
   width: 100%;
+  overflow: visible;
+  /* Rises on the down-stroke and sinks on the up-stroke. */
+  animation: egg-bob calc(var(--beat, 0.34s) * 2) ease-in-out infinite;
 }
 .egg-dove.blur {
   filter: blur(3px);
@@ -5858,27 +6184,45 @@ html.desktop-lyrics #root {
 }
 @keyframes egg-fly {
   from {
-    transform: translate(-25vw, 6vh);
+    transform: translate(-30vw, 6vh) rotate(-4deg);
   }
   to {
-    transform: translate(115vw, var(--rise));
+    transform: translate(115vw, var(--rise)) rotate(-9deg);
+  }
+}
+@keyframes egg-bob {
+  0%,
+  100% {
+    transform: translateY(5%);
+  }
+  50% {
+    transform: translateY(-5%);
   }
 }
 .egg-dove .wing {
-  transform-origin: 58px 38px;
-  animation: egg-flap 0.34s ease-in-out infinite alternate;
+  transform-origin: 96px 55px;
+  animation: egg-flap calc(var(--beat, 0.34s) * 2) cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 .egg-dove .wing.back {
-  animation-delay: -0.05s;
+  transform-origin: 90px 54px;
+  animation-delay: -0.04s;
 }
 @keyframes egg-flap {
-  to {
-    transform: scaleY(-0.55);
+  0%,
+  100% {
+    transform: scaleY(1) rotate(6deg);
+  }
+  45% {
+    transform: scaleY(-0.72) rotate(-10deg);
+  }
+  60% {
+    transform: scaleY(-0.6) rotate(-8deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .egg-layer *,
-  .egg-vine {
+  .egg-vine,
+  .egg-bush * {
     animation: none !important;
   }
   .egg-fall,

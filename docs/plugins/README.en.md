@@ -192,7 +192,8 @@ Attributes on the `<html>` element reflect the app's current state, so styles ca
 | `data-window` | `main` / `desktop-lyrics` | Main window or desktop lyrics window |
 | `data-platform` | `macos` / `windows` | Operating system |
 | `data-theme` | `light` / `dark` | The light/dark mode actually in use |
-| `data-bg` | `image` / `weather` / none | The background is an image (custom background or cover), the weather animation, or a plain color |
+| `data-bg` | `image` / `weather` / `season` / none | The background is an image (custom background or cover), the weather animation, the season scenery (since 1.6.14), or a plain color |
+| `data-season` | `spring` / `summer` / `autumn` / `winter` / none | The season shown by the season theme; the automatic one goes by the date (since 1.6.14) |
 | `data-egg` | `happy-ending` / none | An easter egg: `happy-ending` while "What do you want more than a Happy ending?" plays from NetEase, when the whole UI takes on the song's artwork (since 1.6.12) |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | The weather, in the weather theme |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | The rough time of day, in the weather theme |
@@ -349,7 +350,7 @@ The settings in `config` are written to the app's settings **when the plugin is 
 <!-- config-keys -->
 | Key | Values | Setting |
 | --- | --- | --- |
-| `theme` | `system` / `light` / `dark` / `weather` | Appearance mode |
+| `theme` | `system` / `light` / `dark` / `weather` / `season` / `spring` / `summer` / `autumn` / `winter` | Appearance mode (`season` picks the season by date; since 1.6.14) |
 | `accent` | `#RRGGBB` | Accent color |
 | `dynamicAccent` | true / false | Color from cover |
 | `coverBackground` | true / false | Use the cover as the background while music plays |

@@ -63,7 +63,7 @@ impl TrayState {
             let _ = t.toggle.set_text(self.label(if playing { "暂停" } else { "播放" }));
             let _ = t.prev.set_text(self.label("上一首"));
             let _ = t.next.set_text(self.label("下一首"));
-            let _ = t.private.set_text(self.label("无痕浏览模式"));
+            let _ = t.private.set_text(self.label("无痕播放模式"));
             let _ = t.show.set_text(self.label("显示 LightPlayer"));
             let _ = t.quit.set_text(self.label("退出 LightPlayer"));
             if !t.has_now.load(Ordering::SeqCst) {
@@ -134,7 +134,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<Tray> {
     let toggle = MenuItem::with_id(app, "lp-toggle", "播放", true, None::<&str>)?;
     let prev = MenuItem::with_id(app, "lp-prev", "上一首", true, None::<&str>)?;
     let next = MenuItem::with_id(app, "lp-next", "下一首", true, None::<&str>)?;
-    let private = CheckMenuItem::with_id(app, "lp-private", "无痕浏览模式", true, false, None::<&str>)?;
+    let private = CheckMenuItem::with_id(app, "lp-private", "无痕播放模式", true, false, None::<&str>)?;
     // Cloned into the menu handler so it never needs the tray lock.
     let private_item = private.clone();
     let show = MenuItem::with_id(app, "lp-show", "显示 LightPlayer", true, None::<&str>)?;
