@@ -1,8 +1,9 @@
-// The season theme's background: a soft sky, rolling ground, and whatever the
-// season lets fall, cherry petals, leaves or snow.
+// The season theme's background: a landscape for each season (season/art.ts)
+// under its sky, and whatever the season lets fall: cherry petals, leaves or snow.
 
-import { useEffect, useMemo, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, type CSSProperties } from "react";
 import type { Season } from "../core/season";
+import { SCENE_VIEWBOX, scene } from "./season/art";
 
 const rand = (i: number, salt: number) => {
   const x = Math.sin(i * 91.7 + salt * 173.3) * 43758.5453;
@@ -52,23 +53,22 @@ function Falling({ season }: { season: Season }) {
   return <>{items}</>;
 }
 
-/** Soft discs of light drifting about: sun through leaves, fireflies, stars. */
-function Lights({ season }: { season: Season }) {
-  const n = season === "summer" ? 16 : season === "winter" ? 34 : 9;
+/** Stars over the winter night. */
+function Stars() {
   return (
     <>
-      {Array.from({ length: n }, (_, i) => {
-        const size = season === "winter" ? 1.5 + rand(i, 7) * 2 : 26 + rand(i, 7) * 90;
+      {Array.from({ length: 70 }, (_, i) => {
+        const size = 1.2 + rand(i, 7) * 2.2;
         return (
           <i
             key={i}
             className="season-light"
             style={{
               left: `${rand(i, 8) * 100}%`,
-              top: `${rand(i, 9) * (season === "winter" ? 55 : 80)}%`,
+              top: `${rand(i, 9) * 58}%`,
               width: size,
               height: size,
-              animationDuration: `${5 + rand(i, 10) * 7}s`,
+              animationDuration: `${3 + rand(i, 10) * 6}s`,
               animationDelay: `${-rand(i, 11) * 10}s`,
             }}
           />
@@ -78,32 +78,20 @@ function Lights({ season }: { season: Season }) {
   );
 }
 
-/** Three rolling ridges along the bottom; trees stand on the far ones. */
-function Ground({ season }: { season: Season }) {
-  const tree = (x: number, y: number, s: number, key: number): ReactNode => (
-    <g key={key} transform={`translate(${x} ${y}) scale(${s})`}>
-      <path d="M-2 0 L-1.2 -26 L1.2 -26 L2 0 Z" className="trunk" />
-      <path d="M0 -26 L-9 -40 M0 -30 L8 -44 M0 -22 L-12 -30 M0 -24 L11 -31" className="twig" />
-      {season === "winter" ? (
-        <path d="M-12 -30 L0 -26 L11 -31 M-9 -40 L0 -30 L8 -44" className="frost" />
-      ) : (
-        <>
-          <circle cx="0" cy="-42" r="15" className="crown" />
-          <circle cx="-12" cy="-34" r="11" className="crown" />
-          <circle cx="12" cy="-35" r="11" className="crown two" />
-          <circle cx="4" cy="-50" r="9" className="crown two" />
-        </>
-      )}
-    </g>
+/**
+ * The season's landscape, anchored to the bottom of the window. The clouds are
+ * layers of their own, so their drifting never repaints the land.
+ */
+function Scene({ season }: { season: Season }) {
+  const art = useMemo(() => scene(season), [season]);
+  const layer = (key: string, cls: string, html: string) => (
+    <svg key={key} className={`season-scene ${cls}`} viewBox={SCENE_VIEWBOX} preserveAspectRatio="xMidYMax slice" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
   );
   return (
-    <svg className="season-ground" viewBox="0 0 1200 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-      <path className="ridge far" d="M0 150 C160 96 300 120 460 134 C640 150 780 84 960 104 C1070 116 1150 140 1200 128 L1200 260 L0 260 Z" />
-      {[[150, 122, 1.25], [820, 96, 1.5], [1040, 114, 1.05]].map(([x, y, s], i) => tree(x, y, s, i))}
-      <path className="ridge mid" d="M0 196 C200 150 380 190 560 178 C760 164 900 204 1200 160 L1200 260 L0 260 Z" />
-      {[[330, 176, 1.9], [1110, 170, 2.2]].map(([x, y, s], i) => tree(x, y, s, i + 10))}
-      <path className="ridge near" d="M0 232 C240 204 520 244 760 226 C960 212 1080 236 1200 220 L1200 260 L0 260 Z" />
-    </svg>
+    <>
+      {art.drift.map((d, i) => layer(`${season}-drift-${i}`, `drift ${d.slow ? "slow" : ""}`, d.body))}
+      {layer(`${season}-land`, "land", art.defs + art.land)}
+    </>
   );
 }
 
@@ -119,9 +107,8 @@ export function SeasonSky({ season, motion, paused }: { season: Season; motion: 
   }, [season]);
   return (
     <div className={`season-sky ${motion ? "" : "still"} ${paused ? "paused" : ""}`} aria-hidden="true">
-      <div className="season-glow" />
-      <Lights season={season} />
-      <Ground season={season} />
+      {season === "winter" && <Stars />}
+      <Scene season={season} />
       {motion && !paused && <Falling season={season} />}
     </div>
   );

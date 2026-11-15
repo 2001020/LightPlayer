@@ -3,7 +3,7 @@
 import { open as openDialog, save as saveDialog } from "../lib/dialog";
 import { engine } from "./player/engine";
 import { startWeather } from "./weather/service";
-import { startDesktopLyrics } from "./desktopLyrics";
+import { setDesktopLyrics, startDesktopLyrics } from "./desktopLyrics";
 import { parseLyrics, serializeLrc, type Lyrics, type LyricLine } from "./lyrics/lrc";
 import { moveItem, nextIndex, nextMode, prevIndex, removeItem } from "./playlist/queue";
 import {
@@ -34,6 +34,9 @@ import { useLyrics, useModels, usePlayer, usePlaylist, useSubtitles, useUI, toas
 import { useSettings, type NeteaseQuality } from "../stores/settings";
 import { initLibrary, libraryAction, useLibrary } from "../stores/library";
 import { addedKeys, nowPlayingInfo } from "./private";
+import { creditFor, type Listened } from "./listening";
+import { bindMediaSession, remoteFilter, setSessionMetadata, setSessionState, type RemoteSource } from "./remote";
+import { useListening } from "../stores/listening";
 import { neteaseId, setNeteaseLiked, useNetease } from "../stores/netease";
 import {
   addTasks,
@@ -254,8 +257,27 @@ export async function setNeteaseQuality(quality: NeteaseQuality) {
 
 /** Deletes the cache files the player is not using right now; returns the bytes freed. */
 export async function clearCache(): Promise<number> {
-  const keep = [engine.media?.url, engine.exact?.url].filter((u): u is string => !!u);
-  return api.cacheClear(keep);
+  return api.cacheClear(cacheInUse());
+}
+
+const cacheInUse = () => [engine.media?.url, engine.exact?.url].filter((u): u is string => !!u);
+
+let trimming: Promise<void> | null = null;
+/** Past the cache limit set in Settings, quietly deletes the least recently used cache files (down to 80% of it). */
+export function trimCache(): Promise<void> {
+  const mb = settings().cacheLimitMB;
+  if (!isTauri || !(mb > 0)) return Promise.resolve();
+  trimming ??= (async () => {
+    const limit = mb * 1024 * 1024;
+    try {
+      await api.cacheTrim(limit, Math.floor(limit * 0.8), cacheInUse());
+    } catch {
+      // Silent by design: it runs again later.
+    } finally {
+      trimming = null;
+    }
+  })();
+  return trimming;
 }
 
 /** Drag-and-drop reordering in the play queue. */
@@ -1044,8 +1066,62 @@ function forgetPrivateSession() {
 
 async function updateNowPlaying() {
   const m = engine.media;
-  if (!m || !isTauri) return;
-  await api.nowPlayingMetadata(nowPlayingInfo(m, settings().privateMode)).catch(() => {});
+  if (!m) return;
+  const info = nowPlayingInfo(m, settings().privateMode);
+  setSessionMetadata(info);
+  if (isTauri) await api.nowPlayingMetadata(info).catch(() => {});
+}
+
+const freshRemote = remoteFilter();
+
+/** A command from outside the window: media keys, the menu bar and Dock menus. */
+function remoteCommand(e: MediaControlEvent, source: RemoteSource) {
+  if (!freshRemote(e.action, source)) return;
+  switch (e.action) {
+    case "play":
+      play();
+      break;
+    case "pause":
+      pause();
+      break;
+    case "toggle":
+      toggle();
+      break;
+    case "next":
+      void next();
+      break;
+    case "previous":
+      void prev();
+      break;
+    case "seekBy":
+      seekBy(e.value ?? 15);
+      break;
+    case "seekTo":
+      seek(e.value ?? 0);
+      break;
+    case "privateMode":
+      setPrivateMode(!!e.value);
+      break;
+    case "desktopLyrics":
+      setDesktopLyrics(!!e.value);
+      break;
+    case "openFile":
+      void openWithDialog();
+      break;
+    case "library":
+      useUI.setState({ page: "library", overlay: null });
+      break;
+    case "lyrics":
+      // Videos have no lyrics page.
+      useUI.setState({ page: engine.media?.kind === "video" ? "player" : "lyrics", overlay: null });
+      break;
+    case "player":
+      useUI.setState({ page: "player", overlay: null });
+      break;
+    case "settings":
+      useUI.setState({ overlay: "settings" });
+      break;
+  }
 }
 
 async function updateDynamicAccent() {
@@ -1055,7 +1131,9 @@ async function updateDynamicAccent() {
     return;
   }
   const { dominantColor } = await import("../lib/color");
-  useUI.setState({ dynamicAccent: await dominantColor(cover) });
+  const color = await dominantColor(cover);
+  // A later song may have finished first.
+  if (engine.media?.meta?.cover === cover) useUI.setState({ dynamicAccent: color });
 }
 
 function rememberPosition(final = false) {
@@ -1134,6 +1212,29 @@ function scheduleTick() {
     }, 50);
 }
 
+/** The song playing at the last look, for the listening time. */
+let listenMark: { at: number; pos: number; song: Listened } | null = null;
+
+/**
+ * Listening time: credits what played since the last call to that song, then
+ * notes what is playing now. Songs only; nothing in private mode.
+ */
+function syncListening() {
+  const now = Date.now();
+  const m = engine.media;
+  const st = settings();
+  const record = st.listeningStats && !st.privateMode;
+  const playing = record && !!m && m.kind === "audio" && !engine.paused && !engine.el.ended && !engine.waiting;
+  // Several player events in a row while the same song plays on: one stretch, credited later.
+  if (listenMark && playing && m.path === listenMark.song.path && now - listenMark.at < 1000) return;
+  if (listenMark && record) {
+    const moved = m?.path === listenMark.song.path ? engine.position - listenMark.pos : 0;
+    const seconds = creditFor(listenMark.at, now, moved, st.rate);
+    if (seconds > 0) useListening.getState().add(listenMark.song, seconds, new Date(now));
+  }
+  listenMark = playing ? { at: now, pos: engine.position, song: { path: m.path, title: m.meta?.title || m.name, artist: m.meta?.artist || null } } : null;
+}
+
 let initialized = false;
 
 export async function init() {
@@ -1180,7 +1281,15 @@ export async function init() {
   engine.onChange = () => {
     usePlayer.setState({ playing: !engine.paused, waiting: !engine.paused && engine.waiting });
     if (isTauri && engine.media) void api.nowPlayingState(!engine.paused, engine.position).catch(() => {});
+    if (engine.media) setSessionState(!engine.paused, engine.position, engine.duration, settings().rate);
+    syncListening();
   };
+  // The web view's media session: on macOS it is what the media keys reach.
+  bindMediaSession((action, value) => remoteCommand({ action, value }, "session"));
+  setInterval(syncListening, 10_000);
+  useSettings.subscribe((s, prev) => {
+    if (s.listeningStats !== prev.listeningStats || s.privateMode !== prev.privateMode) syncListening();
+  });
   scheduleTick();
   document.addEventListener("visibilitychange", () => {
     // Restart the loop in the right mode straight away.
@@ -1190,9 +1299,17 @@ export async function init() {
 
   window.addEventListener("beforeunload", () => {
     rememberPosition(true);
+    syncListening();
     if (settings().privateMode) forgetPrivateSession();
   });
   useSettings.subscribe(trackPrivateTraces);
+
+  // Automatic cache cleanup: soon after start, every few minutes, and when the limit changes.
+  setTimeout(() => void trimCache(), 15_000);
+  setInterval(() => void trimCache(), 5 * 60_000);
+  useSettings.subscribe((s, prev) => {
+    if (s.cacheLimitMB !== prev.cacheLimitMB) void trimCache();
+  });
 
   // Menu bar icon, "keep running when the window is closed" and private mode.
   const syncBackground = (s: { runInBackground: boolean; trayShowTitle: boolean; privateMode: boolean }) =>
@@ -1221,34 +1338,7 @@ export async function init() {
         engine.pause();
       }
     });
-    await on<MediaControlEvent>("media-control", (e) => {
-      switch (e.action) {
-        case "play":
-          play();
-          break;
-        case "pause":
-          pause();
-          break;
-        case "toggle":
-          toggle();
-          break;
-        case "next":
-          void next();
-          break;
-        case "previous":
-          void prev();
-          break;
-        case "seekBy":
-          seekBy(e.value ?? 15);
-          break;
-        case "seekTo":
-          seek(e.value ?? 0);
-          break;
-        case "privateMode":
-          setPrivateMode(!!e.value);
-          break;
-      }
-    });
+    await on<MediaControlEvent>("media-control", (e) => remoteCommand(e, "system"));
     try {
       const { getCurrentWebview } = await import("@tauri-apps/api/webview");
       await getCurrentWebview().onDragDropEvent((event) => {

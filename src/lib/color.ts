@@ -116,6 +116,9 @@ export function accentPalette(hex: string, dark: boolean): AccentPalette {
 export async function dominantColor(src: string): Promise<string | null> {
   const img = new Image();
   img.decoding = "async";
+  // Covers from the app's local server (online songs, library thumbnails) are on another
+  // origin: without CORS the canvas is tainted and the pixels can't be read.
+  if (!src.startsWith("data:") && !src.startsWith("blob:")) img.crossOrigin = "anonymous";
   img.src = src;
   try {
     await img.decode();

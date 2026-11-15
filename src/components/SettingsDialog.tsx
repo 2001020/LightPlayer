@@ -25,6 +25,7 @@ import { SEASON_LABELS } from "../core/season";
 import { UpdateSettings } from "./UpdateSettings";
 import { isWindows, keys, TRAY } from "../lib/platform";
 import { LANGS, locale, systemLang, type LangSetting } from "../i18n";
+import { loadFont, UI_FONT_FAMILY } from "../lib/uiFont";
 
 type Tab = UIState["settingsTab"];
 
@@ -164,6 +165,55 @@ function WeatherOptions() {
   );
 }
 
+/** The interface font: any font file; what it lacks comes from the system's fonts. */
+function FontRow() {
+  const font = useSettings((s) => s.uiFont);
+  const [busy, setBusy] = useState(false);
+  const pick = async () => {
+    let chosen: { path: string; name: string } | null = null;
+    if (!isTauri) {
+      const [p] = await pickBrowserFiles("", false);
+      if (p) chosen = { path: p, name: p.slice(9).replace(/\.[^.]+$/, "") };
+    } else {
+      const { open } = await import("../lib/dialog");
+      // No filter: any font format may be chosen.
+      const res = await open({ multiple: false, title: "选择字体文件" });
+      if (typeof res !== "string") return;
+      setBusy(true);
+      try {
+        chosen = await api.importFont(res);
+      } catch (e) {
+        toast(String(e instanceof Error ? e.message : e), "error");
+      }
+    }
+    if (chosen && !(await loadFont(chosen.path))) {
+      toast("无法使用这个字体文件：格式不受支持，或文件已损坏", "error", 6000);
+      chosen = null;
+    }
+    setBusy(false);
+    if (chosen) useSettings.getState().set({ uiFont: chosen });
+  };
+  return (
+    <Row label="界面字体" hint="可以使用任意字体文件。字体里没有的字（比如英文字体里的中文）会用系统字体显示">
+      {font ? (
+        <span className="font-name" data-lp-raw style={{ fontFamily: `"${UI_FONT_FAMILY}", var(--font-fallback)` }}>
+          {font.name}
+        </span>
+      ) : (
+        <span className="font-name">系统默认</span>
+      )}
+      <button className="btn" onClick={pick} disabled={busy}>
+        选择字体…
+      </button>
+      {font && (
+        <button className="btn ghost" onClick={() => useSettings.getState().set({ uiFont: null })}>
+          恢复默认
+        </button>
+      )}
+    </Row>
+  );
+}
+
 function Appearance() {
   const s = useSettings();
   const weather = s.theme === "weather";
@@ -200,6 +250,7 @@ function Appearance() {
           ))}
         </select>
       </Row>
+      <FontRow />
       <h3>主题</h3>
       <Row label="外观模式">
         <Seg
@@ -526,7 +577,10 @@ function Shortcuts() {
   );
 }
 
+const CACHE_LIMITS = [0, 512, 1024, 2048, 5120, 10240];
+
 function CacheRow() {
+  const limit = useSettings((st) => st.cacheLimitMB);
   const [bytes, setBytes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -551,6 +605,19 @@ function CacheRow() {
         <button className="btn" disabled={busy || bytes === 0} onClick={() => void clear()}>
           {busy ? "正在删除…" : "删除缓存"}
         </button>
+      </Row>
+      <Row label="自动清理缓存" hint="缓存文件超过上限时，自动删除最久没用到的缓存">
+        <select value={CACHE_LIMITS.includes(limit) ? limit : 0} onChange={(e) => {
+            useSettings.getState().set({ cacheLimitMB: Number(e.target.value) });
+            void C.trimCache().then(() => api.cacheSize().then(setBytes, () => {}));
+          }}
+        >
+          {CACHE_LIMITS.map((mb) => (
+            <option key={mb} value={mb}>
+              {mb ? `超过 ${formatBytes(mb * 1024 * 1024)} 时` : "不自动清理"}
+            </option>
+          ))}
+        </select>
       </Row>
     </>
   );
@@ -589,7 +656,18 @@ function About() {
           恢复默认
         </button>
       </Row>
+      <EggRow />
     </>
+  );
+}
+
+/** Tucked away at the very bottom of 关于. */
+function EggRow() {
+  const eggs = useSettings((st) => st.eggs);
+  return (
+    <Row label="是否激活彩蛋">
+      <Switch on={eggs} onChange={(on) => useSettings.getState().set({ eggs: on })} />
+    </Row>
   );
 }
 

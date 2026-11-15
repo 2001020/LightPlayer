@@ -194,7 +194,7 @@ Attributes on the `<html>` element reflect the app's current state, so styles ca
 | `data-theme` | `light` / `dark` | The light/dark mode actually in use |
 | `data-bg` | `image` / `weather` / `season` / none | The background is an image (custom background or cover), the weather animation, the season scenery (since 1.6.14), or a plain color |
 | `data-season` | `spring` / `summer` / `autumn` / `winter` / none | The season shown by the season theme; the automatic one goes by the date (since 1.6.14) |
-| `data-egg` | `happy-ending` / none | An easter egg: `happy-ending` while "What do you want more than a Happy ending?" plays from NetEase, when the whole UI takes on the song's artwork (since 1.6.12) |
+| `data-egg` | `happy-ending` / none | An easter egg: `happy-ending` while "What do you want more than a Happy ending?" plays from NetEase, when the whole UI takes on the song's artwork (since 1.6.12); since 1.6.15 only with "Activate easter eggs" on in Settings (off by default) |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | The weather, in the weather theme |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | The rough time of day, in the weather theme |
 | `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | The stage of the day, in the weather theme (since 1.6.3) |
@@ -220,21 +220,22 @@ Overriding these variables on `:root` is the safest way to change the look:
 | Variable | Default | Description |
 | --- | --- | --- |
 | `--font-fallback` | system font stack | The app's default font, the fallback for custom fonts |
-| `--font` | `var(--font-fallback)` | Interface font |
+| `--font` | `var(--font-fallback)` | Interface font. When the user has chosen an "Interface font" in the settings (from 1.6.15), the user's font wins |
 | `--title-font` | `var(--font)` | Song title font on the player and lyrics pages |
 | `--lyric-font` | `var(--font)` | Lyrics font (desktop lyrics too) |
 | `--mono` | monospace font stack | Monospaced text such as time codes |
 | `--lyric-weight` | `600` | Lyrics font weight |
 | `--lyric-line-height` | `1.45` | Lyrics line height |
 | `--lyric-gap` | `2px` | Extra space between lyric lines |
-| `--lyric-dim` | `48%` | Opacity of ordinary lyric lines (66% with the weather theme) |
-| `--lyric-near` | `62%` | Opacity of the lines next to the current one (80% with the weather theme) |
-| `--lyric-active-scale` | `1.08` | Scale of the current line |
+| `--lyric-dim` | `40%` | Opacity of ordinary lyric lines (58% with the weather theme) |
+| `--lyric-near` | `56%` | Opacity of the lines next to the current one (74% with the weather theme) |
+| `--lyric-active-scale` | `1.12` | Scale of the current line |
+| `--lyric-blur` | `1.4px` | Blur of the other lines (half for the neighbours, `0` for none; smaller over a background picture and in the weather and season themes) |
 | `--lyric-hl` | accent color | Highlight color of the current line (overridden when the user picks a color on the lyrics page) |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | Side length of the classic style's cover |
 | `--cover-radius` | `16px` | Cover corner radius |
 | `--cover-shadow` | shadow | Cover shadow |
-| `--radius-s` / `--radius` / `--radius-l` | `8px` / `12px` / `18px` | Corner radii of buttons, panels and dialogs |
+| `--radius-s` / `--radius` / `--radius-l` | `7px` / `11px` / `16px` | Corner radii of buttons, panels and dialogs |
 | `--titlebar-h` | `44px` | Title bar height |
 | `--transport-h` | `92px` | Playback bar height |
 | `--accent` | the user's accent color | Accent color (written from the user's settings; plugins generally shouldn't override it — use `config.accent` to change the accent) |

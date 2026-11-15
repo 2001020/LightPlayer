@@ -676,6 +676,17 @@ pub fn import_background(state: State<'_, AppState>, path: String) -> AppResult<
     Ok(dest.to_string_lossy().into_owned())
 }
 
+/// Copies a user-chosen interface font into the app data folder, in a form
+/// the web view can load.
+#[tauri::command]
+pub async fn import_font(state: State<'_, AppState>, path: String) -> AppResult<crate::fonts::ImportedFont> {
+    let dir = state.data_dir.join("fonts");
+    tokio::task::spawn_blocking(move || crate::fonts::import(Path::new(&path), &dir))
+        .await
+        .map_err(|e| AppError::msg(e.to_string()))?
+        .map_err(AppError::Msg)
+}
+
 /// Which declared audio/video types open with this app by default.
 #[tauri::command]
 pub fn file_associations(app: tauri::AppHandle) -> crate::file_assoc::Status {
@@ -702,6 +713,15 @@ pub async fn cache_clear(state: State<'_, AppState>, keep: Vec<String>) -> AppRe
     let dir = state.cache_dir.clone();
     let keep = keep.iter().filter_map(|u| crate::cache::served_path(u)).collect();
     Ok(tokio::task::spawn_blocking(move || crate::cache::clear(&dir, &keep)).await.unwrap_or(0))
+}
+
+/// Past `limit` bytes, deletes the least recently used cache files (not those
+/// behind `keep`) down to `target`; returns the bytes freed.
+#[tauri::command]
+pub async fn cache_trim(state: State<'_, AppState>, limit: u64, target: u64, keep: Vec<String>) -> AppResult<u64> {
+    let dir = state.cache_dir.clone();
+    let keep = keep.iter().filter_map(|u| crate::cache::served_path(u)).collect();
+    Ok(tokio::task::spawn_blocking(move || crate::cache::trim(&dir, limit, target, &keep)).await.unwrap_or(0))
 }
 
 #[tauri::command]
@@ -740,18 +760,21 @@ pub fn now_playing_metadata(
     });
     state.now_playing.set_metadata(&title, artist.as_deref(), album.as_deref(), duration, cover_url.as_deref());
     state.tray.set_now_playing(&title, artist.as_deref());
+    crate::dock::set_now_playing(&title, artist.as_deref());
 }
 
 #[tauri::command]
 pub fn now_playing_state(state: State<'_, AppState>, playing: bool, position: Option<f64>) {
     state.now_playing.set_playback(playing, position);
     state.tray.set_playing(playing);
+    crate::dock::set_playing(playing);
 }
 
-/// The UI language, and the menu bar / notification area menu's labels in it.
+/// The UI language, and the labels of the menu bar / notification area and Dock menus in it.
 #[tauri::command]
 pub fn ui_language(state: State<'_, AppState>, lang: String, labels: std::collections::HashMap<String, String>) {
     crate::weather::set_language(&lang);
+    crate::dock::set_labels(labels.clone());
     state.tray.set_labels(labels);
 }
 
@@ -759,12 +782,14 @@ pub fn ui_language(state: State<'_, AppState>, lang: String, labels: std::collec
 #[tauri::command]
 pub fn set_background_prefs(state: State<'_, AppState>, run_in_background: bool, show_title: bool, private_mode: bool) {
     state.tray.set_prefs(run_in_background, show_title, private_mode);
+    crate::dock::set_private_mode(private_mode);
 }
 
 // ---------------------------------------------------------------- desktop lyrics
 
 #[tauri::command]
 pub fn desktop_lyrics_set(app: AppHandle, show: bool) -> AppResult<()> {
+    crate::dock::set_desktop_lyrics(show);
     crate::desktop_lyrics::set_visible(&app, show).map_err(|e| AppError::msg(e.to_string()))
 }
 

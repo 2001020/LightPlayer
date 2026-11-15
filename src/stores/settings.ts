@@ -107,6 +107,14 @@ export interface Settings {
   trayShowTitle: boolean;
   /** Private playback: opened files leave no history (recent list, plays, positions). */
   privateMode: boolean;
+  /** The interface font the user chose (a copy in the app's data); null: the system's. */
+  uiFont: UiFont | null;
+  /** Listening time is recorded (see stores/listening.ts). */
+  listeningStats: boolean;
+  /** Easter eggs wake when their conditions are met (off by default). */
+  eggs: boolean;
+  /** Cache size (MB) past which the oldest cache files are deleted, silently; 0: no limit. */
+  cacheLimitMB: number;
   /** Files played through an ffmpeg copy because WebKit's clock drifts on them. */
   precisePaths: string[];
   /** Active lyric line colour on the lyrics page (null: theme colour). */
@@ -119,6 +127,12 @@ export interface Settings {
   recent: string[];
   positions: Record<string, number>;
   lyricOffsets: Record<string, number>;
+}
+
+/** A font file used for the interface; glyphs it lacks come from the system's fonts. */
+export interface UiFont {
+  path: string;
+  name: string;
 }
 
 /** LAN sync playback. */
@@ -179,6 +193,10 @@ export const defaultSettings: Settings = {
   autoNextVideo: false,
   trayShowTitle: false,
   privateMode: false,
+  uiFont: null,
+  listeningStats: true,
+  eggs: false,
+  cacheLimitMB: 0,
   precisePaths: [],
   lyricHighlight: null,
   desktopLyrics: { enabled: false, color: "#66ccff" },

@@ -136,7 +136,7 @@ export function LyricsView({ lines: all, synced, offset = 0, fontSize, align = "
 
   return (
     <div
-      className={`lyric-scroll align-${align}`}
+      className={`lyric-scroll align-${align}${userScrollUntil ? " browsing" : ""}`}
       data-lp="lyric-scroll"
       data-lp-raw
       ref={scrollRef}

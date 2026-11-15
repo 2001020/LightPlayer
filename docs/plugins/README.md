@@ -466,7 +466,7 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `data-theme` | `light` / `dark` | 当前实际使用的明暗模式 |
 | `data-bg` | `image` / `weather` / `season` / 无 | 背景是图片（自定义背景或封面）、天气动画、季节景色（1.6.14 起），还是纯色 |
 | `data-season` | `spring` / `summer` / `autumn` / `winter` / 无 | 季节主题下显示的季节；“自动”时按日期决定（1.6.14 起） |
-| `data-egg` | `happy-ending` / 无 | 彩蛋：在网易云播放《What do you want more than a Happy ending?》时为 `happy-ending`，整个界面换成这首歌的插画风格（1.6.12 起） |
+| `data-egg` | `happy-ending` / 无 | 彩蛋：在网易云播放《What do you want more than a Happy ending?》时为 `happy-ending`，整个界面换成这首歌的插画风格（1.6.12 起）；1.6.15 起需在设置中打开“是否激活彩蛋”（默认关闭） |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | 天气主题下的天气 |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | 天气主题下的大致时段 |
 | `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | 天气主题下的时段：破晓、日出、上午、中午、下午、傍晚、日落、夜晚、午夜（1.6.3 起） |
@@ -512,21 +512,22 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
 | `--font-fallback` | 系统字体栈 | App 默认字体，自定义字体时用来兜底 |
-| `--font` | `var(--font-fallback)` | 全局界面字体 |
+| `--font` | `var(--font-fallback)` | 全局界面字体。用户在设置中选了“界面字体”时（1.6.15 起），以用户选的字体为准 |
 | `--title-font` | `var(--font)` | 播放页和歌词页的歌名字体 |
 | `--lyric-font` | `var(--font)` | 歌词字体（含桌面歌词） |
 | `--mono` | 等宽字体栈 | 时间码等等宽文字 |
 | `--lyric-weight` | `600` | 歌词字重 |
 | `--lyric-line-height` | `1.45` | 歌词行高 |
 | `--lyric-gap` | `2px` | 歌词行之间的额外间距 |
-| `--lyric-dim` | `48%` | 普通歌词行的不透明度（天气主题下为 66%） |
-| `--lyric-near` | `62%` | 当前行相邻行的不透明度（天气主题下为 80%） |
-| `--lyric-active-scale` | `1.08` | 当前行的放大比例 |
+| `--lyric-dim` | `40%` | 普通歌词行的不透明度（天气主题下为 58%，季节主题下为 64%） |
+| `--lyric-near` | `56%` | 当前行相邻行的不透明度（天气主题下为 74%） |
+| `--lyric-active-scale` | `1.12` | 当前行的放大比例 |
+| `--lyric-blur` | `1.4px` | 非当前行的模糊程度（相邻行减半，设为 `0` 不模糊；有背景图、天气或季节主题时更小） |
 | `--lyric-hl` | 主题色 | 当前行高亮颜色（用户在歌词页选择颜色时会覆盖） |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | 经典样式封面边长 |
 | `--cover-radius` | `16px` | 封面圆角 |
 | `--cover-shadow` | 阴影 | 封面阴影 |
-| `--radius-s` / `--radius` / `--radius-l` | `8px` / `12px` / `18px` | 按钮、面板、对话框的圆角 |
+| `--radius-s` / `--radius` / `--radius-l` | `7px` / `11px` / `16px` | 按钮、面板、对话框的圆角 |
 | `--titlebar-h` | `44px` | 标题栏高度 |
 | `--transport-h` | `92px` | 播放栏高度 |
 | `--accent` | 用户主题色 | 主题色（由用户设置写入；插件一般不要覆盖，想改主题色请用 `config.accent`） |
