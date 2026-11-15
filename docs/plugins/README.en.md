@@ -220,16 +220,17 @@ Overriding these variables on `:root` is the safest way to change the look:
 | Variable | Default | Description |
 | --- | --- | --- |
 | `--font-fallback` | system font stack | The app's default font, the fallback for custom fonts |
-| `--font` | `var(--font-fallback)` | Interface font |
+| `--font` | `var(--font-fallback)` | Interface font. When the user has chosen an "Interface font" in the settings (from 1.6.15), the user's font wins |
 | `--title-font` | `var(--font)` | Song title font on the player and lyrics pages |
 | `--lyric-font` | `var(--font)` | Lyrics font (desktop lyrics too) |
 | `--mono` | monospace font stack | Monospaced text such as time codes |
 | `--lyric-weight` | `600` | Lyrics font weight |
 | `--lyric-line-height` | `1.45` | Lyrics line height |
 | `--lyric-gap` | `2px` | Extra space between lyric lines |
-| `--lyric-dim` | `48%` | Opacity of ordinary lyric lines (66% with the weather theme) |
-| `--lyric-near` | `62%` | Opacity of the lines next to the current one (80% with the weather theme) |
-| `--lyric-active-scale` | `1.08` | Scale of the current line |
+| `--lyric-dim` | `40%` | Opacity of ordinary lyric lines (58% with the weather theme) |
+| `--lyric-near` | `56%` | Opacity of the lines next to the current one (74% with the weather theme) |
+| `--lyric-active-scale` | `1.12` | Scale of the current line |
+| `--lyric-blur` | `1.4px` | Blur of the other lines (half for the neighbours, `0` for none) |
 | `--lyric-hl` | accent color | Highlight color of the current line (overridden when the user picks a color on the lyrics page) |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | Side length of the classic style's cover |
 | `--cover-radius` | `16px` | Cover corner radius |

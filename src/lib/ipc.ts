@@ -411,7 +411,22 @@ export interface CityHit {
 }
 
 export interface MediaControlEvent {
-  action: "play" | "pause" | "toggle" | "next" | "previous" | "seekBy" | "seekTo" | "privateMode";
+  action:
+    | "play"
+    | "pause"
+    | "toggle"
+    | "next"
+    | "previous"
+    | "seekBy"
+    | "seekTo"
+    | "privateMode"
+    // The Dock menu (macOS).
+    | "desktopLyrics"
+    | "openFile"
+    | "library"
+    | "lyrics"
+    | "player"
+    | "settings";
   value?: number | null;
 }
 
@@ -1322,6 +1337,8 @@ export const api = {
   /** Writes a layout (and its pictures) as a .lpplugin file. */
   layoutExport: (dest: string, layout: unknown) => call<void>("layout_export", { dest, layout }),
   importBackground: (path: string) => call<string>("import_background", { path }),
+  /** Copies an interface font into the app's data (a collection's first font); returns the copy and the font's name. */
+  importFont: (path: string) => call<{ path: string; name: string }>("import_font", { path }),
   takePendingOpen: () => call<string[]>("take_pending_open"),
   fileAssociations: () => call<FileAssociations>("file_associations"),
   /** Returns the extensions that could not be changed. */

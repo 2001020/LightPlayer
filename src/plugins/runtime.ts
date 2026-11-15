@@ -116,7 +116,22 @@ function langSetting(): LangSetting {
 }
 
 /** The menu bar / notification area menu, which the page's replacer cannot reach. */
-const TRAY_LABELS = ["未在播放", "播放", "暂停", "上一首", "下一首", "无痕播放模式", "显示 LightPlayer", "退出 LightPlayer"];
+const TRAY_LABELS = [
+  "未在播放",
+  "播放",
+  "暂停",
+  "上一首",
+  "下一首",
+  "无痕播放模式",
+  "显示 LightPlayer",
+  "退出 LightPlayer",
+  // The Dock menu (macOS).
+  "打开文件…",
+  "媒体库",
+  "歌词",
+  "桌面歌词",
+  "设置…",
+];
 
 async function applyStrings(active: Active[], rev: number) {
   const lang: Lang = resolveLang(langSetting());

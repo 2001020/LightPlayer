@@ -12,9 +12,11 @@ mod layouts;
 mod plugins;
 mod nowplaying;
 mod file_assoc;
+mod fonts;
 mod server;
 mod tools;
 mod desktop_lyrics;
+mod dock;
 mod trash;
 mod tray;
 mod updater;
@@ -148,6 +150,12 @@ pub fn run() {
                     updater::current_version(),
                 ),
             });
+            // The Dock menu goes on the app's delegate, once launching is over.
+            #[cfg(target_os = "macos")]
+            {
+                let h = handle.clone();
+                let _ = handle.run_on_main_thread(move || dock::install(&h));
+            }
             // The menu bar icon is optional (e.g. Linux desktops without a tray).
             match tray::create(&handle) {
                 Ok(t) => *app.state::<AppState>().tray.tray.lock().unwrap() = Some(t),
@@ -213,6 +221,7 @@ pub fn run() {
             commands::asr_cancel,
             commands::server_base,
             commands::import_background,
+            commands::import_font,
             commands::take_pending_open,
             commands::file_associations,
             commands::netease_status,

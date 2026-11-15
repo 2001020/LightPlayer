@@ -13,9 +13,10 @@
   --lyric-weight: 600;
   --lyric-line-height: 1.45;
   --lyric-gap: 2px;
-  --lyric-dim: 48%;
-  --lyric-near: 62%;
-  --lyric-active-scale: 1.08;
+  --lyric-dim: 40%;
+  --lyric-near: 56%;
+  --lyric-active-scale: 1.12;
+  --lyric-blur: 1.4px;
   /* public: cover on the audio player page */
   --cover-size: min(32vh, 28vw, 300px);
   --cover-radius: 16px;
@@ -2829,19 +2830,29 @@ button.cm-foot {
   font-weight: var(--lyric-weight);
   /* Translucent text colour rather than grey: stays legible on tinted covers. */
   color: color-mix(in srgb, var(--text) var(--lyric-dim), transparent);
+  /* The lines around the current one are out of focus. */
+  filter: blur(var(--lyric-blur));
 }
 .lyric-line:hover {
   background: var(--hover);
+  filter: none;
+}
+/* Scrolling through the lyrics by hand: every line is sharp. */
+.lyric-scroll.browsing .lyric-line {
+  filter: none;
 }
 .align-left .lyric-line {
   transform-origin: left center;
 }
 .lyric-line.near {
   color: color-mix(in srgb, var(--text) var(--lyric-near), transparent);
+  filter: blur(calc(var(--lyric-blur) * 0.5));
 }
 .lyric-line.active {
   color: var(--lyric-hl, var(--text));
   transform: scale(var(--lyric-active-scale));
+  filter: none;
+  text-shadow: 0 0 24px color-mix(in srgb, var(--lyric-hl, var(--accent)) 40%, transparent);
 }
 .lyric-line .tr {
   display: block;
@@ -2854,6 +2865,8 @@ button.cm-foot {
   transition: none;
 }
 .lyric-line.active.karaoke .w {
+  /* The glow would show through the see-through letters. */
+  text-shadow: none;
   background-image: linear-gradient(90deg, var(--lyric-hl, var(--accent-strong)) 0 calc(var(--p, 0) * 100%), color-mix(in srgb, var(--text) var(--lyric-dim), transparent) calc(var(--p, 0) * 100%) 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -2863,6 +2876,7 @@ button.cm-foot {
   cursor: default;
   color: var(--text-dim);
   opacity: 1;
+  filter: none;
 }
 .lyric-empty {
   height: 100%;
@@ -4100,6 +4114,200 @@ kbd {
   flex: none;
 }
 
+/* listening time */
+.listen-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.listen-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.listen-tiles .tile,
+.listen-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+.listen-tiles .tile {
+  padding: 14px 16px;
+  min-width: 0;
+}
+.listen-tiles .k {
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+.listen-tiles .v {
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.listen-block {
+  padding: 14px 16px 16px;
+  min-width: 0;
+}
+.listen-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.listen-block-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.listen-chart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 10px;
+}
+.listen-chart .axis {
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.listen-chart .axis span {
+  transform: translateY(-50%);
+  min-height: 11px;
+}
+.listen-chart .bars {
+  height: 160px;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  /* The lines at the top and at half of the scale. */
+  background: linear-gradient(var(--border), var(--border)) 0 0 / 100% 1px no-repeat, linear-gradient(var(--border), var(--border)) 0 50% / 100% 1px no-repeat;
+}
+.listen-chart .col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 6px 6px 0 0;
+}
+.listen-chart .col:hover {
+  background: var(--hover);
+}
+.listen-chart .bar {
+  width: min(100%, 28px);
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+  transition: height 0.25s var(--ease);
+}
+.listen-chart .bar[data-empty] {
+  min-height: 0;
+}
+.listen-chart .col:hover .bar {
+  background: var(--accent-hover);
+}
+.listen-chart .days {
+  display: flex;
+  gap: 2px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.listen-chart .days span {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+.listen-chart.month .days span {
+  overflow: visible;
+}
+.listen-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.listen-rank {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.listen-rank li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.listen-rank .n {
+  text-align: right;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.listen-rank .who {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px 8px;
+}
+.listen-rank .name,
+.listen-rank .sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.listen-rank .sub {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.listen-rank .meter {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--hover);
+  overflow: hidden;
+}
+.listen-rank .meter span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.listen-rank .t {
+  min-width: 100px;
+  text-align: right;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.listen-options {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.listen-options .note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
 /* album hero */
 .lib-hero {
   display: flex;
@@ -4585,8 +4793,8 @@ kbd {
 }
 /* Lyrics over a moving sky need a little more weight. */
 :root[data-bg="weather"] {
-  --lyric-dim: 66%;
-  --lyric-near: 80%;
+  --lyric-dim: 58%;
+  --lyric-near: 74%;
 }
 
 /* ---------------------------------------------------------------- desktop lyrics */
@@ -5641,14 +5849,21 @@ html.desktop-lyrics #root {
   font-weight: 600;
   color: var(--accent-text);
 }
+.font-name {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
 :root[data-bg="season"] {
   --bg-grad: none;
   --panel: rgba(255, 255, 255, 0.5);
   --panel-2: rgba(255, 255, 255, 0.36);
   --border: rgba(60, 60, 80, 0.14);
   --halo: 0 0 8px rgba(255, 255, 255, 0.7);
-  --lyric-dim: 60%;
-  --lyric-near: 74%;
+  --lyric-dim: 52%;
+  --lyric-near: 68%;
 }
 :root[data-season="spring"] {
   --bg: #fdeef3;

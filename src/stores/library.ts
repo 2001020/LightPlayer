@@ -4,7 +4,7 @@ import { toast } from "./player";
 import { useSettings } from "./settings";
 
 export type LibraryNav =
-  | { view: "songs" | "albums" | "artists" | "videos" | "favorites" | "recent" }
+  | { view: "songs" | "albums" | "artists" | "videos" | "favorites" | "recent" | "listening" }
   | { view: "album"; key: string; from: "albums" | "artists" }
   | { view: "artist"; name: string }
   | { view: "playlist"; id: string }

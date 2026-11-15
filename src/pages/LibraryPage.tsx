@@ -23,16 +23,18 @@ import { useLibrary, type LibraryNav } from "../stores/library";
 import { loadNeteaseList, refreshNetease, searchNetease, useNetease } from "../stores/netease";
 import { usePlayer, useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
+import { ListeningView } from "../components/ListeningStats";
 import { TRASH } from "../lib/platform";
 import { joinParts } from "../i18n";
 
-const NAV: { view: "songs" | "albums" | "artists" | "videos" | "favorites" | "recent"; label: string; icon: IconName }[] = [
+const NAV: { view: "songs" | "albums" | "artists" | "videos" | "favorites" | "recent" | "listening"; label: string; icon: IconName }[] = [
   { view: "songs", label: "歌曲", icon: "music" },
   { view: "albums", label: "专辑", icon: "album" },
   { view: "artists", label: "艺术家", icon: "user" },
   { view: "videos", label: "视频", icon: "film" },
   { view: "favorites", label: "收藏", icon: "heart" },
   { view: "recent", label: "最近播放", icon: "clock" },
+  { view: "listening", label: "听歌时长", icon: "chart" },
 ];
 
 const go = (nav: LibraryNav) => useLibrary.setState({ nav, query: "" });
@@ -713,6 +715,9 @@ export function LibraryPage() {
     case "recent":
       body = <SongsView tracks={d.recent} title="最近播放" source="最近播放" empty={<Empty icon="clock" title="还没有播放记录" text="播放过的歌曲和视频会出现在这里" />} />;
       break;
+    case "listening":
+      body = <ListeningView />;
+      break;
     case "albums":
       body = <AlbumsView albums={d.albums} />;
       break;
@@ -740,7 +745,7 @@ export function LibraryPage() {
     <div className="library-page" data-lp="library">
       <Sidebar />
       <section className="lib-main panel" data-lp="library-main">
-        {libraryEmpty && nav.view !== "playlist" && nav.view !== "netease" ? (
+        {libraryEmpty && nav.view !== "playlist" && nav.view !== "netease" && nav.view !== "listening" ? (
           <>
             <Header title="媒体库" tracks={[]} source="" search={false} />
             {emptyAll}
