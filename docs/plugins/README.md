@@ -466,7 +466,7 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `data-theme` | `light` / `dark` | 当前实际使用的明暗模式 |
 | `data-bg` | `image` / `weather` / `season` / 无 | 背景是图片（自定义背景或封面）、天气动画、季节景色（1.6.14 起），还是纯色 |
 | `data-season` | `spring` / `summer` / `autumn` / `winter` / 无 | 季节主题下显示的季节；“自动”时按日期决定（1.6.14 起） |
-| `data-egg` | `happy-ending` / 无 | 彩蛋：在网易云播放《What do you want more than a Happy ending?》时为 `happy-ending`，整个界面换成这首歌的插画风格（1.6.12 起） |
+| `data-egg` | `happy-ending` / 无 | 彩蛋：在网易云播放《What do you want more than a Happy ending?》时为 `happy-ending`，整个界面换成这首歌的插画风格（1.6.12 起）；1.6.15 起需在设置中打开“是否激活彩蛋”（默认关闭） |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | 天气主题下的天气 |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | 天气主题下的大致时段 |
 | `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | 天气主题下的时段：破晓、日出、上午、中午、下午、傍晚、日落、夜晚、午夜（1.6.3 起） |

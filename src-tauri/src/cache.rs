@@ -34,6 +34,39 @@ pub fn clear(cache_dir: &Path, keep: &HashSet<PathBuf>) -> u64 {
         .sum()
 }
 
+/// Above `limit` bytes, deletes the least recently used cache files (except
+/// `keep`) until the cache is down to `target`; returns the bytes freed.
+pub fn trim(cache_dir: &Path, limit: u64, target: u64, keep: &HashSet<PathBuf>) -> u64 {
+    let mut all: Vec<(PathBuf, u64, std::time::SystemTime)> = DIRS
+        .iter()
+        .filter_map(|d| std::fs::read_dir(cache_dir.join(d)).ok())
+        .flatten()
+        .flatten()
+        .filter_map(|e| {
+            let m = e.metadata().ok()?;
+            let used = m.accessed().ok().into_iter().chain(m.modified().ok()).max()?;
+            m.is_file().then(|| (e.path(), m.len(), used))
+        })
+        .collect();
+    let mut total: u64 = all.iter().map(|f| f.1).sum();
+    if total <= limit {
+        return 0;
+    }
+    all.sort_by_key(|f| f.2);
+    let mut freed = 0;
+    for (p, len, _) in all {
+        if total <= target {
+            break;
+        }
+        if keep.contains(&p) || std::fs::remove_file(&p).is_err() {
+            continue;
+        }
+        total -= len;
+        freed += len;
+    }
+    freed
+}
+
 /// The local file behind a media server `/file?p=` URL.
 pub fn served_path(url: &str) -> Option<PathBuf> {
     let u = reqwest::Url::parse(url).ok()?;
@@ -70,5 +103,27 @@ mod tests {
         assert!(playing.is_file());
         assert!(root.join("hls/abc/index.m3u8").is_file());
         assert_eq!(size(root), 10);
+    }
+
+    #[test]
+    fn trims_the_oldest_files_past_the_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("audio")).unwrap();
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        for (name, age) in [("a.wav", 3), ("b.wav", 2), ("c.wav", 1)] {
+            let p = root.join("audio").join(name);
+            std::fs::write(&p, [0u8; 10]).unwrap();
+            let t = old + std::time::Duration::from_secs(60 * (3 - age));
+            let f = std::fs::File::options().write(true).open(&p).unwrap();
+            f.set_times(std::fs::FileTimes::new().set_accessed(t).set_modified(t)).unwrap();
+        }
+        let none = HashSet::new();
+        assert_eq!(trim(root, 30, 10, &none), 0);
+        let keep: HashSet<PathBuf> = [root.join("audio/a.wav")].into();
+        assert_eq!(trim(root, 25, 20, &keep), 10);
+        assert!(root.join("audio/a.wav").is_file());
+        assert!(!root.join("audio/b.wav").exists());
+        assert!(root.join("audio/c.wav").is_file());
     }
 }

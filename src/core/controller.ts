@@ -254,8 +254,27 @@ export async function setNeteaseQuality(quality: NeteaseQuality) {
 
 /** Deletes the cache files the player is not using right now; returns the bytes freed. */
 export async function clearCache(): Promise<number> {
-  const keep = [engine.media?.url, engine.exact?.url].filter((u): u is string => !!u);
-  return api.cacheClear(keep);
+  return api.cacheClear(cacheInUse());
+}
+
+const cacheInUse = () => [engine.media?.url, engine.exact?.url].filter((u): u is string => !!u);
+
+let trimming: Promise<void> | null = null;
+/** Past the cache limit set in Settings, quietly deletes the least recently used cache files (down to 80% of it). */
+export function trimCache(): Promise<void> {
+  const mb = settings().cacheLimitMB;
+  if (!isTauri || !(mb > 0)) return Promise.resolve();
+  trimming ??= (async () => {
+    const limit = mb * 1024 * 1024;
+    try {
+      await api.cacheTrim(limit, Math.floor(limit * 0.8), cacheInUse());
+    } catch {
+      // Silent by design: it runs again later.
+    } finally {
+      trimming = null;
+    }
+  })();
+  return trimming;
 }
 
 /** Drag-and-drop reordering in the play queue. */
@@ -1193,6 +1212,13 @@ export async function init() {
     if (settings().privateMode) forgetPrivateSession();
   });
   useSettings.subscribe(trackPrivateTraces);
+
+  // Automatic cache cleanup: soon after start, every few minutes, and when the limit changes.
+  setTimeout(() => void trimCache(), 15_000);
+  setInterval(() => void trimCache(), 5 * 60_000);
+  useSettings.subscribe((s, prev) => {
+    if (s.cacheLimitMB !== prev.cacheLimitMB) void trimCache();
+  });
 
   // Menu bar icon, "keep running when the window is closed" and private mode.
   const syncBackground = (s: { runInBackground: boolean; trayShowTitle: boolean; privateMode: boolean }) =>

@@ -1305,5 +1305,10 @@
   "（队列已暂停）": " (queue paused)",
   "，发布于 {a}": ", released {a}",
   "，当前任务完成后不再开始新的任务": "; no new tasks start after the current one",
-  "，约": ", about"
+  "，约": ", about",
+  "不自动清理": "Never",
+  "是否激活彩蛋": "Activate easter eggs",
+  "缓存文件超过上限时，自动删除最久没用到的缓存": "When the cache grows past the limit, the cache files unused for longest are deleted automatically",
+  "自动清理缓存": "Clean up cache automatically",
+  "超过 {a} 时": "Over {a}"
 }

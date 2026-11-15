@@ -194,6 +194,7 @@ pub fn run() {
             commands::exact_audio,
             commands::cache_size,
             commands::cache_clear,
+            commands::cache_trim,
             commands::request_stream,
             commands::stop_streams,
             commands::scan_playlist,

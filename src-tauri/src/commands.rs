@@ -704,6 +704,15 @@ pub async fn cache_clear(state: State<'_, AppState>, keep: Vec<String>) -> AppRe
     Ok(tokio::task::spawn_blocking(move || crate::cache::clear(&dir, &keep)).await.unwrap_or(0))
 }
 
+/// Past `limit` bytes, deletes the least recently used cache files (not those
+/// behind `keep`) down to `target`; returns the bytes freed.
+#[tauri::command]
+pub async fn cache_trim(state: State<'_, AppState>, limit: u64, target: u64, keep: Vec<String>) -> AppResult<u64> {
+    let dir = state.cache_dir.clone();
+    let keep = keep.iter().filter_map(|u| crate::cache::served_path(u)).collect();
+    Ok(tokio::task::spawn_blocking(move || crate::cache::trim(&dir, limit, target, &keep)).await.unwrap_or(0))
+}
+
 #[tauri::command]
 pub fn take_pending_open(state: State<'_, AppState>) -> Vec<String> {
     let mut pending = state.pending_open.lock().unwrap();

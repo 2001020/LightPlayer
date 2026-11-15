@@ -5,11 +5,13 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePlayer } from "../../stores/player";
+import { useSettings } from "../../stores/settings";
 import { DOVES_AT, isHappyEnding } from "./egg";
 
 export function useHappyEnding() {
   const path = usePlayer((s) => s.media?.path);
-  return isHappyEnding(path);
+  const eggs = useSettings((s) => s.eggs);
+  return eggs && isHappyEnding(path);
 }
 
 /** The artwork behind the UI, softened so the text stays readable. */

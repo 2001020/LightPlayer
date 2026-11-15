@@ -107,6 +107,10 @@ export interface Settings {
   trayShowTitle: boolean;
   /** Private playback: opened files leave no history (recent list, plays, positions). */
   privateMode: boolean;
+  /** Easter eggs wake when their conditions are met (off by default). */
+  eggs: boolean;
+  /** Cache size (MB) past which the oldest cache files are deleted, silently; 0: no limit. */
+  cacheLimitMB: number;
   /** Files played through an ffmpeg copy because WebKit's clock drifts on them. */
   precisePaths: string[];
   /** Active lyric line colour on the lyrics page (null: theme colour). */
@@ -179,6 +183,8 @@ export const defaultSettings: Settings = {
   autoNextVideo: false,
   trayShowTitle: false,
   privateMode: false,
+  eggs: false,
+  cacheLimitMB: 0,
   precisePaths: [],
   lyricHighlight: null,
   desktopLyrics: { enabled: false, color: "#66ccff" },

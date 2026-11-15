@@ -194,7 +194,7 @@ Attributes on the `<html>` element reflect the app's current state, so styles ca
 | `data-theme` | `light` / `dark` | The light/dark mode actually in use |
 | `data-bg` | `image` / `weather` / `season` / none | The background is an image (custom background or cover), the weather animation, the season scenery (since 1.6.14), or a plain color |
 | `data-season` | `spring` / `summer` / `autumn` / `winter` / none | The season shown by the season theme; the automatic one goes by the date (since 1.6.14) |
-| `data-egg` | `happy-ending` / none | An easter egg: `happy-ending` while "What do you want more than a Happy ending?" plays from NetEase, when the whole UI takes on the song's artwork (since 1.6.12) |
+| `data-egg` | `happy-ending` / none | An easter egg: `happy-ending` while "What do you want more than a Happy ending?" plays from NetEase, when the whole UI takes on the song's artwork (since 1.6.12); since 1.6.15 only with "Activate easter eggs" on in Settings (off by default) |
 | `data-sky` | `clear` / `partly` / `cloudy` / `overcast` / `fog` / `drizzle` / `rain` / `heavyRain` / `thunder` / `snow` / `sleet` / `hail` | The weather, in the weather theme |
 | `data-phase` | `dawn` / `day` / `dusk` / `night` | The rough time of day, in the weather theme |
 | `data-time` | `daybreak` / `sunrise` / `morning` / `noon` / `afternoon` / `evening` / `sunset` / `night` / `midnight` | The stage of the day, in the weather theme (since 1.6.3) |

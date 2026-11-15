@@ -1108,6 +1108,12 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       mockCacheBytes = 0;
       return freed as T;
     }
+    case "cache_trim": {
+      if (mockCacheBytes <= Number(args.limit)) return 0 as T;
+      const freed = mockCacheBytes - Number(args.target);
+      mockCacheBytes = Number(args.target);
+      return freed as T;
+    }
     case "netease_daily":
       return mockSongs("推荐", 30) as T;
     case "netease_liked_ids":
@@ -1274,6 +1280,8 @@ export const api = {
   cacheSize: () => call<number>("cache_size"),
   /** Deletes the cache files except those behind `keep` (URLs in use); returns the bytes freed. */
   cacheClear: (keep: string[]) => call<number>("cache_clear", { keep }),
+  /** Past `limit` bytes, deletes the least recently used cache files (not those behind `keep`) down to `target`. */
+  cacheTrim: (limit: number, target: number, keep: string[]) => call<number>("cache_trim", { limit, target, keep }),
   /** URL of an exact-seeking copy of an MP3/FLAC (null when the file seeks exactly). */
   exactAudio: (path: string, quality?: string) => call<string | null>("exact_audio", { path, quality }),
   requestStream: (path: string, start: number, transcode: boolean) =>

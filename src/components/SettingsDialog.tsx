@@ -526,7 +526,10 @@ function Shortcuts() {
   );
 }
 
+const CACHE_LIMITS = [0, 512, 1024, 2048, 5120, 10240];
+
 function CacheRow() {
+  const limit = useSettings((st) => st.cacheLimitMB);
   const [bytes, setBytes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -551,6 +554,19 @@ function CacheRow() {
         <button className="btn" disabled={busy || bytes === 0} onClick={() => void clear()}>
           {busy ? "正在删除…" : "删除缓存"}
         </button>
+      </Row>
+      <Row label="自动清理缓存" hint="缓存文件超过上限时，自动删除最久没用到的缓存">
+        <select value={CACHE_LIMITS.includes(limit) ? limit : 0} onChange={(e) => {
+            useSettings.getState().set({ cacheLimitMB: Number(e.target.value) });
+            void C.trimCache().then(() => api.cacheSize().then(setBytes, () => {}));
+          }}
+        >
+          {CACHE_LIMITS.map((mb) => (
+            <option key={mb} value={mb}>
+              {mb ? `超过 ${formatBytes(mb * 1024 * 1024)} 时` : "不自动清理"}
+            </option>
+          ))}
+        </select>
       </Row>
     </>
   );
@@ -589,7 +605,18 @@ function About() {
           恢复默认
         </button>
       </Row>
+      <EggRow />
     </>
+  );
+}
+
+/** Tucked away at the very bottom of 关于. */
+function EggRow() {
+  const eggs = useSettings((st) => st.eggs);
+  return (
+    <Row label="是否激活彩蛋">
+      <Switch on={eggs} onChange={(on) => useSettings.getState().set({ eggs: on })} />
+    </Row>
   );
 }
 
