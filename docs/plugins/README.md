@@ -412,7 +412,7 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `lyrics-head` | 歌词页顶部：返回、歌名、工具按钮 |
 | `lyrics-body` | 歌词页的歌词区域 |
 | `lyric-scroll` | 滚动的歌词列表 |
-| `lyric-line` | 一行歌词。当前行另有 `data-active` 属性 |
+| `lyric-line` | 一行歌词。当前行另有 `data-active` 属性。1.6.16 起行内文字包在 `.lyric-body` 中：行本身的 `transform` 用于滚动动画，缩放、模糊等请写在 `.lyric-body` 上；行上的 `--d` 是与当前行相隔的行数（最大 4） |
 | `lyric-translation` | 歌词行中的翻译 |
 | `transport` | 底部播放栏 |
 | `progress` | 播放栏中的进度条行 |
@@ -522,7 +522,9 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `--lyric-dim` | `40%` | 普通歌词行的不透明度（天气主题下为 58%，季节主题下为 64%） |
 | `--lyric-near` | `56%` | 当前行相邻行的不透明度（天气主题下为 74%） |
 | `--lyric-active-scale` | `1.12` | 当前行的放大比例 |
-| `--lyric-blur` | `1.4px` | 非当前行的模糊程度（相邻行减半，设为 `0` 不模糊；有背景图、天气或季节主题时更小） |
+| `--lyric-blur` | `1.4px` | 非当前行的模糊程度（离当前行越远越模糊，相隔 2 行时为 0.8 倍；设为 `0` 不模糊；有背景图、天气或季节主题时更小） |
+| `--lyric-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | 歌词行变亮、变暗、缩放和模糊的过渡曲线 |
+| `--scene-blur` | `4px` | 季节主题背景插图和彩蛋背景的模糊程度（写在 `.season-sky` 或 `.egg-bg` 上，设为 `0` 不模糊） |
 | `--lyric-hl` | 主题色 | 当前行高亮颜色（用户在歌词页选择颜色时会覆盖） |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | 经典样式封面边长 |
 | `--cover-radius` | `16px` | 封面圆角 |

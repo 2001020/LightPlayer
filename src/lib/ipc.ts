@@ -1189,9 +1189,9 @@ async function mock<T>(cmd: string, args: Record<string, unknown> = {}): Promise
       // Uneven like a real download: the speed jumps around and is sometimes 0.
       const speeds = [0, 850_000, 12_400_000, 0, 3_100_000, 980_000, 22_200_000];
       for (let i = 0, got = 0; got < total; i++, got += 1_110_000) {
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 160));
         if (mockUpdateCancel) throw new Error("已取消");
-        mockEmit("update://progress", { received: got, total, speed: speeds[i % speeds.length], connections: 16 });
+        mockEmit("update://progress", { received: got, total, speed: speeds[i % speeds.length], connections: 16, sources: args.source === "auto" ? 5 : 1, host: "github.com" });
       }
       mockEmit("update://progress", { received: total, total, speed: 0, connections: 0 });
       return "/mock/LightPlayer_1.6.1_aarch64.app.zip" as T;
@@ -1321,7 +1321,7 @@ export const api = {
   appInfo: () => call<AppInfo>("app_info"),
   updateCheck: (includePrerelease: boolean) => call<UpdateInfo | null>("update_check", { includePrerelease }),
   /** Downloads an update (progress: "update://progress"); returns the file path. */
-  updateDownload: (asset: UpdateAsset) => call<string>("update_download", { asset }),
+  updateDownload: (asset: UpdateAsset, source: string) => call<string>("update_download", { asset, source }),
   updateCancel: () => call<void>("update_cancel"),
   /** At launch: true when the last automatic install did not complete (also clears old downloads). */
   updateStartup: () => call<boolean>("update_startup"),

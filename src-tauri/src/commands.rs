@@ -573,13 +573,14 @@ pub async fn update_check(include_prerelease: bool) -> AppResult<Option<crate::u
     crate::updater::check(include_prerelease).await
 }
 
-/// Downloads an update file (progress: `update://progress`); returns its path.
+/// Downloads an update file (progress: `update://progress`) from `source`
+/// ("auto", "github" or a mirror); returns its path.
 #[tauri::command]
-pub async fn update_download(app: AppHandle, state: State<'_, AppState>, asset: crate::updater::UpdateAsset) -> AppResult<String> {
+pub async fn update_download(app: AppHandle, state: State<'_, AppState>, asset: crate::updater::UpdateAsset, source: Option<String>) -> AppResult<String> {
     let cancel = state.update_cancel.clone();
     cancel.store(false, Ordering::SeqCst);
     let dir = state.cache_dir.join("updates");
-    let path = crate::updater::download(&asset, &dir, &cancel, |p| {
+    let path = crate::updater::download(&asset, source.as_deref().unwrap_or("auto"), &dir, &cancel, |p| {
         let _ = app.emit("update://progress", p);
     })
     .await?;

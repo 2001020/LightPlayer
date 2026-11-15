@@ -154,7 +154,7 @@ The main areas of the interface have a `data-lp` attribute; select them with `[d
 | `lyrics-head` | The top of the lyrics page: back, song title, tool buttons |
 | `lyrics-body` | The lyrics area of the lyrics page |
 | `lyric-scroll` | The scrolling lyrics list |
-| `lyric-line` | A lyric line. The current line also has a `data-active` attribute |
+| `lyric-line` | A lyric line. The current line also has a `data-active` attribute. Since 1.6.16 the text is wrapped in `.lyric-body`: the line's own `transform` is used by the scrolling animation, so put scaling, blur and the like on `.lyric-body`; `--d` on the line is how many lines away from the current one it is (at most 4) |
 | `lyric-translation` | The translation in a lyric line |
 | `transport` | The playback bar at the bottom |
 | `progress` | The progress bar row in the playback bar |
@@ -230,7 +230,9 @@ Overriding these variables on `:root` is the safest way to change the look:
 | `--lyric-dim` | `40%` | Opacity of ordinary lyric lines (58% with the weather theme) |
 | `--lyric-near` | `56%` | Opacity of the lines next to the current one (74% with the weather theme) |
 | `--lyric-active-scale` | `1.12` | Scale of the current line |
-| `--lyric-blur` | `1.4px` | Blur of the other lines (half for the neighbours, `0` for none; smaller over a background picture and in the weather and season themes) |
+| `--lyric-blur` | `1.4px` | Blur of the other lines (more the farther from the current line, 0.8 times this two lines away; `0` for none; smaller over a background picture and in the weather and season themes) |
+| `--lyric-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | Timing curve for lines brightening, dimming, scaling and blurring |
+| `--scene-blur` | `4px` | Blur of the season themes' pictures and the easter egg background (set on `.season-sky` or `.egg-bg`; `0` for none) |
 | `--lyric-hl` | accent color | Highlight color of the current line (overridden when the user picks a color on the lyrics page) |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | Side length of the classic style's cover |
 | `--cover-radius` | `16px` | Cover corner radius |

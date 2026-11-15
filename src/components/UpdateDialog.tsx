@@ -1,10 +1,11 @@
-// The "new version" window: release notes, then download progress and restart.
+// The "new version" window: release notes, then download progress (which can
+// go on in the background), then a confirmation before installing.
 
 import { Fragment, useEffect, type ReactNode } from "react";
 import { formatBytes } from "../lib/format";
 import { useUI } from "../stores/player";
 import { useSettings } from "../stores/settings";
-import { cancelUpdate, openReleasePage, skipUpdate, startUpdate, useUpdater } from "../stores/updater";
+import { cancelUpdate, installUpdate, openReleasePage, skipUpdate, startUpdate, useUpdater, type UpdateProgress } from "../stores/updater";
 import { Icon } from "./Icon";
 import { tip } from "./Tooltip";
 import { locale, releaseNotesFor, tr, useUILang } from "../i18n";
@@ -66,18 +67,27 @@ export function ReleaseNotes({ text }: { text: string }) {
   return <Fragment>{blocks}</Fragment>;
 }
 
-const KIND_NOTE: Record<string, string> = {
-  macApp: "下载完成后会替换“应用程序”中的 LightPlayer 并自动重新打开。",
-  windowsSetup: "下载完成后会自动安装新版本并重新打开 LightPlayer。",
-  windowsPortable: "下载完成后会更新便携版所在文件夹中的文件并重新打开 LightPlayer。",
+/** How the file is coming in, for the speed's tooltip. */
+function how(p: UpdateProgress): string {
+  if (p.connections && p.connections > 1) return p.sources && p.sources > 1 ? `aria2 多线程下载（${p.connections} 个连接，${p.sources} 个下载源）` : `aria2 多线程下载（${p.connections} 个连接）`;
+  return p.host ? `单线程下载（${p.host}）` : "单线程下载";
+}
+
+/** What installing does, once the file is here. */
+const READY_NOTE: Record<string, string> = {
+  macApp: "安装时 LightPlayer 会退出，替换“应用程序”中的旧版本后自动重新打开。",
+  windowsSetup: "安装时 LightPlayer 会退出，安装新版本后自动重新打开。",
+  windowsPortable: "安装时 LightPlayer 会退出，更新便携版文件夹中的文件后自动重新打开。",
 };
+
 
 export function UpdateDialog() {
   const { status, info, progress, error } = useUpdater();
   const close = () => useUI.setState({ overlay: null });
-  const busy = status === "downloading" || status === "installing";
+  // Closing while downloading sends the download to the background.
+  const busy = status === "installing";
   useEffect(() => {
-    const h = (e: KeyboardEvent) => e.key === "Escape" && !useUpdater.getState().status.match(/downloading|installing/) && close();
+    const h = (e: KeyboardEvent) => e.key === "Escape" && useUpdater.getState().status !== "installing" && close();
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, []);
@@ -91,9 +101,9 @@ export function UpdateDialog() {
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && !busy && close()}>
       <div className="dialog update-dialog" data-lp="update">
         <header>
-          <h2>{status === "installing" ? "正在更新" : "发现新版本"}</h2>
+          <h2>{status === "installing" ? "正在更新" : status === "ready" ? "新版本已下载" : "发现新版本"}</h2>
           {!busy && (
-            <button className="icon-btn" onClick={close} {...tip("关闭", "Esc")}>
+            <button className="icon-btn" onClick={close} {...tip(status === "downloading" ? "后台下载" : "关闭", "Esc")}>
               <Icon name="close" />
             </button>
           )}
@@ -128,16 +138,35 @@ export function UpdateDialog() {
                   <span>
                     正在下载 {formatBytes(progress.received)} / {formatBytes(progress.total)}
                   </span>
-                  <span className="update-speed" {...(progress.speed ? tip(progress.connections && progress.connections > 1 ? `aria2 多线程下载（${progress.connections} 个连接）` : "单线程下载") : {})}>
+                  <span className="update-speed" {...(progress.speed ? tip(how(progress)) : {})}>
                     {progress.speed ? `${formatBytes(progress.speed)}/s` : ""}
                   </span>
                 </div>
-                {progress.restarted && <div className="update-restart muted">多线程下载中断，已改用单线程重新下载</div>}
+                {progress.restarted && (
+                  <div className="update-restart muted">{progress.host ? `下载中断，已改用 ${progress.host} 重新下载` : "下载中断，已改用单线程重新下载"}</div>
+                )}
               </div>
               <button className="btn" onClick={cancelUpdate}>
                 取消
               </button>
+              <button className="btn primary" onClick={close} {...tip("关闭窗口，下载完成后再提示安装")}>
+                后台下载
+              </button>
             </div>
+          ) : status === "ready" ? (
+            <>
+              <div className="update-note">
+                {error ? <span className="err">{error}</span> : <span className="muted">{READY_NOTE[info.kind] ?? ""}</span>}
+              </div>
+              <div className="update-actions">
+                <button className="btn" onClick={close} {...tip("可随时点击标题栏的更新按钮安装")}>
+                  稍后安装
+                </button>
+                <button className="btn primary" onClick={() => void installUpdate()}>
+                  {error ? "重试安装" : "立即安装并重启"}
+                </button>
+              </div>
+            </>
           ) : status === "installing" ? (
             <div className="update-progress">
               <div className="spinner dark" />
@@ -146,7 +175,7 @@ export function UpdateDialog() {
           ) : (
             <>
               <div className="update-note">
-                {error ? <span className="err">{error}</span> : <span className="muted">{auto ? KIND_NOTE[info.kind] : "这个版本需要从 GitHub 下载安装。"}</span>}
+                {error ? <span className="err">{error}</span> : <span className="muted">{auto ? "下载可以转到后台进行，完成后会先询问再安装。" : "这个版本需要从 GitHub 下载安装。"}</span>}
               </div>
               <div className="update-actions">
                 {!skipped && (
@@ -174,17 +203,30 @@ export function UpdateDialog() {
   );
 }
 
-/** Title bar button while an update waits (the window was closed with "以后再说"). */
+/**
+ * Title bar button while an update waits (the window was closed with "以后再说"),
+ * downloads in the background (with its progress) or is ready to install.
+ */
 export function UpdateButton() {
   const status = useUpdater((s) => s.status);
   const version = useUpdater((s) => s.info?.version);
+  const progress = useUpdater((s) => s.progress);
   const skip = useSettings((s) => s.update.skip);
-  const shown = (status === "available" && version !== skip) || status === "downloading" || status === "installing";
+  const shown = (status === "available" && version !== skip) || status === "downloading" || status === "ready" || status === "installing";
   if (!shown) return null;
+  const pct = progress && progress.total ? Math.min(100, Math.floor((progress.received / progress.total) * 100)) : 0;
+  const label =
+    status === "downloading" ? `正在后台下载新版本 ${version}（${pct}%）` : status === "ready" ? `新版本 ${version} 已下载，点击安装` : `有新版本 ${version}，点击更新`;
   return (
-    <button className="icon-btn update-btn" onClick={() => useUI.setState({ overlay: "update" })} {...tip(`有新版本 ${version}，点击更新`)}>
+    <button className={`icon-btn update-btn ${status}`} onClick={() => useUI.setState({ overlay: "update" })} {...tip(label)}>
       <Icon name="download" />
-      <span className="update-dot" />
+      {status === "downloading" ? (
+        <span className="update-mini">
+          <i style={{ width: `${pct}%` }} />
+        </span>
+      ) : (
+        <span className="update-dot" />
+      )}
     </button>
   );
 }

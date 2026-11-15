@@ -46,6 +46,8 @@ export interface UpdateSettings {
   prerelease: boolean | null;
   /** A version the user chose to skip. */
   skip: string | null;
+  /** Where update files come from: "auto" (GitHub and its mirrors together), "github" or a mirror's host. */
+  source: string;
 }
 
 export interface BackgroundSettings {
@@ -200,7 +202,7 @@ export const defaultSettings: Settings = {
   precisePaths: [],
   lyricHighlight: null,
   desktopLyrics: { enabled: false, color: "#66ccff" },
-  update: { auto: true, prerelease: null, skip: null },
+  update: { auto: true, prerelease: null, skip: null, source: "auto" },
   lan: { enabled: true, follow: true, name: "" },
   tapCompensation: 0.15,
   asr: {

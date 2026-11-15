@@ -1,4 +1,5 @@
-// Updates from GitHub Releases: check, download with progress, install.
+// Updates from GitHub Releases: check, download with progress (in the window
+// or in the background), then install once the user says so.
 
 import { create } from "zustand";
 import { api, isTauri, on, type AppInfo, type UpdateInfo } from "../lib/ipc";
@@ -7,17 +8,32 @@ import { useSettings } from "./settings";
 
 /**
  * speed: bytes per second; connections: several when aria2 downloads;
- * restarted: aria2 failed and a single connection started over.
+ * restarted: the download broke off and a single connection started over;
+ * sources: sites downloaded from at once; host: the site when there is one.
  */
-export type UpdateProgress = { received: number; total: number; speed?: number; connections?: number; restarted?: boolean };
+export type UpdateProgress = {
+  received: number;
+  total: number;
+  speed?: number;
+  connections?: number;
+  restarted?: boolean;
+  sources?: number;
+  host?: string;
+};
 
-export type UpdateStatus = "idle" | "checking" | "latest" | "available" | "downloading" | "installing" | "error";
+/** ready: downloaded, waiting for the user to install. */
+export type UpdateStatus = "idle" | "checking" | "latest" | "available" | "downloading" | "ready" | "installing" | "error";
+
+/** Mirrors of GitHub's downloads (the same list as the app's updater). */
+export const UPDATE_MIRRORS = ["ghfast.top", "gh-proxy.com", "ghproxy.net", "gh-proxy.org"];
 
 interface UpdaterState {
   status: UpdateStatus;
   info: UpdateInfo | null;
   progress: UpdateProgress | null;
   error: string | null;
+  /** The downloaded file, once status is "ready". */
+  file: string | null;
   /** Date.now() of the last finished check. */
   checkedAt: number | null;
   app: AppInfo | null;
@@ -28,6 +44,7 @@ export const useUpdater = create<UpdaterState>(() => ({
   info: null,
   progress: null,
   error: null,
+  file: null,
   checkedAt: null,
   app: null,
 }));
@@ -58,7 +75,7 @@ export function includePrerelease(): boolean {
  */
 export async function checkForUpdates(manual: boolean): Promise<void> {
   const s = useUpdater.getState();
-  if (s.status === "checking" || s.status === "downloading" || s.status === "installing") return;
+  if (s.status === "checking" || s.status === "downloading" || s.status === "ready" || s.status === "installing") return;
   await loadAppInfo();
   useUpdater.setState({ status: "checking", error: null });
   try {
@@ -87,31 +104,55 @@ export async function openReleasePage(url?: string) {
   await openUrl(page);
 }
 
-/** Downloads and installs the found update; the app restarts as the new version. */
+/** The update window is not open (it was sent to the background or closed). */
+const inBackground = () => useUI.getState().overlay !== "update";
+
+/** Brings up the update window when nothing else is in the way. */
+function showUpdateWindow(): boolean {
+  const ui = useUI.getState();
+  if (ui.overlay === "update") return true;
+  if (ui.overlay || ui.fullscreen) return false;
+  useUI.setState({ overlay: "update" });
+  return true;
+}
+
+/**
+ * Downloads the found update. It keeps going when the window is closed
+ * ("后台下载"); once done, the window asks before installing.
+ */
 export async function startUpdate(): Promise<void> {
   const { info, status } = useUpdater.getState();
-  if (!info || status === "downloading" || status === "installing") return;
+  if (!info || status === "downloading" || status === "ready" || status === "installing") return;
   if (!info.asset || info.kind === "manual") {
     await openReleasePage(info.page);
     return;
   }
-  useUpdater.setState({ status: "downloading", progress: { received: 0, total: info.asset.size }, error: null });
+  useUpdater.setState({ status: "downloading", progress: { received: 0, total: info.asset.size }, error: null, file: null });
   const off = await on<UpdateProgress>("update://progress", (p) => useUpdater.setState({ progress: p }));
   let path: string;
   try {
-    path = await api.updateDownload(info.asset);
+    path = await api.updateDownload(info.asset, useSettings.getState().update.source || "auto");
   } catch (e) {
     const cancelled = String(e).includes("已取消");
     useUpdater.setState({ status: "available", progress: null, error: cancelled ? null : `下载失败：${String(e)}` });
+    if (!cancelled && inBackground()) toast(`新版本下载失败：${String(e)}`, "error", 8000);
     return;
   } finally {
     off();
   }
-  useUpdater.setState({ status: "installing" });
+  useUpdater.setState({ status: "ready", file: path, progress: null });
+  if (inBackground() && !showUpdateWindow()) toast(`LightPlayer ${info.version} 已下载完成，点击标题栏的更新按钮安装`, "success", 8000);
+}
+
+/** Installs the downloaded update: the app quits and restarts as the new version. */
+export async function installUpdate(): Promise<void> {
+  const { file, status } = useUpdater.getState();
+  if (!file || status !== "ready") return;
+  useUpdater.setState({ status: "installing", error: null });
   try {
-    await api.updateInstall(path);
+    await api.updateInstall(file);
   } catch (e) {
-    useUpdater.setState({ status: "available", progress: null, error: `安装失败：${String(e)}` });
+    useUpdater.setState({ status: "ready", error: `安装失败：${String(e)}` });
   }
 }
 
