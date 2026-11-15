@@ -18,6 +18,8 @@
   --lyric-active-scale: 1.12;
   --lyric-blur: 1.4px;
   --lyric-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* A dark shadow under the lyrics (drop-shadow, so word-by-word lines get it too). */
+  --lyric-shadow: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.3));
   /* public: cover on the audio player page */
   --cover-size: min(32vh, 28vw, 300px);
   --cover-radius: 16px;
@@ -279,20 +281,8 @@ select:focus {
 :root[data-bg="image"] .titlebar .now-title,
 :root[data-bg="weather"] .titlebar .now-title,
 :root[data-bg="image"] .lyrics-head,
-:root[data-bg="weather"] .lyrics-head,
-:root[data-bg="image"] .lyric-line,
-:root[data-bg="weather"] .lyric-line {
+:root[data-bg="weather"] .lyrics-head {
   text-shadow: var(--halo);
-}
-:root[data-bg="image"] .lyric-line.active .lyric-body,
-:root[data-bg="weather"] .lyric-line.active .lyric-body {
-  text-shadow: var(--halo);
-}
-:root[data-bg="image"] .lyric-line.active.karaoke .w,
-:root[data-bg="weather"] .lyric-line.active.karaoke .w,
-:root[data-bg="image"] .lyric-line.active.karaoke .lyric-body,
-:root[data-bg="weather"] .lyric-line.active.karaoke .lyric-body {
-  text-shadow: none;
 }
 .titlebar .brand {
   font-weight: 600;
@@ -2857,20 +2847,13 @@ button.cm-foot {
     filter 0.7s var(--lyric-ease),
     opacity 0.6s var(--lyric-ease),
     text-shadow 0.6s var(--lyric-ease);
-  /* The farther a line is from the current one, the more out of focus. */
-  filter: blur(calc(var(--lyric-blur) * var(--d, 2) / 2.5));
+  /* The farther a line is from the current one, the more out of focus. The
+     same function list everywhere, so focus changes always animate. */
+  filter: blur(calc(var(--lyric-blur) * var(--d, 2) / 2.5)) var(--lyric-shadow);
   opacity: calc(1 - var(--d, 2) * 0.04);
 }
 .lyric-line:hover {
   background: var(--hover);
-}
-.lyric-line:hover .lyric-body {
-  filter: none;
-}
-/* Scrolling through the lyrics by hand: every line is sharp. */
-.lyric-scroll.browsing .lyric-body {
-  filter: none;
-  opacity: 1;
 }
 .align-left .lyric-body {
   transform-origin: left center;
@@ -2883,7 +2866,7 @@ button.cm-foot {
 }
 .lyric-line.active .lyric-body {
   transform: scale(var(--lyric-active-scale));
-  filter: none;
+  filter: blur(0) var(--lyric-shadow);
   opacity: 1;
   text-shadow: 0 0 24px color-mix(in srgb, var(--lyric-hl, var(--accent)) 40%, transparent);
 }
@@ -2916,7 +2899,7 @@ button.cm-foot {
 }
 .lyric-line.unsynced .lyric-body {
   opacity: 1;
-  filter: none;
+  filter: blur(0) var(--lyric-shadow);
 }
 .lyric-empty {
   height: 100%;
@@ -6011,8 +5994,6 @@ html.desktop-lyrics #root {
   inset: calc(var(--scene-blur) * -3);
   width: calc(100% + var(--scene-blur) * 6);
   height: calc(100% + var(--scene-blur) * 6);
-  /* Softened so the interface on top stays easy to read. */
-  filter: blur(var(--scene-blur));
   /* Drawn once, then only moved or left alone. */
   will-change: transform;
 }

@@ -1,7 +1,7 @@
 // The season theme's background: a landscape for each season (season/art.ts)
 // under its sky, and whatever the season lets fall: cherry petals, leaves or snow.
 
-import { useEffect, useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { Season } from "../core/season";
 import { SCENE_VIEWBOX, scene } from "./season/art";
 
@@ -79,18 +79,55 @@ function Stars() {
 }
 
 /**
+ * The softening blur, in the drawing's units: `--scene-blur` (pixels on screen)
+ * at the scale the drawing is shown at. Follows the window size.
+ */
+function useSceneBlur(host: React.RefObject<HTMLDivElement | null>): number {
+  const [blur, setBlur] = useState(0);
+  useEffect(() => {
+    const [, , vw, vh] = SCENE_VIEWBOX.split(" ").map(Number);
+    let timer = 0;
+    const measure = () => {
+      const el = host.current;
+      if (!el) return;
+      const px = parseFloat(getComputedStyle(el).getPropertyValue("--scene-blur")) || 0;
+      // preserveAspectRatio "slice": the drawing covers the window.
+      const scale = Math.max(el.clientWidth / vw, el.clientHeight / vh) || 1;
+      setBlur(Math.round((px / scale) * 10) / 10);
+    };
+    const onResize = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(measure, 200);
+    };
+    measure();
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [host]);
+  return blur;
+}
+
+/**
  * The season's landscape, anchored to the bottom of the window. The clouds are
  * layers of their own, so their drifting never repaints the land.
+ *
+ * The softening blur is part of the drawing (an SVG filter), not a CSS filter
+ * on the layers: drawn once, the layers are then only moved, where a CSS
+ * filter would be worked out again on every frame of the drift.
  */
-function Scene({ season }: { season: Season }) {
+function Scene({ season, blur }: { season: Season; blur: number }) {
   const art = useMemo(() => scene(season), [season]);
+  const soft = (html: string) => (blur > 0 ? `<g filter="url(#ss-scene-blur)">${html}</g>` : html);
   const layer = (key: string, cls: string, html: string) => (
     <svg key={key} className={`season-scene ${cls}`} viewBox={SCENE_VIEWBOX} preserveAspectRatio="xMidYMax slice" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
   );
+  const filter = `<defs><filter id="ss-scene-blur" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="${blur}"/></filter></defs>`;
   return (
     <>
-      {art.drift.map((d, i) => layer(`${season}-drift-${i}`, `drift ${d.slow ? "slow" : ""}`, d.body))}
-      {layer(`${season}-land`, "land", art.defs + art.land)}
+      {art.drift.map((d, i) => layer(`${season}-drift-${i}`, `drift ${d.slow ? "slow" : ""}`, soft(d.body)))}
+      {layer(`${season}-land`, "land", art.defs + filter + soft(art.land))}
     </>
   );
 }
@@ -105,10 +142,12 @@ export function SeasonSky({ season, motion, paused }: { season: Season; motion: 
       delete root.dataset.season;
     };
   }, [season]);
+  const host = useRef<HTMLDivElement>(null);
+  const blur = useSceneBlur(host);
   return (
-    <div className={`season-sky ${motion ? "" : "still"} ${paused ? "paused" : ""}`} aria-hidden="true">
+    <div ref={host} className={`season-sky ${motion ? "" : "still"} ${paused ? "paused" : ""}`} aria-hidden="true">
       {season === "winter" && <Stars />}
-      <Scene season={season} />
+      <Scene season={season} blur={blur} />
       {motion && !paused && <Falling season={season} />}
     </div>
   );

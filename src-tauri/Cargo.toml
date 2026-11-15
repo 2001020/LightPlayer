@@ -1,6 +1,6 @@
 [package]
 name = "lightplayer"
-version = "1.6.17"
+version = "1.6.18"
 description = "LightPlayer desktop media player"
 edition = "2021"
 rust-version = "1.80"
