@@ -21,12 +21,14 @@
   --cover-size: min(32vh, 28vw, 300px);
   --cover-radius: 16px;
   --cover-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.15);
-  --radius-s: 8px;
-  --radius: 12px;
-  --radius-l: 18px;
+  --radius-s: 7px;
+  --radius: 11px;
+  --radius-l: 16px;
   --titlebar-h: 44px;
   --transport-h: 92px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Overshoots a little and settles: for things that are pressed, switched or pop up. */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --accent: #66ccff;
   --accent-hover: #4fc2fb;
@@ -35,19 +37,26 @@
   --accent-soft: rgba(102, 204, 255, 0.16);
   --on-accent: #fff;
 
-  --bg: #f4f4f7;
-  --bg-grad: radial-gradient(1200px 700px at 10% -10%, rgba(102, 204, 255, 0.14), transparent 60%),
-    radial-gradient(900px 600px at 110% 110%, rgba(160, 140, 255, 0.08), transparent 60%);
-  --panel: rgba(255, 255, 255, 0.72);
-  --panel-solid: #ffffff;
-  --panel-2: rgba(0, 0, 0, 0.035);
-  --hover: rgba(0, 0, 0, 0.05);
-  --border: rgba(0, 0, 0, 0.08);
-  --text: #16161a;
-  --text-dim: #5b5b66;
-  --text-faint: #9a9aa6;
-  --shadow: 0 10px 40px rgba(20, 20, 40, 0.12), 0 2px 8px rgba(20, 20, 40, 0.06);
-  --track: rgba(0, 0, 0, 0.1);
+  /* Warm paper and ink rather than cool grey; one wash of the accent from the top left. */
+  --bg: #f3f1ec;
+  --bg-grad: radial-gradient(1100px 640px at 0% 0%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 62%);
+  --panel: rgba(255, 254, 251, 0.8);
+  --panel-solid: #fffefb;
+  --panel-2: rgba(46, 36, 16, 0.045);
+  --hover: rgba(46, 36, 16, 0.065);
+  --border: rgba(46, 36, 16, 0.11);
+  --text: #1c1b18;
+  --text-dim: #5e5a52;
+  --text-faint: #9a958a;
+  --shadow: 0 22px 48px -20px rgba(46, 36, 16, 0.3), 0 3px 10px -2px rgba(46, 36, 16, 0.1);
+  --track: rgba(46, 36, 16, 0.12);
+  /* The light catching the top edge of a raised surface. */
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --grain-opacity: 0.5;
+  /* Artwork placeholder: a plain sleeve with the grooves of a record showing. */
+  --art-fallback: linear-gradient(135deg, rgba(255, 255, 255, 0.26), transparent 46%, rgba(0, 0, 0, 0.16)),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 7px, rgba(255, 255, 255, 0.09) 7px 8px),
+    color-mix(in srgb, var(--accent) 72%, #23211c);
   --danger: #e5484d;
   --warn-bg: rgba(247, 181, 0, 0.14);
   --warn-text: #8a5a00;
@@ -55,19 +64,20 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #111115;
-  --bg-grad: radial-gradient(1200px 700px at 10% -10%, rgba(102, 204, 255, 0.12), transparent 60%),
-    radial-gradient(900px 600px at 110% 110%, rgba(31, 182, 255, 0.10), transparent 60%);
-  --panel: rgba(28, 28, 34, 0.72);
-  --panel-solid: #1c1c22;
-  --panel-2: rgba(255, 255, 255, 0.045);
-  --hover: rgba(255, 255, 255, 0.07);
-  --border: rgba(255, 255, 255, 0.09);
-  --text: #f2f2f5;
-  --text-dim: #a8a8b3;
-  --text-faint: #6d6d78;
-  --shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
-  --track: rgba(255, 255, 255, 0.14);
+  --bg: #151514;
+  --bg-grad: radial-gradient(1100px 640px at 0% 0%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 62%);
+  --panel: rgba(34, 33, 31, 0.8);
+  --panel-solid: #22211f;
+  --panel-2: rgba(255, 246, 228, 0.05);
+  --hover: rgba(255, 246, 228, 0.075);
+  --border: rgba(255, 246, 228, 0.1);
+  --text: #f3f1ec;
+  --text-dim: #aba69b;
+  --text-faint: #736f66;
+  --shadow: 0 22px 48px -18px rgba(0, 0, 0, 0.7), 0 3px 10px -2px rgba(0, 0, 0, 0.4);
+  --track: rgba(255, 246, 228, 0.15);
+  --edge: inset 0 1px 0 rgba(255, 246, 228, 0.07);
+  --grain-opacity: 0.22;
   --warn-bg: rgba(247, 181, 0, 0.16);
   --warn-text: #ffcf5c;
   color-scheme: dark;
@@ -290,7 +300,7 @@ select:focus {
   width: 10px;
   height: 10px;
   border-radius: 3px;
-  background: linear-gradient(135deg, var(--accent), #3d8bff);
+  background: var(--art-fallback);
 }
 .titlebar .spacer {
   flex: 1;
@@ -1198,7 +1208,7 @@ input[type="range"] {
   box-shadow: var(--cover-shadow);
   cursor: pointer;
   transition: transform 0.35s var(--ease), box-shadow 0.35s;
-  background: linear-gradient(135deg, var(--accent), #3d8bff);
+  background: var(--art-fallback);
 }
 .cover:hover {
   transform: translateY(-3px) scale(1.01);
@@ -1555,7 +1565,7 @@ input[type="range"] {
 .vinyl-label {
   inset: calc((100% - var(--label)) / 2);
   overflow: hidden;
-  background: linear-gradient(135deg, var(--accent), #3d8bff);
+  background: var(--art-fallback);
   box-shadow: 0 0 0 0.35vmin rgba(0, 0, 0, 0.7);
 }
 .vinyl-label img {
@@ -2047,7 +2057,7 @@ input[type="range"] {
   width: 72px;
   height: 72px;
   border-radius: 20px;
-  background: linear-gradient(135deg, var(--accent), #3d8bff);
+  background: var(--art-fallback);
   display: grid;
   place-items: center;
   color: #fff;
@@ -2754,7 +2764,7 @@ button.cm-foot {
   height: 44px;
   border-radius: 8px;
   object-fit: cover;
-  background: linear-gradient(135deg, var(--accent), #3d8bff);
+  background: var(--art-fallback);
   flex: none;
 }
 .lyrics-head .who .t {
@@ -3838,7 +3848,7 @@ kbd {
   place-items: center;
   overflow: hidden;
   border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent), #3d8bff);
+  background: var(--art-fallback);
   color: rgba(255, 255, 255, 0.9);
   flex: none;
 }
@@ -4795,6 +4805,10 @@ kbd {
 :root[data-bg="weather"] {
   --lyric-dim: 58%;
   --lyric-near: 74%;
+  --lyric-blur: 0.8px;
+}
+:root[data-bg="image"] {
+  --lyric-blur: 0.9px;
 }
 
 /* ---------------------------------------------------------------- desktop lyrics */
@@ -5861,21 +5875,15 @@ html.desktop-lyrics #root {
   --panel: rgba(255, 255, 255, 0.5);
   --panel-2: rgba(255, 255, 255, 0.36);
   --border: rgba(60, 60, 80, 0.14);
-  --halo: 0 0 8px rgba(255, 255, 255, 0.7);
-  --lyric-dim: 52%;
-  --lyric-near: 68%;
+  --halo: 0 0 5px rgba(255, 255, 255, 0.95), 0 0 16px rgba(255, 255, 255, 0.75);
+  /* Over a detailed picture the other lines stay nearly sharp, and less faint. */
+  --lyric-dim: 64%;
+  --lyric-near: 80%;
+  --lyric-blur: 0.6px;
 }
 :root[data-season="spring"] {
   --bg: #fdeef3;
-  --season-sky: linear-gradient(to bottom, #bfe3f7 0%, #e6f1fb 34%, #fde7ef 68%, #fbd3e0 100%);
-  --season-glow: radial-gradient(60vw 46vh at 78% 8%, rgba(255, 244, 214, 0.9), transparent 70%);
-  --ridge-far: #cfe8cf;
-  --ridge-mid: #b4dcb4;
-  --ridge-near: #9bd0a0;
-  --crown: #ffc2d6;
-  --crown-2: #ffdbe7;
-  --trunk: #8a6a62;
-  --light: rgba(255, 255, 255, 0.55);
+  --season-sky: linear-gradient(to bottom, #9fd0f2 0%, #cbe5f8 30%, #f3eef8 56%, #fde3ea 74%, #fbd6e0 100%);
   --text: #3a2733;
   --text-dim: #6a4d5c;
   --text-faint: #957a88;
@@ -5885,15 +5893,7 @@ html.desktop-lyrics #root {
 }
 :root[data-season="summer"] {
   --bg: #e4f6ee;
-  --season-sky: linear-gradient(to bottom, #58b7f0 0%, #9fd8f6 38%, #d9f3ec 74%, #c8eccf 100%);
-  --season-glow: radial-gradient(52vw 44vh at 84% 4%, rgba(255, 250, 200, 0.95), transparent 68%);
-  --ridge-far: #9fd8a8;
-  --ridge-mid: #72c487;
-  --ridge-near: #4daf6e;
-  --crown: #3fa468;
-  --crown-2: #63bf82;
-  --trunk: #6f5a44;
-  --light: rgba(255, 255, 220, 0.42);
+  --season-sky: linear-gradient(to bottom, #2f8fe0 0%, #57aeee 30%, #96d2f6 58%, #c9ebfa 76%, #dff4f6 100%);
   --text: #12302a;
   --text-dim: #2f5247;
   --text-faint: #5a7d72;
@@ -5903,15 +5903,7 @@ html.desktop-lyrics #root {
 }
 :root[data-season="autumn"] {
   --bg: #fbf0df;
-  --season-sky: linear-gradient(to bottom, #f6d9a8 0%, #fbe7c6 36%, #fdf1dc 70%, #f7d9b4 100%);
-  --season-glow: radial-gradient(56vw 44vh at 20% 10%, rgba(255, 214, 150, 0.85), transparent 70%);
-  --ridge-far: #edc48a;
-  --ridge-mid: #e0a25c;
-  --ridge-near: #c97f3c;
-  --crown: #e4672f;
-  --crown-2: #f2a23a;
-  --trunk: #6b4a36;
-  --light: rgba(255, 236, 190, 0.5);
+  --season-sky: linear-gradient(to bottom, #93a9cb 0%, #c4b5c6 22%, #eec3a4 44%, #fbd8ac 62%, #fde6c0 78%, #fbd9ac 100%);
   --text: #3b2416;
   --text-dim: #6a4a34;
   --text-faint: #96765e;
@@ -5921,13 +5913,7 @@ html.desktop-lyrics #root {
 }
 :root[data-season="winter"] {
   --bg: #0f1a2e;
-  --season-sky: linear-gradient(to bottom, #0b1428 0%, #16284a 42%, #2c4a78 78%, #5b7fae 100%);
-  --season-glow: radial-gradient(40vw 40vh at 80% 12%, rgba(190, 215, 255, 0.34), transparent 70%);
-  --ridge-far: #9db6d6;
-  --ridge-mid: #c4d6ec;
-  --ridge-near: #eef4fb;
-  --trunk: #2a3a55;
-  --light: rgba(255, 255, 255, 0.9);
+  --season-sky: linear-gradient(to bottom, #070d1f 0%, #0f1d3f 34%, #1f3a6c 62%, #3f629a 80%, #6f8fc0 100%);
   --panel: rgba(16, 28, 52, 0.42);
   --panel-solid: #172543;
   --panel-2: rgba(255, 255, 255, 0.07);
@@ -5953,73 +5939,36 @@ html.desktop-lyrics #root {
   pointer-events: none;
   background: var(--season-sky);
 }
-.season-glow {
+.season-scene {
   position: absolute;
   inset: 0;
-  background: var(--season-glow);
-}
-.season-ground {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
   width: 100%;
-  height: min(38vh, 300px);
+  height: 100%;
+  /* Drawn once, then only moved or left alone. */
+  will-change: transform;
 }
-.season-ground .ridge.far {
-  fill: var(--ridge-far);
+/* Clouds drift, slowly and not far. */
+.season-scene.drift {
+  animation: season-drift 90s ease-in-out infinite alternate;
 }
-.season-ground .ridge.mid {
-  fill: var(--ridge-mid);
+.season-scene.drift.slow {
+  animation-duration: 150s;
+  animation-direction: alternate-reverse;
 }
-.season-ground .ridge.near {
-  fill: var(--ridge-near);
+@keyframes season-drift {
+  from {
+    transform: translateX(-2.4vw);
+  }
+  to {
+    transform: translateX(3.2vw);
+  }
 }
-.season-ground .trunk {
-  fill: var(--trunk);
-}
-.season-ground .twig {
-  fill: none;
-  stroke: var(--trunk);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-}
-.season-ground .frost {
-  fill: none;
-  stroke: #fff;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  opacity: 0.85;
-  transform: translateY(-1.2px);
-}
-.season-ground .crown {
-  fill: var(--crown);
-}
-.season-ground .crown.two {
-  fill: var(--crown-2);
-}
+/* Stars in winter: small and sharp. */
 .season-light {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--light), transparent 70%);
-  animation: season-light ease-in-out infinite alternate;
-}
-/* Stars in winter: small and sharp. */
-:root[data-season="winter"] .season-light {
-  background: var(--light);
-}
-@keyframes season-light {
-  from {
-    opacity: 0.25;
-    transform: translate(0, 0) scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: translate(10px, -14px) scale(1.08);
-  }
-}
-:root[data-season="winter"] .season-light {
-  animation-name: season-twinkle;
+  background: #fff;
+  animation: season-twinkle ease-in-out infinite alternate;
 }
 @keyframes season-twinkle {
   from {
@@ -6446,4 +6395,374 @@ html.desktop-lyrics #root {
   .egg-glint {
     display: none;
   }
+}
+
+/* ---------------------------------------------------------------- look and feel (1.6.15) */
+/* The same layout, drawn again: paper and ink instead of glass and glow, edges
+   that catch the light, and controls that give a little when touched. Kept
+   together here; the themes above still have the last word on colours. */
+
+/* A fine grain over the plain background, so it reads as a surface. */
+.bg-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--grain-opacity, 0.5);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .5 -.14'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+:root[data-theme="dark"] .bg-layer::after {
+  mix-blend-mode: screen;
+}
+::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+/* Surfaces: a lit top edge and a short, soft shadow instead of a frosted card. */
+.panel {
+  box-shadow: var(--edge), 0 1px 2px rgba(46, 36, 16, 0.05);
+}
+.transport {
+  box-shadow: var(--edge), var(--shadow);
+}
+.dialog,
+.popover,
+.ctx-menu,
+.toast,
+.slider .tip {
+  box-shadow: var(--edge), var(--shadow);
+}
+
+/* Type: tighter, heavier headings; figures that line up. */
+.track-info .title,
+.lib-title h1,
+.lib-hero h1,
+.dialog header h2,
+.lyric-empty h2 {
+  letter-spacing: -0.018em;
+  font-weight: 720;
+}
+.transport .progress-row span,
+.tt-row .c-dur,
+.tt-row .c-idx {
+  font-variant-numeric: tabular-nums;
+}
+.lib-group > span,
+.dialog .body h3 {
+  letter-spacing: 0.04em;
+}
+
+/* Buttons sit on the surface like keys: an edge, a lift on hover, a give on press. */
+.btn {
+  border-color: transparent;
+  background: var(--panel-solid);
+  box-shadow: var(--edge), 0 0 0 1px var(--border), 0 1px 2px rgba(46, 36, 16, 0.06);
+  transition: background 0.15s, box-shadow 0.2s, transform 0.22s var(--spring), color 0.15s;
+}
+.btn:hover {
+  background: var(--panel-solid);
+  transform: translateY(-1px);
+  box-shadow: var(--edge), 0 0 0 1px var(--border), 0 5px 12px -4px rgba(46, 36, 16, 0.22);
+}
+.btn:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 0 0 1px var(--border);
+  transition-duration: 0.06s;
+}
+.btn:disabled {
+  transform: none;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.btn.primary {
+  background: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 14px -6px var(--accent);
+}
+.btn.primary:hover {
+  background: var(--accent-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 1px 2px rgba(0, 0, 0, 0.12), 0 10px 18px -6px var(--accent);
+}
+.btn.ghost,
+.btn.ghost:hover,
+.btn.ghost:active {
+  box-shadow: none;
+}
+.btn.ghost {
+  background: transparent;
+}
+.btn.ghost:hover {
+  background: var(--hover);
+  transform: none;
+}
+.btn.ghost:active {
+  transform: scale(0.97);
+}
+
+/* Icon buttons: the hover disc grows out from the middle, the icon leans in. */
+.icon-btn {
+  isolation: isolate;
+  transition: color 0.15s, transform 0.22s var(--spring);
+}
+.icon-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--hover);
+  opacity: 0;
+  transform: scale(0.55);
+  transition: opacity 0.14s, transform 0.26s var(--spring);
+}
+.icon-btn:hover {
+  background: transparent;
+}
+.icon-btn:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+.icon-btn:disabled::before {
+  display: none;
+}
+.icon-btn > svg {
+  transition: transform 0.26s var(--spring);
+}
+.icon-btn:hover:not(:disabled) > svg {
+  transform: scale(1.08);
+}
+.icon-btn:active {
+  transform: scale(0.9);
+  transition-duration: 0.06s;
+}
+.icon-btn.active::after {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  bottom: 2px;
+  animation: mark-in 0.3s var(--spring);
+}
+@keyframes mark-in {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+}
+
+/* Play: the one raised, coloured control. */
+.play-btn {
+  background: var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.12), 0 10px 20px -8px var(--accent);
+  transition: background 0.15s, box-shadow 0.25s, transform 0.3s var(--spring);
+}
+.play-btn::before {
+  display: none;
+}
+.play-btn:hover {
+  background: var(--accent-hover);
+  transform: scale(1.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.12), 0 14px 26px -8px var(--accent);
+}
+.play-btn:active {
+  transform: scale(0.93);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+.play-btn:hover:not(:disabled) > svg {
+  transform: none;
+}
+
+/* The favourite heart pops when it fills. */
+.transport .icon-btn.fav.on > svg {
+  animation: fav-pop 0.42s var(--spring);
+}
+@keyframes fav-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Sliders: the thumb springs out; the played part is one solid stroke. */
+.slider .rail {
+  transition: height 0.18s var(--spring);
+}
+.slider .thumb {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.12s, transform 0.26s var(--spring);
+}
+.slider.dragging .thumb {
+  transform: scale(1.18);
+}
+
+/* Switches: the knob stretches towards where it is going while it is held. */
+.switch {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+  transition: background 0.2s;
+}
+.switch::after {
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.18), 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s var(--spring), width 0.18s var(--ease);
+}
+.switch:active::after {
+  width: 23px;
+}
+.switch.on:active::after {
+  transform: translateX(11px);
+}
+
+/* Segmented controls and chips. */
+.seg {
+  border-color: transparent;
+  box-shadow: inset 0 1px 2px rgba(46, 36, 16, 0.08), 0 0 0 1px var(--border);
+}
+.seg button {
+  transition: color 0.15s, background 0.18s, box-shadow 0.18s, transform 0.22s var(--spring);
+}
+.seg button:active {
+  transform: scale(0.95);
+}
+.seg button.on {
+  box-shadow: var(--edge), 0 1px 2px rgba(0, 0, 0, 0.14), 0 0 0 1px var(--border);
+}
+.swatch {
+  transition: transform 0.25s var(--spring), box-shadow 0.15s;
+}
+.swatch:hover {
+  transform: scale(1.14);
+}
+.swatch:active {
+  transform: scale(0.94);
+}
+
+/* The library's navigation: a marker slides open beside the current page. */
+.lib-link {
+  position: relative;
+  transition: background 0.15s, color 0.15s, transform 0.22s var(--spring);
+}
+.lib-link::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: translateY(-50%);
+  transition: height 0.3s var(--spring);
+}
+.lib-link.on::before {
+  height: 15px;
+}
+.lib-link > svg {
+  transition: transform 0.26s var(--spring);
+}
+.lib-link:hover > svg {
+  transform: translateX(1px) scale(1.08);
+}
+.lib-link:active {
+  transform: scale(0.985);
+}
+
+/* Lists: the playing row is marked on its edge, not only tinted. */
+.tt-row {
+  transition: background 0.12s;
+}
+.tt-row.current {
+  box-shadow: inset 2.5px 0 0 var(--accent);
+}
+.lib-card .art {
+  transition: transform 0.3s var(--spring), box-shadow 0.25s;
+}
+.lib-card:hover .art {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 28px -12px rgba(0, 0, 0, 0.34);
+}
+.lib-card:active .art {
+  transform: translateY(-1px) scale(0.985);
+}
+
+/* The cover: lifts towards the pointer, settles back when playback pauses. */
+.cover {
+  transition: transform 0.5s var(--spring), box-shadow 0.4s;
+}
+.cover:hover {
+  transform: translateY(-4px) scale(1.015);
+}
+.cover.paused {
+  transform: scale(0.92);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Things that appear: dialogs rise and settle, menus open from their corner, toasts drop in. */
+.dialog {
+  animation: dialog-in 0.34s var(--spring);
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.965);
+  }
+}
+.toast {
+  animation: toast-in 0.4s var(--spring);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.94);
+  }
+}
+.ctx-menu {
+  animation: menu-in 0.2s var(--ease);
+  transform-origin: top left;
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+.popover .item,
+.ctx-menu .item {
+  transition: background 0.1s, transform 0.2s var(--spring);
+}
+.popover .item:active,
+.ctx-menu .item:active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .icon-btn,
+  .icon-btn > svg,
+  .icon-btn::before,
+  .play-btn,
+  .lib-link,
+  .lib-link > svg,
+  .lib-card .art,
+  .cover,
+  .switch::after,
+  .seg button,
+  .swatch {
+    transition-duration: 0.01s;
+  }
+  .dialog,
+  .toast,
+  .ctx-menu,
+  .transport .icon-btn.fav.on > svg,
+  .icon-btn.active::after {
+    animation: none;
+  }
+}
+.pl-item {
+  transition: background 0.12s, transform 0.2s var(--spring);
+}
+.pl-item:active {
+  transform: scale(0.988);
 }

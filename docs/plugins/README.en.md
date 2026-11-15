@@ -230,12 +230,12 @@ Overriding these variables on `:root` is the safest way to change the look:
 | `--lyric-dim` | `40%` | Opacity of ordinary lyric lines (58% with the weather theme) |
 | `--lyric-near` | `56%` | Opacity of the lines next to the current one (74% with the weather theme) |
 | `--lyric-active-scale` | `1.12` | Scale of the current line |
-| `--lyric-blur` | `1.4px` | Blur of the other lines (half for the neighbours, `0` for none) |
+| `--lyric-blur` | `1.4px` | Blur of the other lines (half for the neighbours, `0` for none; smaller over a background picture and in the weather and season themes) |
 | `--lyric-hl` | accent color | Highlight color of the current line (overridden when the user picks a color on the lyrics page) |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | Side length of the classic style's cover |
 | `--cover-radius` | `16px` | Cover corner radius |
 | `--cover-shadow` | shadow | Cover shadow |
-| `--radius-s` / `--radius` / `--radius-l` | `8px` / `12px` / `18px` | Corner radii of buttons, panels and dialogs |
+| `--radius-s` / `--radius` / `--radius-l` | `7px` / `11px` / `16px` | Corner radii of buttons, panels and dialogs |
 | `--titlebar-h` | `44px` | Title bar height |
 | `--transport-h` | `92px` | Playback bar height |
 | `--accent` | the user's accent color | Accent color (written from the user's settings; plugins generally shouldn't override it — use `config.accent` to change the accent) |

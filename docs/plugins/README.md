@@ -519,15 +519,15 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `--lyric-weight` | `600` | 歌词字重 |
 | `--lyric-line-height` | `1.45` | 歌词行高 |
 | `--lyric-gap` | `2px` | 歌词行之间的额外间距 |
-| `--lyric-dim` | `40%` | 普通歌词行的不透明度（天气主题下为 58%） |
+| `--lyric-dim` | `40%` | 普通歌词行的不透明度（天气主题下为 58%，季节主题下为 64%） |
 | `--lyric-near` | `56%` | 当前行相邻行的不透明度（天气主题下为 74%） |
 | `--lyric-active-scale` | `1.12` | 当前行的放大比例 |
-| `--lyric-blur` | `1.4px` | 非当前行的模糊程度（相邻行减半，设为 `0` 不模糊） |
+| `--lyric-blur` | `1.4px` | 非当前行的模糊程度（相邻行减半，设为 `0` 不模糊；有背景图、天气或季节主题时更小） |
 | `--lyric-hl` | 主题色 | 当前行高亮颜色（用户在歌词页选择颜色时会覆盖） |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | 经典样式封面边长 |
 | `--cover-radius` | `16px` | 封面圆角 |
 | `--cover-shadow` | 阴影 | 封面阴影 |
-| `--radius-s` / `--radius` / `--radius-l` | `8px` / `12px` / `18px` | 按钮、面板、对话框的圆角 |
+| `--radius-s` / `--radius` / `--radius-l` | `7px` / `11px` / `16px` | 按钮、面板、对话框的圆角 |
 | `--titlebar-h` | `44px` | 标题栏高度 |
 | `--transport-h` | `92px` | 播放栏高度 |
 | `--accent` | 用户主题色 | 主题色（由用户设置写入；插件一般不要覆盖，想改主题色请用 `config.accent`） |
