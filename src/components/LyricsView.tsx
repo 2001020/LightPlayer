@@ -147,7 +147,12 @@ export function LyricsView({ lines: all, synced, offset = 0, fontSize, align = "
     return () => ro.disconnect();
   }, []);
 
-  const onUserScroll = () => setUserScrollUntil(Date.now() + 3000);
+  // Wheel and touch events come many times a second: move the deadline only
+  // now and then, not re-rendering every line on each of them.
+  const onUserScroll = () => {
+    const until = Date.now() + 3000;
+    if (until - userScrollUntil > 400) setUserScrollUntil(until);
+  };
 
   useEffect(() => {
     if (!userScrollUntil) return;
@@ -165,7 +170,7 @@ export function LyricsView({ lines: all, synced, offset = 0, fontSize, align = "
 
   return (
     <div
-      className={`lyric-scroll align-${align}${userScrollUntil ? " browsing" : ""}`}
+      className={`lyric-scroll align-${align}`}
       data-lp="lyric-scroll"
       data-lp-raw
       ref={scrollRef}

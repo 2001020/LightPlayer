@@ -524,7 +524,8 @@ LightPlayer 的界面由 React 渲染，元素上的 class 名属于内部实现
 | `--lyric-active-scale` | `1.12` | 当前行的放大比例 |
 | `--lyric-blur` | `1.4px` | 非当前行的模糊程度（离当前行越远越模糊，相隔 2 行时为 0.8 倍；设为 `0` 不模糊；有背景图、天气或季节主题时更小） |
 | `--lyric-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | 歌词行变亮、变暗、缩放和模糊的过渡曲线 |
-| `--scene-blur` | `4px` | 季节主题背景插图和彩蛋背景的模糊程度（写在 `.season-sky` 或 `.egg-bg` 上，设为 `0` 不模糊） |
+| `--scene-blur` | `4px` | 季节主题背景插图和彩蛋背景的模糊程度（写在 `.season-sky` 或 `.egg-bg` 上，设为 `0` 不模糊；季节插图在打开主题和窗口大小改变时读取） |
+| `--lyric-shadow` | `drop-shadow(0 1px 4px rgba(0, 0, 0, 0.3))` | 歌词下的暗色阴影（1.6.18 起），可写多个 `drop-shadow()`；不要阴影时设为 `drop-shadow(0 0 0 transparent)` |
 | `--lyric-hl` | 主题色 | 当前行高亮颜色（用户在歌词页选择颜色时会覆盖） |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | 经典样式封面边长 |
 | `--cover-radius` | `16px` | 封面圆角 |

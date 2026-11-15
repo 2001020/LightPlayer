@@ -232,7 +232,8 @@ Overriding these variables on `:root` is the safest way to change the look:
 | `--lyric-active-scale` | `1.12` | Scale of the current line |
 | `--lyric-blur` | `1.4px` | Blur of the other lines (more the farther from the current line, 0.8 times this two lines away; `0` for none; smaller over a background picture and in the weather and season themes) |
 | `--lyric-ease` | `cubic-bezier(0.22, 1, 0.36, 1)` | Timing curve for lines brightening, dimming, scaling and blurring |
-| `--scene-blur` | `4px` | Blur of the season themes' pictures and the easter egg background (set on `.season-sky` or `.egg-bg`; `0` for none) |
+| `--scene-blur` | `4px` | Blur of the season themes' pictures and the easter egg background (set on `.season-sky` or `.egg-bg`; `0` for none; the season picture reads it when the theme opens and when the window is resized) |
+| `--lyric-shadow` | `drop-shadow(0 1px 4px rgba(0, 0, 0, 0.3))` | Dark shadow under the lyrics (since 1.6.18); one or more `drop-shadow()`; for none use `drop-shadow(0 0 0 transparent)` |
 | `--lyric-hl` | accent color | Highlight color of the current line (overridden when the user picks a color on the lyrics page) |
 | `--cover-size` | `min(32vh, 28vw, 300px)` | Side length of the classic style's cover |
 | `--cover-radius` | `16px` | Cover corner radius |
