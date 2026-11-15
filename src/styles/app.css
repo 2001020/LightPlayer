@@ -17,6 +17,7 @@
   --lyric-near: 56%;
   --lyric-active-scale: 1.12;
   --lyric-blur: 1.4px;
+  --lyric-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* public: cover on the audio player page */
   --cover-size: min(32vh, 28vw, 300px);
   --cover-radius: 16px;
@@ -283,8 +284,14 @@ select:focus {
 :root[data-bg="weather"] .lyric-line {
   text-shadow: var(--halo);
 }
+:root[data-bg="image"] .lyric-line.active .lyric-body,
+:root[data-bg="weather"] .lyric-line.active .lyric-body {
+  text-shadow: var(--halo);
+}
 :root[data-bg="image"] .lyric-line.active.karaoke .w,
-:root[data-bg="weather"] .lyric-line.active.karaoke .w {
+:root[data-bg="weather"] .lyric-line.active.karaoke .w,
+:root[data-bg="image"] .lyric-line.active.karaoke .lyric-body,
+:root[data-bg="weather"] .lyric-line.active.karaoke .lyric-body {
   text-shadow: none;
 }
 .titlebar .brand {
@@ -2830,39 +2837,60 @@ button.cm-foot {
   height: 50%;
 }
 .lyric-line {
+  /* Moved by the lyrics view itself (each line glides to its place). */
   padding: 10px 14px;
   margin: var(--lyric-gap) 0;
   border-radius: 12px;
   line-height: var(--lyric-line-height);
-  transition: color 0.2s, transform 0.25s var(--ease), opacity 0.2s, filter 0.25s;
-  transform-origin: center;
   cursor: pointer;
   font-weight: var(--lyric-weight);
+  transition: background-color 0.2s, color 0.6s var(--lyric-ease);
   /* Translucent text colour rather than grey: stays legible on tinted covers. */
   color: color-mix(in srgb, var(--text) var(--lyric-dim), transparent);
-  /* The lines around the current one are out of focus. */
-  filter: blur(var(--lyric-blur));
+}
+.lyric-body {
+  transform-origin: center;
+  /* Coming into and out of focus is slow and soft, never a jump. */
+  transition:
+    color 0.6s var(--lyric-ease),
+    transform 0.7s var(--lyric-ease),
+    filter 0.7s var(--lyric-ease),
+    opacity 0.6s var(--lyric-ease),
+    text-shadow 0.6s var(--lyric-ease);
+  /* The farther a line is from the current one, the more out of focus. */
+  filter: blur(calc(var(--lyric-blur) * var(--d, 2) / 2.5));
+  opacity: calc(1 - var(--d, 2) * 0.04);
 }
 .lyric-line:hover {
   background: var(--hover);
+}
+.lyric-line:hover .lyric-body {
   filter: none;
 }
 /* Scrolling through the lyrics by hand: every line is sharp. */
-.lyric-scroll.browsing .lyric-line {
+.lyric-scroll.browsing .lyric-body {
   filter: none;
+  opacity: 1;
 }
-.align-left .lyric-line {
+.align-left .lyric-body {
   transform-origin: left center;
 }
 .lyric-line.near {
   color: color-mix(in srgb, var(--text) var(--lyric-near), transparent);
-  filter: blur(calc(var(--lyric-blur) * 0.5));
 }
 .lyric-line.active {
   color: var(--lyric-hl, var(--text));
+}
+.lyric-line.active .lyric-body {
   transform: scale(var(--lyric-active-scale));
   filter: none;
+  opacity: 1;
   text-shadow: 0 0 24px color-mix(in srgb, var(--lyric-hl, var(--accent)) 40%, transparent);
+}
+/* Word by word: the glow would show through the see-through letters, and
+   would flash when the line ends and goes back to plain text. */
+.lyric-line.active.karaoke .lyric-body {
+  text-shadow: none;
 }
 .lyric-line .tr {
   display: block;
@@ -2885,6 +2913,8 @@ button.cm-foot {
 .lyric-line.unsynced {
   cursor: default;
   color: var(--text-dim);
+}
+.lyric-line.unsynced .lyric-body {
   opacity: 1;
   filter: none;
 }
@@ -5579,6 +5609,28 @@ html.desktop-lyrics #root {
   border-radius: 50%;
   background: var(--danger);
 }
+.update-btn.ready .update-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+/* Background download: a thin bar under the icon. */
+.update-mini {
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--track);
+  overflow: hidden;
+}
+.update-mini i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  transition: width 0.3s ease;
+}
 
 /* ---------------------------------------------------------------- LAN sync */
 .lan-dialog {
@@ -5931,6 +5983,11 @@ html.desktop-lyrics #root {
   backdrop-filter: blur(12px) saturate(1.25);
   -webkit-backdrop-filter: blur(12px) saturate(1.25);
 }
+.season-sky,
+.egg-bg {
+  /* How soft the season scenes and the easter egg picture are. */
+  --scene-blur: 4px;
+}
 .season-sky {
   position: fixed;
   inset: 0;
@@ -5941,9 +5998,12 @@ html.desktop-lyrics #root {
 }
 .season-scene {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  /* A little past the edges, so the blur does not fade them out. */
+  inset: calc(var(--scene-blur) * -3);
+  width: calc(100% + var(--scene-blur) * 6);
+  height: calc(100% + var(--scene-blur) * 6);
+  /* Softened so the interface on top stays easy to read. */
+  filter: blur(var(--scene-blur));
   /* Drawn once, then only moved or left alone. */
   will-change: transform;
 }
@@ -6055,9 +6115,10 @@ html.desktop-lyrics #root {
 }
 .egg-bg {
   position: fixed;
-  inset: 0;
+  inset: calc(var(--scene-blur) * -3);
   z-index: -1;
   background: url("/egg/happy-ending.webp") 55% 40% / cover no-repeat;
+  filter: blur(var(--scene-blur));
 }
 .egg-veil {
   position: fixed;

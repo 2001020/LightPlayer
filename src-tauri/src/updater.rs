@@ -2,6 +2,10 @@
 //! kind of install, downloads it with the bundled aria2 (checking its size and
 //! SHA-256), and swaps it in once the app has quit, then starts the new version.
 //!
+//! The release listing (and so the checksum) always comes from GitHub itself;
+//! the file can also come from GitHub mirrors, which only relay it and are used
+//! only when the checksum is known.
+//!
 //! - macOS: replaces the running LightPlayer.app with the one in `*_aarch64.app.zip`.
 //! - Windows installer: runs `*_x64-setup.exe /S` into the same folder.
 //! - Windows portable: copies `*_x64_portable.zip` over the app folder.
@@ -170,10 +174,37 @@ pub fn pick_update(releases: &Value, current: &str, include_prerelease: bool, ki
     })
 }
 
+/// Public GitHub mirrors that relay `https://github.com/…` URLs put after
+/// their address.
+pub const MIRRORS: &[&str] = &["ghfast.top", "gh-proxy.com", "ghproxy.net", "gh-proxy.org"];
+
+/// The URLs to download `asset` from, in order of preference, for `source`:
+/// "github", one of `MIRRORS` (then GitHub), or anything else for all of them
+/// (GitHub first). Mirrors are left out when the file has no checksum to check
+/// what they send against.
+pub fn sources(asset: &UpdateAsset, source: &str) -> Vec<String> {
+    let github = asset.url.clone();
+    if asset.sha256.is_none() || !github.starts_with("https://github.com/") || source == "github" {
+        return vec![github];
+    }
+    let mirror = |host: &str| format!("https://{host}/{github}");
+    match MIRRORS.iter().find(|m| **m == source) {
+        Some(m) => vec![mirror(m), github],
+        None => std::iter::once(github.clone()).chain(MIRRORS.iter().map(|m| mirror(m))).collect(),
+    }
+}
+
+/// The host a URL is fetched from.
+fn host(url: &str) -> String {
+    url.split("://").nth(1).and_then(|r| r.split('/').next()).unwrap_or(url).to_string()
+}
+
 fn client() -> AppResult<reqwest::Client> {
     Ok(reqwest::Client::builder()
         .user_agent(format!("LightPlayer/{}", current_version()))
         .connect_timeout(std::time::Duration::from_secs(15))
+        // A source that stops sending gives way to the next one.
+        .read_timeout(std::time::Duration::from_secs(30))
         .build()?)
 }
 
@@ -204,6 +235,10 @@ pub struct Progress {
     pub connections: u32,
     /// aria2 failed partway and a single connection started over from 0.
     pub restarted: bool,
+    /// Sources downloaded from at once.
+    pub sources: u32,
+    /// The site when there is one source.
+    pub host: String,
 }
 
 /// aria2's count can dip for a moment when a connection retries; the bar
@@ -213,14 +248,26 @@ fn forward(most: &mut u64, received: u64, total: u64) -> u64 {
     if total > 0 { (*most).min(total) } else { *most }
 }
 
-/// Downloads `asset` into `dir`, reporting progress; checks size and SHA-256.
-/// Uses the bundled aria2 (several connections) and falls back to a single
-/// connection when aria2 is missing or fails.
-pub async fn download(asset: &UpdateAsset, dir: &Path, cancel: &AtomicBool, progress: impl FnMut(Progress)) -> AppResult<PathBuf> {
-    download_with(crate::tools::aria2(), asset, dir, cancel, progress).await
+/// Downloads `asset` into `dir` from `source` (see `sources`), reporting
+/// progress; checks size and SHA-256. Uses the bundled aria2 (several
+/// connections; with "auto", from every source at once) and falls back to a
+/// single connection, one source after another, when aria2 is missing or fails.
+pub async fn download(asset: &UpdateAsset, source: &str, dir: &Path, cancel: &AtomicBool, progress: impl FnMut(Progress)) -> AppResult<PathBuf> {
+    download_with(crate::tools::aria2(), asset, &sources(asset, source), source == "auto", dir, cancel, progress).await
 }
 
-async fn download_with(aria2: Option<&Path>, asset: &UpdateAsset, dir: &Path, cancel: &AtomicBool, mut progress: impl FnMut(Progress)) -> AppResult<PathBuf> {
+/// `urls`: in order of preference; aria2 uses all of them when `together`,
+/// else the first.
+async fn download_with(
+    aria2: Option<&Path>,
+    asset: &UpdateAsset,
+    urls: &[String],
+    together: bool,
+    dir: &Path,
+    cancel: &AtomicBool,
+    mut progress: impl FnMut(Progress),
+) -> AppResult<PathBuf> {
+    let first = urls.first().ok_or_else(|| AppError::msg("没有下载地址"))?;
     let name = Path::new(&asset.name).file_name().ok_or_else(|| AppError::msg("文件名无效"))?;
     tokio::fs::create_dir_all(dir).await?;
     let dest = dir.join(name);
@@ -235,6 +282,7 @@ async fn download_with(aria2: Option<&Path>, asset: &UpdateAsset, dir: &Path, ca
     let mut most = 0u64;
     if let Some(aria2) = aria2 {
         let ua = format!("LightPlayer/{}", current_version());
+        let used: &[String] = if together { urls } else { std::slice::from_ref(first) };
         let report = |s: crate::aria2::Status| {
             let total = if s.total > 0 { s.total } else { asset.size };
             progress(Progress {
@@ -243,10 +291,15 @@ async fn download_with(aria2: Option<&Path>, asset: &UpdateAsset, dir: &Path, ca
                 speed: s.speed,
                 connections: s.connections,
                 restarted: false,
+                sources: used.len() as u32,
+                host: if used.len() == 1 { host(first) } else { String::new() },
             })
         };
-        match crate::aria2::download(aria2, &asset.url, &part, &ua, cancel, report).await {
-            Ok(()) => done = true,
+        match crate::aria2::download(aria2, used, &part, &ua, cancel, report).await {
+            Ok(()) => match verify(&part, asset).await {
+                Ok(()) => done = true,
+                Err(e) => log::warn!("aria2 download did not check out, using a single connection: {e}"),
+            },
             Err(AppError::Cancelled) => {
                 remove(vec![part, control]).await;
                 return Err(AppError::Cancelled);
@@ -254,32 +307,52 @@ async fn download_with(aria2: Option<&Path>, asset: &UpdateAsset, dir: &Path, ca
             Err(e) => log::warn!("aria2 download failed, using a single connection: {e}"),
         }
     }
-    if !done {
-        remove(vec![control]).await;
+    // One connection, one source after another.
+    let mut failed = None;
+    let rest: &[String] = if done { &[] } else { urls };
+    for url in rest {
+        remove(vec![part.clone(), control.clone()]).await;
         // Say so once when the bar has to go back to 0.
         let restarted = most > 0;
         if restarted {
-            progress(Progress { received: 0, total: asset.size, speed: 0, connections: 1, restarted });
+            progress(Progress { received: 0, total: asset.size, speed: 0, connections: 1, restarted, sources: 1, host: host(url) });
         }
-        if let Err(e) = single(asset, &part, cancel, restarted, &mut progress).await {
-            remove(vec![part]).await;
-            return Err(e);
+        let result = match single(url, asset.size, &part, cancel, restarted, &mut progress).await {
+            Ok(()) => verify(&part, asset).await,
+            Err(e) => Err(e),
+        };
+        match result {
+            Ok(()) => {
+                done = true;
+                break;
+            }
+            Err(AppError::Cancelled) => {
+                remove(vec![part]).await;
+                return Err(AppError::Cancelled);
+            }
+            Err(e) => {
+                log::warn!("download from {} failed: {e}", host(url));
+                // The bar went forward: the next source starts over from 0.
+                most = most.max(1);
+                failed = Some(e);
+            }
         }
     }
-    if let Err(e) = verify(&part, asset).await {
-        remove(vec![part]).await;
-        return Err(e);
+    if !done {
+        remove(vec![part, control]).await;
+        return Err(failed.unwrap_or_else(|| AppError::msg("下载失败")));
     }
     tokio::fs::rename(&part, &dest).await?;
     Ok(dest)
 }
 
-/// One connection, straight to `part`.
-async fn single(asset: &UpdateAsset, part: &Path, cancel: &AtomicBool, restarted: bool, progress: &mut impl FnMut(Progress)) -> AppResult<()> {
+/// One connection from `url`, straight to `part`.
+async fn single(url: &str, size: u64, part: &Path, cancel: &AtomicBool, restarted: bool, progress: &mut impl FnMut(Progress)) -> AppResult<()> {
     use futures_util::StreamExt;
     use tokio::io::AsyncWriteExt;
-    let resp = client()?.get(&asset.url).send().await?.error_for_status()?;
-    let total = resp.content_length().unwrap_or(asset.size);
+    let resp = client()?.get(url).send().await?.error_for_status()?;
+    let total = resp.content_length().unwrap_or(size);
+    let site = host(url);
     let mut file = tokio::fs::File::create(part).await?;
     let mut received = 0u64;
     let mut last = 0u64;
@@ -299,7 +372,7 @@ async fn single(asset: &UpdateAsset, part: &Path, cancel: &AtomicBool, restarted
         }
         if received - last >= 256 * 1024 || received == total {
             last = received;
-            progress(Progress { received, total, speed: window.2, connections: 1, restarted });
+            progress(Progress { received, total, speed: window.2, connections: 1, restarted, sources: 1, host: site.clone() });
         }
     }
     file.flush().await?;
@@ -689,13 +762,24 @@ mod tests {
         assert!(marker.is_file(), "{}", log());
     }
 
-    /// Serves `data` at `/f.zip` with Range support (and 404 elsewhere).
+    /// Serves `data` at `/f.zip` and other bytes of the same size at
+    /// `/bad.zip` (a mirror sending the wrong file), with Range support, and
+    /// 404 elsewhere.
     async fn serve(data: Vec<u8>) -> String {
+        let bad: Vec<u8> = data.iter().map(|b| b ^ 0x5a).collect();
+        let app = axum::Router::new().merge(route("/f.zip", data)).merge(route("/bad.zip", bad));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        format!("http://127.0.0.1:{port}")
+    }
+
+    fn route(path: &str, data: Vec<u8>) -> axum::Router {
         use axum::http::{header, HeaderMap, StatusCode};
         use axum::response::IntoResponse;
         let data = std::sync::Arc::new(data);
-        let app = axum::Router::new().route(
-            "/f.zip",
+        axum::Router::new().route(
+            path,
             axum::routing::get(move |h: HeaderMap| {
                 let data = data.clone();
                 async move {
@@ -727,11 +811,7 @@ mod tests {
                     resp
                 }
             }),
-        );
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let port = listener.local_addr().unwrap().port();
-        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-        format!("http://127.0.0.1:{port}")
+        )
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -756,7 +836,7 @@ mod tests {
                 let direct = dir.join("direct.part");
                 std::fs::create_dir_all(&dir).unwrap();
                 let mut most = 0;
-                crate::aria2::download(aria2, &format!("{base}/f.zip"), &direct, "LightPlayer/test", &cancel, |s| most = most.max(s.connections))
+                crate::aria2::download(aria2, &[format!("{base}/f.zip")], &direct, "LightPlayer/test", &cancel, |s| most = most.max(s.connections))
                     .await
                     .unwrap_or_else(|e| panic!("aria2 ({}): {e}", aria2.display()));
                 assert_eq!(std::fs::read(&direct).unwrap(), data);
@@ -765,7 +845,7 @@ mod tests {
 
                 let mut most = 0;
                 let mut last = 0;
-                let file = download_with(Some(aria2), &asset("/f.zip", &sha), &dir, &cancel, |p| {
+                let file = download_with(Some(aria2), &asset("/f.zip", &sha), &[format!("{base}/f.zip")], false, &dir, &cancel, |p| {
                     most = most.max(p.connections);
                     last = p.received;
                 })
@@ -778,18 +858,29 @@ mod tests {
                 std::fs::remove_file(&file).unwrap();
 
                 // A wrong checksum: rejected, nothing left behind.
-                let e = download_with(Some(aria2), &asset("/f.zip", &"0".repeat(64)), &dir, &cancel, |_| {}).await.unwrap_err();
+                let e = download_with(Some(aria2), &asset("/f.zip", &"0".repeat(64)), &[format!("{base}/f.zip")], false, &dir, &cancel, |_| {}).await.unwrap_err();
                 assert!(e.to_string().contains("校验失败"), "{e}");
                 assert!(leftovers().is_empty(), "{:?}", leftovers());
 
                 // Cancelled.
                 cancel.store(true, Ordering::SeqCst);
-                assert!(matches!(download_with(Some(aria2), &asset("/f.zip", &sha), &dir, &cancel, |_| {}).await, Err(AppError::Cancelled)));
+                assert!(matches!(download_with(Some(aria2), &asset("/f.zip", &sha), &[format!("{base}/f.zip")], false, &dir, &cancel, |_| {}).await, Err(AppError::Cancelled)));
                 assert!(leftovers().is_empty(), "{:?}", leftovers());
                 cancel.store(false, Ordering::SeqCst);
 
+                // Several sources at once: a missing one is dropped; one that
+                // sends the wrong bytes spoils the file, so the sources are
+                // then tried one at a time.
+                for path in ["/missing.zip", "/bad.zip"] {
+                    let urls = [format!("{base}{path}"), format!("{base}/f.zip")];
+                    let file = download_with(Some(aria2), &asset("/f.zip", &sha), &urls, true, &dir, &cancel, |_| {}).await.unwrap_or_else(|e| panic!("{path}: {e}"));
+                    assert_eq!(std::fs::read(&file).unwrap(), data, "{path}");
+                    assert_eq!(leftovers(), vec!["LightPlayer_9.9.9_test.zip".to_string()]);
+                    std::fs::remove_file(&file).unwrap();
+                }
+
                 // A missing file: aria2 and the single connection both fail.
-                assert!(download_with(Some(aria2), &asset("/missing.zip", &sha), &dir, &cancel, |_| {}).await.is_err());
+                assert!(download_with(Some(aria2), &asset("/missing.zip", &sha), &[format!("{base}/missing.zip")], false, &dir, &cancel, |_| {}).await.is_err());
                 assert!(leftovers().is_empty(), "{:?}", leftovers());
             }
             None => eprintln!("no aria2c here: only the fallback is tested"),
@@ -798,10 +889,46 @@ mod tests {
         // aria2 cannot start: one connection instead. Nothing was shown
         // yet, so it is not reported as starting over.
         let mut seen = Vec::new();
-        let file = download_with(Some(Path::new("/nonexistent/aria2c")), &asset("/f.zip", &sha), &dir, &cancel, |p| seen.push(p)).await.unwrap();
+        let file = download_with(Some(Path::new("/nonexistent/aria2c")), &asset("/f.zip", &sha), &[format!("{base}/f.zip")], false, &dir, &cancel, |p| seen.push(p)).await.unwrap();
         assert_eq!(std::fs::read(&file).unwrap(), data);
         assert!(seen.iter().all(|p| p.connections == 1 && !p.restarted));
         assert!(seen.windows(2).all(|w| w[0].received <= w[1].received));
+        std::fs::remove_file(&file).unwrap();
+
+        // One connection, one source after another: missing, then the wrong
+        // file, then the right one.
+        let urls = ["/missing.zip", "/bad.zip", "/f.zip"].map(|p| format!("{base}{p}"));
+        let mut seen = Vec::new();
+        let file = download_with(None, &asset("/f.zip", &sha), &urls, true, &dir, &cancel, |p| seen.push(p)).await.unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), data);
+        assert!(seen.iter().any(|p| p.restarted), "starting over is reported");
+        assert!(seen.iter().all(|p| p.sources == 1 && p.host.starts_with("127.0.0.1:")));
+        assert_eq!(leftovers(), vec!["LightPlayer_9.9.9_test.zip".to_string()]);
+        std::fs::remove_file(&file).unwrap();
+        // None of them works: the last error, nothing left behind.
+        let urls = ["/missing.zip", "/bad.zip"].map(|p| format!("{base}{p}"));
+        let e = download_with(None, &asset("/f.zip", &sha), &urls, true, &dir, &cancel, |_| {}).await.unwrap_err();
+        assert!(e.to_string().contains("校验失败"), "{e}");
+        assert!(leftovers().is_empty(), "{:?}", leftovers());
+    }
+
+    #[test]
+    fn lists_download_sources() {
+        let url = "https://github.com/2001020/LightPlayer/releases/download/v1.6.16/LightPlayer_1.6.16_x64-setup.exe";
+        let asset = |sha: Option<&str>| UpdateAsset { name: "LightPlayer_1.6.16_x64-setup.exe".into(), url: url.into(), size: 1, sha256: sha.map(str::to_string) };
+        let checked = asset(Some("ab"));
+        let all = sources(&checked, "auto");
+        assert_eq!(all.len(), 1 + MIRRORS.len());
+        assert_eq!(all[0], url);
+        assert_eq!(all[1], format!("https://ghfast.top/{url}"));
+        assert_eq!(sources(&checked, "github"), [url]);
+        assert_eq!(sources(&checked, "gh-proxy.com"), [format!("https://gh-proxy.com/{url}"), url.to_string()]);
+        assert_eq!(sources(&checked, "something else").len(), all.len());
+        // Without a checksum, only GitHub itself.
+        assert_eq!(sources(&asset(None), "auto"), [url]);
+        assert_eq!(sources(&asset(None), "ghfast.top"), [url]);
+        assert_eq!(host(&all[2]), "gh-proxy.com");
+        assert_eq!(host(url), "github.com");
     }
 
     #[test]
@@ -829,10 +956,16 @@ mod tests {
         let asset = pick_update(&releases, "0.1.0", false, kind).and_then(|u| u.asset).expect("a release file");
         let tmp = tempfile::tempdir().unwrap();
         let cancel = AtomicBool::new(false);
-        for (label, program) in [("aria2", Some(aria2)), ("single connection", None)] {
+        let github = sources(&asset, "github");
+        let all = sources(&asset, "auto");
+        for (label, program, urls, together) in [
+            ("aria2 (GitHub and mirrors)", Some(aria2), &all, true),
+            ("aria2 (GitHub)", Some(aria2), &github, false),
+            ("single connection (GitHub)", None, &github, false),
+        ] {
             let started = std::time::Instant::now();
             let mut most = 0;
-            let file = download_with(program, &asset, tmp.path(), &cancel, |p| most = most.max(p.connections)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
+            let file = download_with(program, &asset, urls, together, tmp.path(), &cancel, |p| most = most.max(p.connections)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             let secs = started.elapsed().as_secs_f64();
             println!("{label}: {} {:.1} MB in {secs:.1} s ({:.2} MB/s, up to {most} connections, sha256 checked: {})", asset.name, asset.size as f64 / 1e6, asset.size as f64 / 1e6 / secs, asset.sha256.is_some());
             std::fs::remove_file(file).unwrap();

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useSettings } from "../stores/settings";
 import { useUI } from "../stores/player";
-import { checkForUpdates, includePrerelease, loadAppInfo, openReleasePage, useUpdater } from "../stores/updater";
+import { UPDATE_MIRRORS, checkForUpdates, includePrerelease, loadAppInfo, openReleasePage, useUpdater } from "../stores/updater";
 import { Row, Switch } from "./SettingsControls";
 import { locale } from "../i18n";
 
@@ -31,11 +31,13 @@ export function UpdateSettings() {
   }, []);
   let state: string;
   if (status === "checking") state = "正在检查…";
-  else if (status === "available" || status === "downloading" || status === "installing") state = `有新版本 ${info?.version}`;
+  else if (status === "downloading") state = `正在下载新版本 ${info?.version}`;
+  else if (status === "ready") state = `新版本 ${info?.version} 已下载，等待安装`;
+  else if (status === "available" || status === "installing") state = `有新版本 ${info?.version}`;
   else if (status === "latest") state = `已是最新版本，${ago(checkedAt!)}检查`;
   else if (status === "error") state = `检查失败：${error}`;
   else state = app ? KIND[app.install] : "";
-  const available = status === "available" || status === "downloading" || status === "installing";
+  const available = status === "available" || status === "downloading" || status === "ready" || status === "installing";
   return (
     <>
       <h3>更新</h3>
@@ -55,6 +57,17 @@ export function UpdateSettings() {
       </Row>
       <Row label="自动检查更新" hint="启动时和每隔 12 小时检查 GitHub 上的新版本，有新版本时提示">
         <Switch on={u.auto} onChange={(auto) => set({ auto })} />
+      </Row>
+      <Row label="下载源" hint="下载慢或失败时可换用镜像站。镜像站只转发文件，下载后都会用 GitHub 提供的校验值核对">
+        <select value={u.source || "auto"} onChange={(e) => set({ source: e.target.value })}>
+          <option value="auto">自动（GitHub 与镜像站同时下载）</option>
+          <option value="github">GitHub</option>
+          {UPDATE_MIRRORS.map((m) => (
+            <option key={m} value={m} data-lp-raw>
+              {m}
+            </option>
+          ))}
+        </select>
       </Row>
       <Row label="包括预发布版本" hint="预发布版本包含仍在测试的新功能，可能不够稳定">
         <Switch on={u.prerelease ?? includePrerelease()} onChange={(prerelease) => set({ prerelease })} />

@@ -1,6 +1,6 @@
 //! Downloads through the bundled aria2c: one file over several connections at
-//! once, which is much faster than a single stream when each connection to
-//! GitHub is slow. aria2 runs only for the download and is driven over its
+//! once, from one or more sources (GitHub and its mirrors), which is much
+//! faster than a single stream when each connection to GitHub is slow. aria2 runs only for the download and is driven over its
 //! JSON-RPC interface on localhost (random port and secret).
 
 use crate::error::{AppError, AppResult};
@@ -45,6 +45,8 @@ fn args(port: u16, secret: &str, user_agent: &str, proxy: Option<(String, Option
         format!("--split={CONNECTIONS}"),
         format!("--max-connection-per-server={CONNECTIONS}"),
         "--min-split-size=1M".into(),
+        // With several sources, favour the ones that turn out fastest.
+        "--uri-selector=adaptive".into(),
         "--continue=true".into(),
         "--allow-overwrite=true".into(),
         "--auto-file-renaming=false".into(),
@@ -200,10 +202,10 @@ impl Rpc {
     }
 }
 
-/// Downloads `url` to `out` with `program` (aria2c), reporting progress.
-/// On failure the partial file and aria2's control file (`control_file`)
+/// Downloads to `out` with `program` (aria2c) from `urls`, which all serve the
+/// same file (parts come from whichever answer), reporting progress. On failure the partial file and aria2's control file (`control_file`)
 /// stay for the caller to remove.
-pub async fn download(program: &Path, url: &str, out: &Path, user_agent: &str, cancel: &AtomicBool, progress: impl FnMut(Status)) -> AppResult<()> {
+pub async fn download(program: &Path, urls: &[String], out: &Path, user_agent: &str, cancel: &AtomicBool, progress: impl FnMut(Status)) -> AppResult<()> {
     let dir = out.parent().ok_or_else(|| AppError::msg("文件名无效"))?;
     let name = out.file_name().ok_or_else(|| AppError::msg("文件名无效"))?.to_string_lossy().into_owned();
     let port = free_port()?;
@@ -220,13 +222,13 @@ pub async fn download(program: &Path, url: &str, out: &Path, user_agent: &str, c
         url: format!("http://127.0.0.1:{port}/jsonrpc"),
         token: format!("token:{secret}"),
     };
-    let result = run(&rpc, &mut child, url, dir, &name, cancel, progress).await;
+    let result = run(&rpc, &mut child, urls, dir, &name, cancel, progress).await;
     // Stop aria2 so nothing holds the file (Windows) before it is moved.
     let _ = child.kill().await;
     result
 }
 
-async fn run(rpc: &Rpc, child: &mut tokio::process::Child, url: &str, dir: &Path, name: &str, cancel: &AtomicBool, mut progress: impl FnMut(Status)) -> AppResult<()> {
+async fn run(rpc: &Rpc, child: &mut tokio::process::Child, urls: &[String], dir: &Path, name: &str, cancel: &AtomicBool, mut progress: impl FnMut(Status)) -> AppResult<()> {
     let tick = || tokio::time::sleep(Duration::from_millis(250));
     let started = Instant::now();
     while rpc.call("aria2.getVersion", vec![]).await.is_err() {
@@ -241,7 +243,7 @@ async fn run(rpc: &Rpc, child: &mut tokio::process::Child, url: &str, dir: &Path
         }
         tick().await;
     }
-    let gid = rpc.call("aria2.addUri", vec![json!([url]), json!({ "dir": dir.to_string_lossy(), "out": name })]).await?;
+    let gid = rpc.call("aria2.addUri", vec![json!(urls), json!({ "dir": dir.to_string_lossy(), "out": name })]).await?;
     let keys = json!(["status", "totalLength", "completedLength", "downloadSpeed", "connections", "errorCode", "errorMessage"]);
     let mut last = (0u64, Instant::now());
     loop {
@@ -297,7 +299,7 @@ mod tests {
     #[test]
     fn builds_the_command_line() {
         let a = args(6800, "s3cret", "LightPlayer/1.6.2", Some(("http://127.0.0.1:7890".into(), Some("localhost,127.0.0.1".into()))), None);
-        for want in ["--enable-rpc=true", "--rpc-listen-all=false", "--rpc-listen-port=6800", "--rpc-secret=s3cret", "--split=16", "--all-proxy=http://127.0.0.1:7890", "--no-proxy=localhost,127.0.0.1", "--user-agent=LightPlayer/1.6.2"] {
+        for want in ["--enable-rpc=true", "--rpc-listen-all=false", "--rpc-listen-port=6800", "--rpc-secret=s3cret", "--split=16", "--uri-selector=adaptive", "--all-proxy=http://127.0.0.1:7890", "--no-proxy=localhost,127.0.0.1", "--user-agent=LightPlayer/1.6.2"] {
             assert!(a.iter().any(|x| x == want), "{want} in {a:?}");
         }
         assert!(a.iter().any(|x| x.starts_with("--stop-with-process=")));
