@@ -3614,7 +3614,15 @@ kbd {
   grid-template-columns: 210px minmax(0, 1fr);
   gap: 12px;
   padding: 4px 10px 12px;
-  animation: fadeUp 0.3s var(--ease);
+}
+/* The sidebar and the content come in on their own, not the page as a whole:
+   a fading or moving parent would cut their frosted glass off from the
+   background behind it until the animation ended. */
+.library-page > * {
+  animation: fadeUp 0.3s var(--ease) backwards;
+}
+.library-page > :nth-child(2) {
+  animation-delay: 0.03s;
 }
 .lib-side {
   display: flex;
@@ -3624,7 +3632,8 @@ kbd {
 }
 /* Over a picture the sidebar gets the same frosted surface as the content. */
 :root[data-bg="image"] .lib-side,
-:root[data-bg="weather"] .lib-side {
+:root[data-bg="weather"] .lib-side,
+:root[data-bg="season"] .lib-side {
   padding: 8px 6px;
   background: var(--panel);
   border: 1px solid var(--border);
