@@ -22,6 +22,11 @@ interface Active {
 }
 
 let replacer: TextReplacer | null = null;
+
+/** Lets the text replacer forget what has left the page (background upkeep). */
+export function pruneReplacedText() {
+  replacer?.prune();
+}
 let classes: string[] = [];
 let stylesKey = "";
 let stringsKey = "";

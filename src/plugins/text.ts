@@ -208,7 +208,8 @@ export class TextReplacer {
     this.observer?.takeRecords();
   }
 
-  private prune() {
+  /** Forgets the texts it changed that are no longer on the page. */
+  prune() {
     for (const n of this.touched) if (!n.isConnected) this.touched.delete(n);
   }
 
