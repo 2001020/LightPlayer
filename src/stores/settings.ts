@@ -117,6 +117,8 @@ export interface Settings {
   eggs: boolean;
   /** Cache size (MB) past which the oldest cache files are deleted, silently; 0: no limit. */
   cacheLimitMB: number;
+  /** Background upkeep every 30 minutes, so long sessions stay smooth. */
+  autoOptimize: boolean;
   /** Files played through an ffmpeg copy because WebKit's clock drifts on them. */
   precisePaths: string[];
   /** Active lyric line colour on the lyrics page (null: theme colour). */
@@ -199,6 +201,7 @@ export const defaultSettings: Settings = {
   listeningStats: true,
   eggs: false,
   cacheLimitMB: 0,
+  autoOptimize: true,
   precisePaths: [],
   lyricHighlight: null,
   desktopLyrics: { enabled: false, color: "#66ccff" },

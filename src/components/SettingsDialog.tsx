@@ -581,6 +581,7 @@ const CACHE_LIMITS = [0, 512, 1024, 2048, 5120, 10240];
 
 function CacheRow() {
   const limit = useSettings((st) => st.cacheLimitMB);
+  const autoOptimize = useSettings((st) => st.autoOptimize);
   const [bytes, setBytes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -618,6 +619,9 @@ function CacheRow() {
             </option>
           ))}
         </select>
+      </Row>
+      <Row label="后台自动优化" hint="每隔 30 分钟在后台静默整理一次动画和渲染缓存，长时间播放也保持流畅">
+        <Switch on={autoOptimize} onChange={(v) => useSettings.getState().set({ autoOptimize: v })} />
       </Row>
     </>
   );

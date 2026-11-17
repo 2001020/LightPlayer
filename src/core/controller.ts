@@ -1,5 +1,6 @@
 // Application actions: wires the playback engine, stores and backend together.
 
+import { startUpkeep } from "./optimize";
 import { open as openDialog, save as saveDialog } from "../lib/dialog";
 import { engine } from "./player/engine";
 import { startWeather } from "./weather/service";
@@ -1310,6 +1311,8 @@ export async function init() {
   useSettings.subscribe((s, prev) => {
     if (s.cacheLimitMB !== prev.cacheLimitMB) void trimCache();
   });
+  // Half-hourly background upkeep, so hours of playback stay smooth.
+  startUpkeep(trimCache);
 
   // Menu bar icon, "keep running when the window is closed" and private mode.
   const syncBackground = (s: { runInBackground: boolean; trayShowTitle: boolean; privateMode: boolean }) =>

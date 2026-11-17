@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { Season } from "../core/season";
 import { SCENE_VIEWBOX, scene } from "./season/art";
+import { useUpkeep } from "../core/optimize";
 
 const rand = (i: number, salt: number) => {
   const x = Math.sin(i * 91.7 + salt * 173.3) * 43758.5453;
@@ -144,10 +145,12 @@ export function SeasonSky({ season, motion, paused }: { season: Season; motion: 
   }, [season]);
   const host = useRef<HTMLDivElement>(null);
   const blur = useSceneBlur(host);
+  // Background upkeep: the layers are put down afresh now and then.
+  const epoch = useUpkeep((s) => s.epoch);
   return (
     <div ref={host} className={`season-sky ${motion ? "" : "still"} ${paused ? "paused" : ""}`} aria-hidden="true">
       {season === "winter" && <Stars />}
-      <Scene season={season} blur={blur} />
+      <Scene key={epoch} season={season} blur={blur} />
       {motion && !paused && <Falling season={season} />}
     </div>
   );
